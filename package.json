@@ -1,0 +1,42 @@
+{
+  "name": "zar-masasi",
+  "version": "0.1.0",
+  "description": "Zar Masası: ücretsiz, açık kaynak sanal masa (VTT) — masaüstü uygulaması ve sunucusu",
+  "main": "electron/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/cli.js",
+    "test": "node --test",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "org.zarmasasi.app",
+    "productName": "Zar Masası",
+    "files": [
+      "electron/**",
+      "server/**",
+      "web/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "publish": null,
+    "artifactName": "ZarMasasi-${version}-${os}-${arch}.${ext}"
+  }
+}

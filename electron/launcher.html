@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Zar Masası</title>
+<style>
+:root{--bg:#E7EBE7;--surface:#F7F9F6;--surface-2:#EEF2EE;--ink:#1B2226;--muted:#5A666A;--line:#C8D0CB;--accent:#1F6F6B;--accent-ink:#fff;--accent-soft:#D3E6E2;--bad:#B3261E;--r:6px;
+  --f-display:"Alegreya SC",Georgia,serif;--f-body:"Segoe UI",system-ui,sans-serif;--f-num:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#111518;--surface:#192025;--surface-2:#1F272D;--ink:#E3E8E4;--muted:#93A0A3;--line:#2C363C;--accent:#55B5AB;--accent-ink:#0D1A19;--accent-soft:#1D3734;--bad:#F1766B;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);display:grid;place-items:center;padding:24px}
+.wrap{width:min(900px,100%);display:grid;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;color:var(--accent)}
+.brand h1{font-family:var(--f-display);font-size:34px;margin:0;color:var(--ink);line-height:1}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:12px;align-content:start}
+.card h2{font-family:var(--f-display);font-size:21px;margin:0;color:var(--accent)}
+.card p{margin:0;color:var(--muted);font-size:14px}
+label{display:grid;gap:4px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+input{font:inherit;color:inherit;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;width:100%}
+input:focus{outline:none;border-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 110px;gap:8px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r);padding:7px 14px;font-weight:600}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.6;cursor:default}
+.recent{display:flex;gap:6px;flex-wrap:wrap}
+.recent button{font-family:var(--f-num);font-size:12.5px;font-weight:500;padding:3px 9px;border-radius:999px}
+.err{color:var(--bad);font-weight:600;font-size:14px}
+.addr{font-family:var(--f-num);background:var(--surface-2);border:1px dashed var(--line);border-radius:var(--r);padding:8px 10px;display:grid;gap:3px;font-size:14px;user-select:all}
+details{font-size:13.5px;color:var(--muted)} summary{cursor:pointer}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <svg width="44" height="44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M16 2 29 9.5v13L16 30 3 22.5v-13z"/><path d="M16 2 9 13h14zM9 13 3 22.5M23 13l6 9.5M9 13l7 17 7-17M3 9.5 9 13M29 9.5 23 13"/></svg>
+    <div><h1>Zar Masası</h1><p>Ücretsiz, açık kaynak sanal oyun masası</p></div>
+  </div>
+
+  <div class="card" id="running" hidden>
+    <h2>Masan açık</h2>
+    <p>Arkadaşların uygulamada "Sunucuya bağlan" kısmına bu adreslerden birini yazsın. Aynı ağdaysanız (aynı modem) yerel adres yeterli. İnternetten bağlanacaklar için modeminde bu portu bilgisayarına yönlendirmen ve dış IP adresini paylaşman gerekir.</p>
+    <div class="addr" id="addrs"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pri" id="backToTable">Masaya dön</button><button id="stop">Masayı kapat</button></div>
+  </div>
+
+  <div class="cards" id="choose">
+    <form class="card" id="joinForm">
+      <h2>Sunucuya bağlan</h2>
+      <p>Bir arkadaşının masasına ya da ortak sunucuya katıl.</p>
+      <label><span class="lbl">Sunucu adresi</span><input id="addr" placeholder="örn. 192.168.1.20 veya masa.ornek.com:7373" required></label>
+      <div class="recent" id="recent"></div>
+      <p class="err" id="joinErr" hidden></p>
+      <div><button class="pri">Bağlan</button></div>
+    </form>
+
+    <form class="card" id="hostForm">
+      <h2>Bu bilgisayarda host et</h2>
+      <p>Masa senin bilgisayarında çalışır, veriler burada saklanır. Uygulama açık kaldığı sürece diğerleri bağlanabilir.</p>
+      <div class="row">
+        <label><span class="lbl">Masa adı</span><input id="hName" placeholder="Cuma akşamı grubu"></label>
+        <label><span class="lbl">Port</span><input id="hPort" type="number" min="1024" max="65535" value="7373"></label>
+      </div>
+      <label><span class="lbl">Masa şifresi (isteğe bağlı)</span><input id="hPass" type="password" autocomplete="new-password" placeholder="Boş bırakırsan adresi bilen herkes girer"></label>
+      <details><summary>Yapay zekâ (Senaryo ve Destek bölümleri)</summary>
+        <p style="margin:8px 0">Bu bölümler Claude ile çalışır. Kullanmak istersen kendi Anthropic API anahtarını gir; ücreti anahtarın sahibine yansır. Boş bırakırsan bu bölümler kapalı kalır.</p>
+        <label><span class="lbl">Anthropic API anahtarı</span><input id="hKey" type="password" autocomplete="off" placeholder="sk-ant-…"></label>
+      </details>
+      <p class="err" id="hostErr" hidden></p>
+      <div><button class="pri">Masayı başlat</button></div>
+    </form>
+  </div>
+</div>
+<script src="launcher.js"></script>
+</body>
+</html>
