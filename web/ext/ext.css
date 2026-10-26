@@ -211,3 +211,8 @@
   .pf-sth{display:none}
   .pf-st .pf-dm,.pf-st .pf-map{grid-column:span 2}
 }
+
+/* ---------- Durum etkileri ---------- */
+.zc-eff{margin:10px 0 4px;padding-left:18px;font-size:13px;display:grid;gap:3px}
+.zc-eff b{color:var(--bad)}
+.zc-exh{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:13.5px}

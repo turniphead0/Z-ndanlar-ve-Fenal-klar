@@ -80,7 +80,7 @@
       const n = rays(s, c, slot || s.lvl);
       for (let i = 0; i < n; i++) {
         const tag = n > 1 ? ` ${i + 1}/${n}` : "";
-        const a = push(`${label}${tag} · saldırı`, d20expr(d.satk || 0));
+        const a = push(`${label}${tag} · saldırı${condNote(c, "atk")}`, d20expr(d.satk || 0, c, "atk"));
         if (a && dice) push(`${label}${tag} · ${a.crit === "20" ? "KRİTİK " : ""}hasar${s.type ? " (" + s.type + ")" : ""}`, (a.crit === "20" ? mulDice(dice, 2, false) : dice) + plus);
       }
     } else if (s.kind === "save") {

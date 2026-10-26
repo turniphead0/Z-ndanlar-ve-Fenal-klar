@@ -20,22 +20,28 @@
       sp: { trad: "", attr: "", rank: 0, slots: Array.from({ length: 10 }, () => ({ max: 0, used: 0 })) }, book: [],
       feats: "", features: "", inventory: "", coins: { cp: 0, sp: 0, gp: 15, pp: 0 }, notes: "" };
   }
-  function pen(c, attr) {
+  // Durum cezaları birbirine eklenmez, en büyüğü geçerlidir. what: ac, save, perc; key: ref gibi.
+  function pen(c, attr, what, key) {
     const k = c.conds || {}, n = x => +k[x] || 0;
     const a = attr === "dex" ? n("clumsy") : attr === "str" ? n("enfeebled") : attr === "con" ? n("drained") : ["int", "wis", "cha"].includes(attr) ? n("stupefied") : 0;
-    return Math.max(n("frightened"), n("sickened"), a);
+    const st = [n("frightened"), n("sickened"), a];
+    if (k.fatigued && (what === "ac" || what === "save")) st.push(1);
+    if (k.unconscious && (what === "ac" || what === "perc" || key === "ref")) st.push(4);
+    if (k.blinded && what === "perc") st.push(4);
+    return Math.max(...st);
   }
+  const offGuard = c => { const k = c.conds || {}; return k.offguard || k.prone || k.grabbed || k.restrained || k.paralyzed || k.unconscious; };
   function derive(c) {
     const L = lvl(c), m = k => +c.ab?.[k] || 0, pr = r => P.prof(+r || 0, L), ar = c.armor || {};
-    const offg = c.conds?.offguard || c.conds?.prone ? 2 : 0;
+    const offg = offGuard(c) ? 2 : 0;
     const dexAc = ar.cap === "" || ar.cap == null ? m("dex") : Math.min(m("dex"), +ar.cap);
     const d = {
-      L, perc: m("wis") + pr(c.perc) - pen(c, "wis"),
-      ac: 10 + dexAc + pr(ar.rank) + (+ar.item || 0) + (ar.raised ? +ar.shield || 0 : 0) - pen(c, "dex") - offg,
+      L, perc: m("wis") + pr(c.perc) - pen(c, "wis", "perc"),
+      ac: 10 + dexAc + pr(ar.rank) + (+ar.item || 0) + (ar.raised ? +ar.shield || 0 : 0) - pen(c, "dex", "ac") - offg,
       classDC: 10 + m(c.keyAttr || "str") + pr(c.classRank) - pen(c, c.keyAttr || "str"),
       save: {}, skill: {}, lore: [], strike: [], sAtk: null, sDC: null,
     };
-    P.SAVES.forEach(([k, , a]) => d.save[k] = m(a) + pr(c.saves?.[k]) - pen(c, a));
+    P.SAVES.forEach(([k, , a]) => d.save[k] = m(a) + pr(c.saves?.[k]) - pen(c, a, "save", k));
     P.SKILLS.forEach(([k, , a]) => d.skill[k] = m(a) + pr(c.skills?.[k]) - pen(c, a));
     (c.lores || []).forEach((l, i) => d.lore[i] = m("int") + pr(l.rank) - pen(c, "int"));
     (c.strikes || []).forEach((s, i) => d.strike[i] = m(s.attr || "str") + pr(s.rank) + (+s.item || 0) - pen(c, s.attr || "str") - (c.conds?.prone ? 2 : 0));
@@ -72,6 +78,11 @@
   const RK = (c, k, label) => { const v = +getPath(c, k) || 0; return `<button type="button" class="pf-rk r${v}" data-act="pf-rank" data-k="${k}" title="${esc(label || "")} yeterliliği: ${P.RANKS[v][1]} (tıkla: artır, Shift: azalt)" aria-label="${esc(label || "")} yeterliliği ${P.RANKS[v][1]}">${RL(v)}</button>`; };
   const D = (k, v) => `<span data-d="pf.${k}">${v}</span>`;
 
+  // Etkin durumlar ve ne yaptıkları.
+  function activeConds(c) {
+    const k = c.conds || {}, on = [...P.VCONDS.filter(([x]) => +k[x]).map(([x, n]) => [x, `${n} ${k[x]}`]), ...P.TCONDS.filter(([x]) => k[x]).map(([x, n]) => [x, n])];
+    return on.length ? `<ul class="zc-eff">${on.map(([x, n]) => `<li><b>${esc(n)}:</b> ${esc((P.COND_HELP[x] || "").replace(/−X/g, "−" + (+k[x] || "X")))}</li>`).join("")}</ul>` : "";
+  }
   function sheet(c) {
     const d = derive(c), L = d.L, sp = c.sp || {};
     const hpPct = Math.max(0, Math.min(100, (+c.hp || 0) / Math.max(1, +c.hpMax || 1) * 100));
@@ -105,7 +116,7 @@
       <div class="panel"><h3>Durumlar</h3>
         <div class="pf-vc">${P.VCONDS.map(([k, n]) => `<span class="pf-cv ${+c.conds?.[k] ? "on" : ""}" title="${esc(P.COND_HELP[k] || "")}"><span>${n}</span><button class="btn sm" data-act="pf-cond" data-c="${k}" data-d="-1" aria-label="${n} azalt">−</button><b class="num">${+c.conds?.[k] || 0}</b><button class="btn sm" data-act="pf-cond" data-c="${k}" data-d="1" aria-label="${n} artır">+</button></span>`).join("")}</div>
         <div class="cond">${P.TCONDS.map(([k, n]) => `<button class="chip" data-act="pf-tcond" data-c="${k}" aria-pressed="${!!c.conds?.[k]}" title="${esc(P.COND_HELP[k] || "")}">${n}</button>`).join("")}</div>
-        <p class="hint">Durum cezaları kağıttaki tüm sayılara kendiliğinden yansır. Aynı türden cezalar toplanmaz, en büyüğü geçerlidir.</p></div>
+        ${activeConds(c)}<p class="hint">Durum cezaları kağıttaki tüm sayılara ve zarlara kendiliğinden yansır. Aynı türden cezalar toplanmaz, en büyüğü geçerlidir.</p></div>
     </div>
   </div>
   <div class="panel"><h3>Zırh ve kalkan</h3><div class="pf-armor">

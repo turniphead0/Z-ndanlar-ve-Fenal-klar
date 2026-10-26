@@ -21,6 +21,10 @@
     clumsy: "Çeviklik tabanlı kontrol ve ZK'lere (ZS, Refleks dahil) −X.", enfeebled: "Güç tabanlı kontrol ve ZK'lere (yakın saldırı, Atletizm) −X.", drained: "Dayanıklılık tabanlı kontrollere (Fort) −X; azami canın seviye × X azalır.",
     stupefied: "Zekâ, Bilgelik ve Karizma tabanlı kontrol ve ZK'lere (İrade, Algı, büyüler) −X; büyü yaparken DC 5+X düz kontrol.", slowed: "Her turun başında X eylem eksik alırsın.", stunned: "X eylem kaybedersin; o zamana kadar tepki veremezsin.",
     offguard: "ZS'ne −2 durum dışı (circumstance) ceza.", prone: "Savunmasızsın, saldırı zarlarına −2; kalkmak bir eylem.",
+    grabbed: "Savunmasız ve hareketsizsin; manipüle eylemlerinde DC 5 düz kontrol.", restrained: "Savunmasız ve hareketsizsin; saldırı ve manipüle eylemi yapamazsın.",
+    paralyzed: "Savunmasızsın, eylem yapamazsın.", unconscious: "ZS, Algı ve Refleks'e −4 durum cezası; savunmasızsın.",
+    fatigued: "ZS'ne ve kurtarmalarına −1 durum cezası; keşifte eylem seçemezsin.", blinded: "Algı'ya −4 durum cezası; her şey senin için gizli.",
+    dazzled: "Her şey senin için örtülü (saldırılarda DC 5 düz kontrol).",
   };
 
   // Soylar. b: sabit artışlar, free: serbest artış sayısı, flaw: kusur.
