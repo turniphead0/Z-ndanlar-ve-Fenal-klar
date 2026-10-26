@@ -7,6 +7,8 @@ Uygulama iki şekilde kullanılabilir:
 1. **Bir sunucuya bağlanarak.** Ortak bir sunucu (örneğin topluluk sunucusu) ya da bir arkadaşın bilgisayarı.
 2. **Kendi bilgisayarını host yaparak.** Masaüstü uygulamasında "Bu bilgisayarda host et" dersin, masa senin bilgisayarında çalışır ve veriler orada saklanır.
 
+Her bölüm (karakterler, notlar, harita, savaş…) başlığındaki **Ayrı pencere** düğmesiyle kendi penceresinde açılabilir; örneğin haritayı ikinci ekrana taşıyabilirsin. Haritadaki **Savaş sırası** düğmesi inisiyatif takipçisini taşınabilir bir pencere olarak açar. D&D 5e masalarında **+ Yeni karakter**, yeni oyuncuları adım adım yönlendiren bir karakter yaratma sihirbazı açar; ardından **Kağıt rehberi** kağıttaki her bölümün ne işe yaradığını yerinde gösterir.
+
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
 
 ## Kurulum (oyuncular için)
@@ -77,6 +79,7 @@ npm run dist     # bu işletim sistemi için paket
 ```
 web/app.html      Uygulamanın kendisi (Claude ile yapılan Zar Masası artifact'ı, değiştirilmeden)
 web/shim.js       Köprü: uygulamanın kullandığı window.claude.use(...) arayüzlerini sunucuya bağlar
+web/ext/          Eklentiler: ayrı pencereler, haritada açılır savaş takipçisi, karakter sihirbazı ve kağıt rehberi
 server/           Sunucu: belge deposu, canlı oda (jeton sürükleme, ping, ses efekti), dosya yükleme, Claude vekili
 electron/         Masaüstü kabuğu: bağlan / host et ekranı
 ```

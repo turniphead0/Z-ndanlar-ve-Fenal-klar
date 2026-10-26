@@ -1,0 +1,90 @@
+/* Masaüstü eklentileri: ayrı pencere, açılır savaş takipçisi, karakter sihirbazı ve kağıt rehberi.
+   Renkler app.html'deki tasarım belirteçlerinden gelir; açık ve koyu temada birlikte çalışır. */
+
+/* ---------- Ayrı pencere ---------- */
+.zm-pop .rail{display:none}
+.zm-pop .app{grid-template-columns:minmax(0,1fr) 320px}
+.zm-popbtn{color:var(--muted)}
+@media (max-width:1000px){ .zm-pop .app{grid-template-columns:minmax(0,1fr)} }
+
+/* ---------- Açılır panel (haritada savaş) ---------- */
+.zm-float{position:fixed;z-index:35;display:flex;flex-direction:column;min-width:260px;min-height:160px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);
+  background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.28);resize:both;overflow:hidden}
+.zm-float-h{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-bottom:1px solid var(--line);cursor:move;user-select:none;touch-action:none;background:var(--surface-2)}
+.zm-float-h b{font-family:var(--f-display);font-size:17px;letter-spacing:.02em}
+.zm-float-h .sp{flex:1}
+.zm-float-sub{font-family:var(--f-num);font-size:12px;color:var(--gold);font-weight:700}
+.zm-float-b{flex:1;overflow:auto;padding:10px;display:grid;gap:10px;align-content:start}
+.zm-float-ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.zm-float-ctl:empty{display:none}
+.zm-float .panel{border:0;padding:0;background:none}
+.zm-float .panel>h3{display:none}
+.zm-float .irow{grid-template-columns:52px minmax(0,1fr)}
+.zm-float .iact{grid-column:1 / -1}
+.zm-float .ihp{width:60px}
+.zm-float .iadd{display:grid;grid-template-columns:minmax(0,1fr)}
+.zm-float .imanual{min-width:0}
+
+/* ---------- Sihirbaz ---------- */
+.zw-ov{align-items:center}
+.zw{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;width:min(980px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.zw-h{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.zw-h h2{font-family:var(--f-display);margin:0;font-size:22px}
+.zw-steps{display:flex;gap:4px;list-style:none;margin:0;padding:0;flex:1;flex-wrap:wrap}
+.zw-steps li{font-size:12.5px;color:var(--muted);padding:3px 9px;border-radius:999px;border:1px solid transparent;display:flex;gap:5px;align-items:center}
+.zw-steps li span{font-family:var(--f-num);font-size:11px}
+.zw-steps li.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.zw-steps li.done{color:var(--ink)}
+.zw-b{padding:16px 18px;overflow:auto;flex:1}
+.zw-b h3{font-family:var(--f-display);font-size:22px;margin:0 0 6px;color:var(--accent)}
+.zw-b p{margin:0 0 10px;max-width:72ch}
+.zw-list{margin:0 0 12px;padding-left:22px;display:grid;gap:3px}
+.zw-f{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line)}
+.zw-why{flex:1;color:var(--muted);font-size:13.5px;text-align:right}
+.zw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:12px}
+.zw-card{display:grid;gap:4px;text-align:left;align-content:start;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:10px 12px;font-size:13.5px}
+.zw-card b{font-family:var(--f-display);font-size:16px}
+.zw-card span{color:var(--muted);line-height:1.4}
+.zw-card:hover{border-color:var(--accent)}
+.zw-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.zw-card.sm{padding:7px 10px} .zw-card.sm b{font-size:14.5px}
+.zw-tag{font-size:11.5px;color:var(--gold);font-weight:700;letter-spacing:.02em}
+.zw-learn{border:1px solid var(--gold);background:var(--gold-soft);border-radius:var(--r);padding:9px 12px;font-size:14px;margin-top:6px;max-width:80ch}
+.zw-learn b:first-child{color:var(--gold)}
+.zw-sub{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;font-size:14px}
+.zw-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.zw-left{font-size:14px;color:var(--muted)}
+.zw-left b{color:var(--ink);margin-right:4px}
+.zw-abil{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:10px}
+.zw-abil.sm{grid-template-columns:repeat(6,minmax(0,1fr))}
+.zw-ab{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:var(--surface-2);display:grid;gap:5px;align-content:start}
+.zw-ab.main{border-color:var(--accent)}
+.zw-abh{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.zw-abh b{font-family:var(--f-display);font-size:15.5px}
+.zw-ab select{width:90px}
+.zw-calc{font-size:13.5px;min-height:19px}
+.zw-calc b{color:var(--accent)}
+.zw-ab small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.zw-abil.sm .zw-ab{text-align:center}
+.zw-skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 10px;margin-bottom:10px}
+.zw-sk{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;gap:8px;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:5px 2px;font-size:14px}
+.zw-sk small{color:var(--muted);font-size:11px}
+.zw-sk b{font-family:var(--f-num);color:var(--accent);min-width:28px;text-align:right}
+.zw-sk:disabled{cursor:default}
+.zw-sk:disabled:not([aria-pressed="true"]){opacity:.45}
+.zw-field{display:grid;gap:3px;max-width:420px;margin-bottom:10px}
+.zw-align{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.zw-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:8px 0 12px}
+.zw-sum>div{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;background:var(--surface-2);display:grid;gap:2px}
+.zw-sum b{font-family:var(--f-num);font-size:26px;color:var(--accent)}
+.zw-sum small{color:var(--muted);font-size:12.5px;line-height:1.35}
+@media (max-width:720px){ .zw-align{grid-template-columns:1fr} .zw-abil.sm{grid-template-columns:repeat(3,minmax(0,1fr))} .zw-steps{display:none} }
+
+/* ---------- Kağıt rehberi ---------- */
+.zt-hl{outline:3px solid var(--gold)!important;outline-offset:4px;border-radius:var(--r)}
+.zt-card{position:fixed;right:calc(340px + 16px);bottom:20px;z-index:60;width:min(360px,calc(100vw - 32px));background:var(--surface);color:var(--ink);border:1px solid var(--gold);border-radius:10px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.3);display:grid;gap:6px}
+.zt-card h3{font-family:var(--f-display);margin:0;font-size:19px;color:var(--gold)}
+.zt-card p{margin:0;font-size:14px;line-height:1.45}
+.zt-top{display:flex;justify-content:space-between;align-items:center}
+.zt-nav{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+@media (max-width:1000px){ .zt-card{right:16px} }

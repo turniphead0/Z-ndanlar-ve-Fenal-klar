@@ -48,8 +48,13 @@ function createServer(opts = {}) {
   /* ---------------- HTTP ---------------- */
   const appHtml = () => {
     const html = fs.readFileSync(path.join(WEB, "app.html"), "utf8");
-    return html.replace("<body>", '<body><script src="/shim.js"></script>');
+    // Köprü uygulamadan önce, eklentiler (web/ext) uygulamadan sonra yüklenir.
+    const ext = '<link rel="stylesheet" href="/ext/ext.css"><script src="/ext/pencereler.js"></script><script src="/ext/sihirbaz.js"></script>';
+    const i = html.lastIndexOf("</body>");
+    const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
+    return withExt.replace("<body>", '<body><script src="/shim.js"></script>');
   };
+  const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
     res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
@@ -62,6 +67,11 @@ function createServer(opts = {}) {
     try {
       if (req.method === "GET" && (p === "/" || p === "/index.html")) return send(res, 200, appHtml(), "text/html; charset=utf-8");
       if (req.method === "GET" && p === "/shim.js") return send(res, 200, fs.readFileSync(path.join(WEB, "shim.js")), "text/javascript; charset=utf-8");
+      if (req.method === "GET" && /^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p)) {
+        const f = path.join(WEB, p);
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
+      }
       if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1 });
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);

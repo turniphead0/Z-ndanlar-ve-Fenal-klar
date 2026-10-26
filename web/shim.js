@@ -7,6 +7,9 @@
   const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
   const err = (code, message) => Object.assign(new Error(message || code), { code });
 
+  // ?pop=harita gibi: bu pencere tek bir bölümü gösteren ayrı penceredir.
+  try { const v = new URL(location.href).searchParams.get("pop"); if (/^[a-z]+$/.test(v || "")) window.ZM_POP = v; } catch (e) {}
+
   // ?owner=ANAHTAR ile gelindiyse sahip anahtarını sakla ve adresten sil.
   try {
     const u = new URL(location.href), k = u.searchParams.get("owner");
@@ -71,7 +74,8 @@
 
   function setBanner(text) {
     if (!text) { if (banner) { banner.remove(); banner = null; } return; }
-    if (!banner) { banner = document.createElement("div"); banner.className = "toast"; banner.style.background = "var(--bad)"; document.body.appendChild(banner); }
+    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status");
+      banner.style.cssText = "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:200;background:var(--bad);color:var(--surface);padding:8px 14px;border-radius:6px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)"; document.body.appendChild(banner); }
     banner.textContent = text;
   }
 

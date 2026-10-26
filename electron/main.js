@@ -21,15 +21,23 @@ function normalize(addr) {
   return u.origin;
 }
 
+const winPrefs = { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true };
+
 function launcher() { win.loadFile(path.join(__dirname, "launcher.html")); }
 
 function createWindow() {
   win = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600, title: "Zar Masası", autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: winPrefs,
   });
   // Dış bağlantılar (YouTube vb.) varsayılan tarayıcıda açılsın.
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: "deny" }; });
+  // Aynı masanın ayrı pencereleri (?pop=…) uygulama içinde açılır; dış bağlantılar (YouTube vb.) varsayılan tarayıcıda.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    let same = false; try { same = new URL(url).origin === new URL(win.webContents.getURL()).origin; } catch {}
+    if (same) return { action: "allow", overrideBrowserWindowOptions: { width: 1180, height: 820, minWidth: 600, minHeight: 400, autoHideMenuBar: true, webPreferences: winPrefs } };
+    if (/^https?:/.test(url)) shell.openExternal(url);
+    return { action: "deny" };
+  });
   launcher();
 }
 
