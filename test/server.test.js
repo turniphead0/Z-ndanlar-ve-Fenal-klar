@@ -83,3 +83,19 @@ test("5e verisi: büyü yuvaları ve büyüler", () => {
   for (const s of z.SPELLS) { assert.ok(!keys.has(s.k), "çift büyü " + s.k); keys.add(s.k); assert.ok(s.lvl >= 0 && s.lvl <= 9); assert.ok(/^[BCDPRSKW]+$/.test(s.cls), s.k); }
   delete global.window;
 });
+
+test("PF2e verisi: yuvalar, yeterlilik ve büyüler", () => {
+  global.window = {};
+  require("../web/ext/veri-pf2e.js");
+  const p = window.ZMPF;
+  assert.deepEqual(p.slotsFor(2, 1).slice(0, 2), [2, 0]);
+  assert.deepEqual(p.slotsFor(3, 3).slice(0, 3), [4, 3, 0]);
+  assert.equal(p.slotsFor(2, 19)[9], 1);
+  assert.equal(p.prof(0, 5), 0); assert.equal(p.prof(1, 1), 3); assert.equal(p.prof(4, 20), 28);
+  assert.equal(p.cantripRank(5), 3);
+  assert.ok(p.GAINS(5).boosts && p.GAINS(3).skillInc && !p.GAINS(2).skillInc);
+  const keys = new Set();
+  for (const s of p.SPELLS) { assert.ok(!keys.has(s.k), "çift büyü " + s.k); keys.add(s.k); assert.ok(s.rank >= 0 && s.rank <= 10); assert.ok(/^[ADOP]+$/.test(s.trad), s.k); }
+  for (const c of p.CLASSES) assert.equal(c.r.length, 7, c.k);
+  delete global.window;
+});

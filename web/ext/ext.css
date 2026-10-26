@@ -169,3 +169,45 @@
 .zx-q .toggle{font-size:14.5px}
 .zx-cost{margin-top:14px;font-size:13.5px}
 .zx-cost summary{cursor:pointer;color:var(--muted)}
+
+/* ---------- Pathfinder 2e kağıdı ---------- */
+.pf2 .pf-id{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.pf-rk{min-width:26px;height:24px;padding:0 5px;border-radius:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-family:var(--f-num);font-size:12px;font-weight:700;cursor:pointer;flex:none}
+.pf-rk.r1{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.pf-rk.r2{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pf-rk.r3{background:var(--gold-soft);color:var(--gold);border-color:var(--gold)}
+.pf-rk.r4{background:var(--gold);color:var(--surface);border-color:var(--gold)}
+.pf-rkrow{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:4px}
+.pf-mini{width:auto;min-width:0;padding:2px 4px;font-size:12px}
+.pf-saves{margin-top:14px}
+.pf2 .rl{display:flex;align-items:center;gap:8px}
+.pf2 .rl>span:nth-of-type(1),.pf-lore{flex:1;min-width:0}
+.pf-lore{padding:3px 6px}
+.pf-x{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:14px}
+.pf-x:hover{color:var(--bad)}
+.pf-dying,.pf-vc{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.pf-cv{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);font-size:13px}
+.pf-cv b{min-width:16px;text-align:center}
+.pf-cv.on{border-color:var(--bad);color:var(--bad)}
+.pf-armor{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;align-items:start}
+.pf-armor label{display:flex;flex-direction:column;gap:3px}
+.pf-st{display:grid;grid-template-columns:minmax(110px,1.3fr) 70px 34px 54px minmax(170px,1.6fr) 44px auto auto;gap:6px;align-items:center;margin-bottom:6px}
+.pf-sth{margin-bottom:2px}
+.pf-st>input[type=checkbox]{justify-self:center}
+.pf-dm{display:flex;gap:4px;align-items:center;min-width:0}
+.pf-dm input.f{min-width:0;width:100%}
+.pf-dm .toggle{font-size:11px;white-space:nowrap;gap:2px}
+.pf-map{display:flex;gap:3px}
+.pf-map .btn{font-family:var(--f-num);min-width:38px}
+.pf-hero{margin:4px 0}
+.pf-tray{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:6px 0}
+.pf-tray input{width:64px}
+.pfm-atk{display:grid;grid-template-columns:minmax(0,1.4fr) 62px minmax(0,1.2fr)}
+.pfm-atk>span{grid-column:1 / -1}
+.pf-rkgrid{display:grid;gap:6px}
+.pf-rkgrid>div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--line)}
+@media (max-width:900px){
+  .pf-st{grid-template-columns:minmax(0,1fr) 70px 34px 54px}
+  .pf-sth{display:none}
+  .pf-st .pf-dm,.pf-st .pf-map{grid-column:span 2}
+}

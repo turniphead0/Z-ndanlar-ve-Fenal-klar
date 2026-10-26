@@ -941,11 +941,11 @@ document.addEventListener("click",e=>{
   const d=e.target.closest("[data-die]"); if(d){
     if(d.dataset.die==="init"){ const cs=Object.values(S.chars); if(!cs.length){toast("Önce bir karakter ekle");return}
       const tmp={}; const asc=sysKey()==="yze"; const res=cs.map(c=>{ const r=initForChar(c,tmp); return [c.name||"İsimsiz",r.init] }).sort((x,y)=>asc?x[1]-y[1]:y[1]-x[1]);
-      const entry={id:uid("l"),t:Date.now(),label:asc?"İnisiyatif kartları":"İnisiyatif sırası",expr:sysKey()==="coc7"?"ÇEV sırası":asc?"1-10 kart":"1d20+ÇEV",total:res[0][1],detail:res.map(x=>x[0]+" "+x[1]).join(" › "),crit:null};
+      const entry={id:uid("l"),t:Date.now(),label:asc?"İnisiyatif kartları":"İnisiyatif sırası",expr:sysKey()==="coc7"?"ÇEV sırası":asc?"1-10 kart":sysKey()==="pf2e"?"1d20+Algı":"1d20+ÇEV",total:res[0][1],detail:res.map(x=>x[0]+" "+x[1]).join(" › "),crit:null};
       pushRoll(entry); return }
     const s=+d.dataset.die;
     if(s===66||s===666){ const ds=Array.from({length:s===66?2:3},()=>rnd(6)); pushRoll({id:uid("l"),t:Date.now(),label:"d"+s,expr:"d"+s,total:+ds.join(""),detail:ds.join(" · "),crit:null}); return }
-    roll(s===20&&sysKey()==="dnd5e"?d20expr(0):"1d"+s, "d"+s); return }
+    if(s===20&&sysKey()==="pf2e"){ PF2.check(0,"d20"); return } roll(s===20&&sysKey()==="dnd5e"?d20expr(0):"1d"+s, "d"+s); return }
 });
 $("#exprForm").addEventListener("submit",e=>{e.preventDefault();const v=$("#expr").value.trim();if(v)roll(v,v)});
 $("#clearLog").addEventListener("click",e=>armed(e.currentTarget,()=>clearRolls()));
@@ -978,21 +978,21 @@ function render(){
 document.addEventListener("click",e=>{ if(e.target.closest("[data-golobby]")){ toLobby(); return } const b=e.target.closest("[data-nav]");if(!b)return;S.view=b.dataset.nav;render();$("#main").scrollTop=0});
 
 function loadingOr(col){ return !S.loaded[col] ? `<div class="empty"><h2>Masa hazırlanıyor</h2><p>Kayıtlı verilerin yükleniyor…</p></div>` : null }
-function sampleBtn(){ return SAMPLE?`<button class="btn" data-act="sample">Örnek kampanyayı yükle</button>`:"" }
+function sampleBtn(){ return SAMPLE&&sysKey()==="dnd5e"?`<button class="btn" data-act="sample">Örnek kampanyayı yükle</button>`:"" }
 
 /* ---------- Karakterler ---------- */
-function newChar(){ if(sysKey()==="coc7") return cocNewChar(); if(sysKey()==="yze") return yzeNewChar(); const id=uid("c"); return {id,name:"Yeni Kahraman",cls:"",level:1,race:"",bg:"",align:"",player:"",ab:{str:10,dex:10,con:10,int:10,wis:10,cha:10},saves:{},skills:{},ac:10,initBonus:0,speed:"30 ft",hpMax:10,hp:10,hpTemp:0,hitDice:"1d8",ds:{s:0,f:0},insp:false,exhaustion:0,conditions:[],attacks:[],spellAb:"",slots:Array.from({length:9},()=>({max:0,used:0})),features:"",spells:"",inventory:"",coins:{cp:0,sp:0,ep:0,gp:0,pp:0}} }
+function newChar(){ if(sysKey()==="pf2e") return PF2.newChar(); if(sysKey()==="coc7") return cocNewChar(); if(sysKey()==="yze") return yzeNewChar(); const id=uid("c"); return {id,name:"Yeni Kahraman",cls:"",level:1,race:"",bg:"",align:"",player:"",ab:{str:10,dex:10,con:10,int:10,wis:10,cha:10},saves:{},skills:{},ac:10,initBonus:0,speed:"30 ft",hpMax:10,hp:10,hpTemp:0,hitDice:"1d8",ds:{s:0,f:0},insp:false,exhaustion:0,conditions:[],attacks:[],spellAb:"",slots:Array.from({length:9},()=>({max:0,used:0})),features:"",spells:"",inventory:"",coins:{cp:0,sp:0,ep:0,gp:0,pp:0}} }
 function curChar(){ if(!S.chars[S.charId]) S.charId=(!isDM()&&myCharId())||Object.values(S.chars).sort((a,b)=>(b.updated||0)-(a.updated||0))[0]?.id||null; return S.chars[S.charId] }
 function viewChars(){
   const l=loadingOr("chars"); if(l) return l;
   const list=Object.values(S.chars).sort((a,b)=>(a.name||"").localeCompare(b.name||"","tr"));
   const c=curChar();
-  const head=`<div class="vhead"><h1>Karakterler</h1><div class="chips">${list.map(x=>`<button class="chip" data-act="selchar" data-id="${x.id}" aria-pressed="${x.id===S.charId}">${esc(x.name||"İsimsiz")}<small>${sysKey()==="dnd5e"?"Sv "+esc(x.level):""}${x.owner?(sysKey()==="dnd5e"?" · ":"")+esc(x.owner===ME.id?"sen":nameOf(x.owner)):""}</small></button>`).join("")}</div><span class="sp"></span>${S.ro?"":`<button class="btn pri" data-act="newchar">+ Yeni karakter</button>`}</div>`+claimPanel();
+  const head=`<div class="vhead"><h1>Karakterler</h1><div class="chips">${list.map(x=>`<button class="chip" data-act="selchar" data-id="${x.id}" aria-pressed="${x.id===S.charId}">${esc(x.name||"İsimsiz")}<small>${sysKey()==="dnd5e"||sysKey()==="pf2e"?"Sv "+esc(x.level):""}${x.owner?(sysKey()==="dnd5e"||sysKey()==="pf2e"?" · ":"")+esc(x.owner===ME.id?"sen":nameOf(x.owner)):""}</small></button>`).join("")}</div><span class="sp"></span>${S.ro?"":`<button class="btn pri" data-act="newchar">+ Yeni karakter</button>`}</div>`+claimPanel();
   if(!c) return head+`<div class="empty"><h2>Henüz karakter yok</h2><p>Yeni bir 5e karakter kağıdı oluştur ya da örnek kampanyayla başla.</p><div class="chips"><button class="btn pri" data-act="newchar">+ Yeni karakter</button>${sampleBtn()}</div></div>`;
   const I=(k,ph="",cls="f",type="text")=>`<input class="${cls}" type="${type}" data-k="${k}" value="${esc(getPath(c,k)??"")}" placeholder="${esc(ph)}">`;
   const hpPct=Math.max(0,Math.min(100,(+c.hp||0)/Math.max(1,+c.hpMax||1)*100));
   const own=canEditChar(c);
-  if(sysKey()!=="dnd5e") return head+(own?"":`<p class="dmnote">${c.owner?esc(nameOf(c.owner))+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}>${sysKey()==="coc7"?cocSheet(c):yzeSheet(c)}<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="dupchar">Kopyala</button><button class="btn danger" data-act="delchar">Karakteri sil</button></div></fieldset>`;
+  if(sysKey()!=="dnd5e") return head+(own?"":`<p class="dmnote">${c.owner?esc(nameOf(c.owner))+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}>${sysKey()==="coc7"?cocSheet(c):sysKey()==="pf2e"?PF2.sheet(c):yzeSheet(c)}<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="dupchar">Kopyala</button><button class="btn danger" data-act="delchar">Karakteri sil</button></div></fieldset>`;
   return head+(own?"":`<p class="dmnote">${c.owner?esc(nameOf(c.owner))+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}><div class="sheet">
   <div class="panel">
     <input class="cname" data-k="name" value="${esc(c.name)}" aria-label="Karakter adı">
@@ -1051,7 +1051,7 @@ function derive(c){
   const sv={}; ABS.forEach(([k])=>sv[k]=m[k]+(c.saves?.[k]?pb:0));
   return {pb,m,sk,sv,init:m.dex+(+c.initBonus||0),pp:10+sk.perception,sdc:c.spellAb?8+pb+m[c.spellAb]:null,satk:c.spellAb?pb+m[c.spellAb]:null};
 }
-function updateDerived(){ if(S.view==="karakterler"&&sysKey()==="coc7"){ const c=S.chars[S.charId]; if(c){ const old=c.hpMax; cocUpdateDerived(c); if(old!==c.hpMax&&canEditChar(c)) save("chars",c,["hpMax"]) } return } if(sysKey()!=="dnd5e") return;
+function updateDerived(){ if(sysKey()==="pf2e"){ if(S.view==="karakterler"&&S.chars[S.charId]) PF2.updateDerived(S.chars[S.charId]); return } if(S.view==="karakterler"&&sysKey()==="coc7"){ const c=S.chars[S.charId]; if(c){ const old=c.hpMax; cocUpdateDerived(c); if(old!==c.hpMax&&canEditChar(c)) save("chars",c,["hpMax"]) } return } if(sysKey()!=="dnd5e") return;
   const c=S.chars[S.charId]; if(!c||S.view!=="karakterler") return; const d=derive(c);
   $$("[data-d]",$("#main")).forEach(el=>{ const k=el.dataset.d; let v;
     if(k==="prof")v=sgn(d.pb); else if(k==="pp")v=d.pp; else if(k==="init")v=sgn(d.init);
@@ -1364,8 +1364,8 @@ function viewMonsters(){
   const list=Object.values(S.monsters).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr"));
   if(!S.monsters[S.monId]) S.monId=list[0]?.id||null; const mo=S.monsters[S.monId];
   return `<section class="mons"><div class="vhead" style="margin:0"><h2 class="h2">Canavar kartları <span class="dmtag">Sadece ${gmT()}</span></h2><span class="sp"></span><button class="btn" data-act="newmon">+ Yeni kart</button></div>
-    ${list.length?`<div class="chips">${list.map(x=>`<button class="chip" data-act="selmon" data-id="${x.id}" aria-pressed="${x.id===S.monId}">${esc(x.name)}${sysKey()==="dnd5e"?`<small>KD ${esc(x.cr)}</small>`:""}</button>`).join("")}</div>`:""}
-    ${mo?(sysKey()==="coc7"?cocStatBlock(mo):sysKey()==="yze"?yzeStatBlock(mo):statBlock(mo)):`<div class="empty"><p>Henüz canavar kartı yok. Kartlar oyunculara görünmez.</p><button class="btn pri" data-act="newmon">+ Yeni kart</button></div>`}</section>`;
+    ${list.length?`<div class="chips">${list.map(x=>`<button class="chip" data-act="selmon" data-id="${x.id}" aria-pressed="${x.id===S.monId}">${esc(x.name)}${sysKey()==="dnd5e"?`<small>KD ${esc(x.cr)}</small>`:sysKey()==="pf2e"?`<small>Sv ${esc(x.level)}</small>`:""}</button>`).join("")}</div>`:""}
+    ${mo?(sysKey()==="coc7"?cocStatBlock(mo):sysKey()==="yze"?yzeStatBlock(mo):sysKey()==="pf2e"?PF2.statBlock(mo):statBlock(mo)):`<div class="empty"><p>Henüz canavar kartı yok. Kartlar oyunculara görünmez.</p><button class="btn pri" data-act="newmon">+ Yeni kart</button></div>`}</section>`;
 }
 function statBlock(mo){
   const M=(k,ph,cls="f",type="text")=>`<input class="${cls}" type="${type}" data-mo="${k}" value="${esc(getPath(mo,k)??"")}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">`;
@@ -1395,13 +1395,14 @@ function statBlock(mo){
 }
 
 /* ================= Oyun sistemleri ================= */
-const sysKey=()=>{ const k=G.id&&S.games[G.id]&&S.games[G.id].system; return k==="coc7"||k==="yze"?k:"dnd5e" };
-const GMT={dnd5e:"DM",coc7:"Keeper",yze:"GM"};
+const sysKey=()=>{ const k=G.id&&S.games[G.id]&&S.games[G.id].system; return k==="coc7"||k==="yze"||k==="pf2e"?k:"dnd5e" };
+const GMT={dnd5e:"DM",coc7:"Keeper",yze:"GM",pf2e:"GM"};
 const gmT=(k=sysKey())=>GMT[k]||"DM";
 const SYSINFO={
   dnd5e:{name:"D&D 5. Edisyon",short:"D&D 5e",blurb:"d20 ile yetenek kontrolleri, sınıflar, seviyeler, büyü yuvaları. Fantastik macera."},
   coc7:{name:"Call of Cthulhu 7. Edisyon",short:"CoC 7e",blurb:"d100 yüzdelik beceriler, akıl sağlığı ve şans. Soruşturma ve kozmik korku."},
-  yze:{name:"Year Zero Engine",short:"YZE",blurb:"d6 zar havuzu, 6'lar başarı, zorlama ve bedeli. Alien, Mutant, Forbidden Lands, Vaesen."}
+  yze:{name:"Year Zero Engine",short:"YZE",blurb:"d6 zar havuzu, 6'lar başarı, zorlama ve bedeli. Alien, Mutant, Forbidden Lands, Vaesen."},
+  pf2e:{name:"Pathfinder 2. Edisyon",short:"PF2e",blurb:"d20 ile dört başarı derecesi, üç eylem, yeterlilik rütbeleri, büyü rütbeleri. Fantastik macera."}
 };
 function charHp(c){ if(!c) return {hp:0,max:1}; if(sysKey()==="yze"){ const a=(c.attrs||[])[0]||{}; return {hp:+a.cur||0,max:+a.max||1} } return {hp:+c.hp||0,max:+c.hpMax||1} }
 
@@ -1567,12 +1568,14 @@ function initForChar(ch,cb){
   const k=sysKey();
   if(k==="coc7"){ const dx=+ch.ch?.dex||0; return {init:dx,dex:dx,txt:`${ch.name} ÇEV ${dx}`} }
   if(k==="yze"){ const v=drawCard(cb); return {init:v,dex:0,txt:`${ch.name} kart ${v}`} }
+  if(k==="pf2e") return PF2.initChar(ch);
   const bon=mod(ch.ab?.dex)+(+ch.initBonus||0), r=rnd(20); return {init:r+bon,dex:mod(ch.ab?.dex),txt:`${ch.name} ${r+bon} (${r}${sgn(bon)})`};
 }
 function initForMon(mo,cb){
   const k=sysKey();
   if(k==="coc7"){ const dx=+mo?.ch?.dex||0; return {init:dx,dex:dx} }
   if(k==="yze"){ return {init:drawCard(cb),dex:0} }
+  if(k==="pf2e") return PF2.initMon(mo);
   const dx=mo?mod(mo.ab?.dex):0; return {init:rnd(20)+dx,dex:dx};
 }
 function drawCard(cb){ cb.deck=Array.isArray(cb.deck)&&cb.deck.length?cb.deck:shuffle([1,2,3,4,5,6,7,8,9,10]); const v=cb.deck.shift(); return v }
@@ -1580,7 +1583,7 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rnd(i+1)-1; [a[i],a[
 
 /* ---------- Sistem farkındalıklı zar tepsisi ---------- */
 function renderTraySys(){
-  const k=sysKey(); $("#trayDnd").hidden=k!=="dnd5e"; $("#trayCoc").hidden=k!=="coc7"; $("#trayYze").hidden=k!=="yze";
+  const k=sysKey(); $("#trayDnd").hidden=k!=="dnd5e"&&k!=="pf2e"; if(window.PF2) PF2.tray(k==="pf2e"); $("#trayCoc").hidden=k!=="coc7"; $("#trayYze").hidden=k!=="yze";
   if(k==="coc7") renderTrayCoc(); if(k==="yze") renderTrayYze();
 }
 function renderTrayCoc(){
@@ -1609,6 +1612,7 @@ document.addEventListener("submit",e=>{ if(e.target.id!=="cocForm") return; e.pr
 
 /* ---------- Sistem eylemleri (karakter kağıdı ve kartlar) ---------- */
 function sysAction(a,b,e,c,mo){
+  if(sysKey()==="pf2e"&&window.PF2&&PF2.action(a,b,e,c,mo)) return true;
   const nm=c?(c.name||"İsimsiz"):"";
   switch(a){
     case "coc-ch": { const k=b.dataset.ch, v=+c.ch?.[k]||0; cocRoll(v,`${nm} · ${COC_CH.find(x=>x[0]===k)[2]}`); return true }
@@ -1799,7 +1803,7 @@ main.addEventListener("click",e=>{
       for(const ch of Object.values(S.chars)){ if(have.has(ch.id)||(!isDM()&&ch.owner!==ME.id)) continue; const ir=initForChar(ch,cb); const en={id:uid("e"),name:ch.name||"Karakter",init:ir.init,dex:ir.dex,kind:"char",ref:ch.id,hidden:false,removed:false}; cb.entries[en.id]=en; paths.push("entries."+en.id); res.push(ir.txt) }
       if(sysKey()==="yze") paths.push("deck");
       if(!paths.length){ toast(Object.keys(S.chars).length?"Tüm karakterler zaten sırada":"Önce karakter oluştur"); break }
-      saveCombat(cb,paths); pushRoll({id:uid("l"),t:Date.now(),label:"İnisiyatif",expr:sysKey()==="coc7"?"ÇEV":sysKey()==="yze"?"kart":"1d20+ÇEV",total:res.length,detail:res.join(" › "),crit:null}); render(); break }
+      saveCombat(cb,paths); pushRoll({id:uid("l"),t:Date.now(),label:"İnisiyatif",expr:sysKey()==="coc7"?"ÇEV":sysKey()==="yze"?"kart":sysKey()==="pf2e"?"1d20+Algı":"1d20+ÇEV",total:res.length,detail:res.join(" › "),crit:null}); render(); break }
     case "cadd-mons": { const m=curMap(); if(!m){ toast("Önce bir harita aç"); break } const cb=combat(); cb.entries=cb.entries||{}; const have=new Set(cEntries(cb).map(x=>x.tokenId).filter(Boolean)); const paths=[], res=[];
       for(const t of toks(m)){ if(t.charId||have.has(t.id)) continue; const mm=t.monsterId&&S.monsters[t.monsterId]; const ir=initForMon(mm,cb); const en={id:uid("e"),name:t.label,init:ir.init,dex:ir.dex,kind:"monster",tokenId:t.id,hidden:tokFogged(m,t),removed:false}; cb.entries[en.id]=en; paths.push("entries."+en.id); res.push(`${t.label} ${en.init}`) }
       if(!paths.length){ toast("Haritada sıraya eklenecek canavar yok"); break }
@@ -1812,7 +1816,7 @@ main.addEventListener("click",e=>{
     case "cset": { const cb=combat(); cb.active=b.dataset.id; saveCombat(cb,["active"]); announceTurn(); render(); break }
     case "cend": armed(b,()=>{ S.combat.current={id:"current",round:1,active:null,started:false,entries:{}}; save("combat",S.combat.current); lastTurnKey=null; announceTurn(); render(); toast("Savaş bitti") }); break;
     /* canavarlar */
-    case "newmon": { const n=sysKey()==="coc7"?cocMonsterNew():sysKey()==="yze"?yzeMonsterNew():newMonster(); save("monsters",n); S.monId=n.id; render(); $(".stname")?.select(); break }
+    case "newmon": { const n=sysKey()==="coc7"?cocMonsterNew():sysKey()==="yze"?yzeMonsterNew():sysKey()==="pf2e"?PF2.newMonster():newMonster(); save("monsters",n); S.monId=n.id; render(); $(".stname")?.select(); break }
     case "selmon": S.monId=b.dataset.id; render(); break;
     case "mon-dup": { const n=clone(mo); n.id=uid("mo"); n.name=mo.name+" (kopya)"; save("monsters",n); S.monId=n.id; render(); break }
     case "mon-del": armed(b,()=>{ del("monsters",mo.id); S.monId=null; render() }); break;
@@ -1999,7 +2003,7 @@ MASA: ${gameContext()}
   catch(e){ if(e.code!=="cancelled") S.chat.push({role:"assistant",content:e.text?e.text+" (yarıda kaldı)":"Cevap alınamadı: "+(e.code==="rate_limited"?"kullanım sınırı":e.code==="not_granted"?"izin verilmedi":"tekrar dene")}) }
   S.chatBusy=false; render(); const ch=$("#chat"); if(ch) ch.scrollTop=ch.scrollHeight;
 }
-function npcToCard(p){ const k=sysKey(); const mo=k==="coc7"?cocMonsterNew():k==="yze"?yzeMonsterNew():newMonster(); mo.name=p.name; mo.meta=p.role||"NPC";
+function npcToCard(p){ const k=sysKey(); const mo=k==="coc7"?cocMonsterNew():k==="yze"?yzeMonsterNew():k==="pf2e"?PF2.newMonster():newMonster(); mo.name=p.name; mo.meta=p.role||"NPC";
   mo.notes=[p.description,p.motivation&&"İster: "+p.motivation,p.secret&&"Sır: "+p.secret,p.stats&&"Senaryodaki değerler: "+p.stats,p.page&&`(senaryo s. ${p.page})`].filter(Boolean).join("\n");
   if(k==="dnd5e"){ mo.attacks=[]; mo.cr="0" } save("monsters",mo); p.cardId=mo.id; return mo }
 

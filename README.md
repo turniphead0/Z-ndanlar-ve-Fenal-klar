@@ -1,13 +1,15 @@
 # Zar Masası
 
-Ücretsiz ve açık kaynak bir sanal oyun masası (VTT). D&D 5e, Call of Cthulhu ve Year Zero sistemleri için karakter kağıtları, zar tepsisi, sisli harita ve jetonlar, savaş sırası, canavar kartları, notlar, ses/müzik ve (isteğe bağlı) yapay zekâ destekli senaryo yardımcısı içerir.
+Ücretsiz ve açık kaynak bir sanal oyun masası (VTT). D&D 5e, Pathfinder 2e, Call of Cthulhu ve Year Zero sistemleri için karakter kağıtları, zar tepsisi, sisli harita ve jetonlar, savaş sırası, canavar kartları, notlar, ses/müzik ve (isteğe bağlı) yapay zekâ destekli senaryo yardımcısı içerir.
 
 Uygulama iki şekilde kullanılabilir:
 
 1. **Bir sunucuya bağlanarak.** Ortak bir sunucu (örneğin topluluk sunucusu) ya da bir arkadaşın bilgisayarı.
 2. **Kendi bilgisayarını host yaparak.** Masaüstü uygulamasında "Bu bilgisayarda host et" dersin, masa senin bilgisayarında çalışır ve veriler orada saklanır.
 
-Her bölüm (karakterler, notlar, harita, savaş…) başlığındaki **Ayrı pencere** düğmesiyle kendi penceresinde açılabilir; örneğin haritayı ikinci ekrana taşıyabilirsin. Haritadaki **Savaş sırası** düğmesi inisiyatif takipçisini taşınabilir bir pencere olarak açar. D&D 5e masalarında **+ Yeni karakter**, yeni oyuncuları adım adım yönlendiren bir karakter yaratma sihirbazı açar; ardından **Kağıt rehberi** kağıttaki her bölümün ne işe yaradığını yerinde gösterir.
+Her bölüm (karakterler, notlar, harita, savaş…) başlığındaki **Ayrı pencere** düğmesiyle kendi penceresinde açılabilir; örneğin haritayı ikinci ekrana taşıyabilirsin. Haritadaki **Savaş sırası** düğmesi inisiyatif takipçisini taşınabilir bir pencere olarak açar. D&D 5e ve Pathfinder 2e masalarında **+ Yeni karakter**, yeni oyuncuları adım adım yönlendiren bir karakter yaratma sihirbazı açar; ardından **Kağıt rehberi** kağıttaki her bölümün ne işe yaradığını yerinde gösterir. Karakter kağıdındaki **Seviye atla** sihirbazı (CoC'de gelişim aşaması, Year Zero'da TP harcama) her sistemin kendi gelişim kuralını uygular; büyü kitabı yuvaları takip eder ve büyüyü tek tıkla yapar. Listede olmayan ırk, sınıf, geçmiş ve büyüler için **Kendi …** seçeneğiyle homebrew eklenebilir.
+
+İçerik: D&D 5e için SRD 5.1 (CC-BY-4.0), Pathfinder 2e için Player Core / ORC lisanslı kurallar.
 
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
 
