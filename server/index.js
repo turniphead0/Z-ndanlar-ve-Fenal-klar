@@ -49,11 +49,13 @@ function createServer(opts = {}) {
   const appHtml = () => {
     const html = fs.readFileSync(path.join(WEB, "app.html"), "utf8");
     // Köprü uygulamadan önce, eklentiler (web/ext) uygulamadan sonra yüklenir.
-    const ext = '<link rel="stylesheet" href="/ext/ext.css"><script src="/ext/pencereler.js"></script><script src="/ext/sihirbaz.js"></script>';
+    const ext = '<link rel="stylesheet" href="/ext/ext.css">' + EXT_SCRIPTS.map(n => `<script src="/ext/${n}.js"></script>`).join("");
     const i = html.lastIndexOf("</body>");
     const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
     return withExt.replace("<body>", '<body><script src="/shim.js"></script>');
   };
+  // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });

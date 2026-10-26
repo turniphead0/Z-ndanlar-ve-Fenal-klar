@@ -3,75 +3,38 @@
 (function () {
   "use strict";
 
-  /* ---------------- Veri (5e SRD, seviye 1) ---------------- */
-  const AB_HELP = {
-    str: "Kas gücü. Ağır silahlarla vurmak, tırmanmak, itmek ve kaldırmak için.",
-    dex: "Çeviklik ve refleks. Yay ve hafif silahlar, zırh sınıfı, inisiyatif ve gizlilik için.",
-    con: "Dayanıklılık. Can puanını artırır; zehre, yorgunluğa ve büyü konsantrasyonunu korumaya yarar.",
-    int: "Akıl ve bilgi. Büyücülerin büyü gücü; tarih, arkana ve araştırma için.",
-    wis: "Sezgi ve farkındalık. Rahip, druid ve korucuların büyü gücü; algı ve sezgi için.",
-    cha: "Kişilik gücü. Ozan, paladin, sihirbaz ve cadıların büyü gücü; ikna ve aldatma için.",
-  };
-
-  const RACES = [
-    { k: "human", n: "İnsan", ab: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }, speed: 30, d: "Her işe uyum sağlayan, hırslı ve çeşitli bir halk. Tüm yetenek puanlarına +1 alır; hangi sınıfı seçersen seç iyi bir başlangıçtır.", t: "Ek dil: istediğin bir dil." },
-    { k: "elf", n: "Elf (Yüksek Elf)", ab: { dex: 2, int: 1 }, speed: 30, d: "Uzun ömürlü, zarif ve büyüye yatkın. Okçular ve büyücüler için uygun.", t: "Karanlık görüş (60 ft)\nKeskin Duyular: Algı yeterliliği\nPeri Soyu: büyülenmeye karşı avantaj, büyüyle uyutulamaz\nTrans: 4 saat meditasyon uzun dinlenme sayılır\nBir büyücü hilesi (cantrip)", skills: ["perception"] },
-    { k: "dwarf", n: "Cüce (Tepe Cücesi)", ab: { con: 2, wis: 1 }, speed: 25, d: "Sağlam, inatçı ve dayanıklı. Ağır zırhla yavaşlamaz. Savaşçı ve rahipler için çok iyi.", t: "Karanlık görüş (60 ft)\nCüce Direnci: zehre karşı avantaj ve direnç\nTaş Bilgisi\nCüce Sağlamlığı: her seviyede +1 can puanı", hpBonus: 1 },
-    { k: "halfling", n: "Buçukluk (Hafifayak)", ab: { dex: 2, cha: 1 }, speed: 25, d: "Küçük, neşeli ve şanslı. Haydut ve ozanlar için ideal.", t: "Şanslı: d20'de 1 gelirse yeniden at\nCesur: korkutulmaya karşı avantaj\nBuçukluk Çevikliği: daha büyük yaratıkların arasından geçebilir\nDoğal Gizlilik" },
-    { k: "dragonborn", n: "Ejderdoğan", ab: { str: 2, cha: 1 }, speed: 30, d: "Ejder soyundan gelen gururlu savaşçılar. Nefes silahları vardır.", t: "Ejder Soyu: bir renk seç (hasar türünü belirler)\nNefes Silahı: 2d6 hasar, kısa dinlenmede yenilenir\nSoyunun hasar türüne direnç" },
-    { k: "gnome", n: "Gnom (Kaya Gnomu)", ab: { int: 2, con: 1 }, speed: 25, d: "Meraklı mucitler ve kurnaz zihinler. Büyücüler için uygun.", t: "Karanlık görüş (60 ft)\nGnom Kurnazlığı: Zekâ, Bilgelik ve Karizma kurtarmalarında büyüye karşı avantaj\nMucit: küçük mekanik aletler yapabilir" },
-    { k: "halfelf", n: "Yarı-Elf", ab: { cha: 2 }, choose: 2, speed: 30, d: "İki dünya arasında kalmış, sosyal ve çok yönlü. Karizma +2, ayrıca istediğin iki yeteneğe +1.", t: "Karanlık görüş (60 ft)\nPeri Soyu: büyülenmeye karşı avantaj\nÇok Yönlülük: iki beceride yeterlilik (beceri adımında seçersin)", extraSkills: 2 },
-    { k: "halforc", n: "Yarı-Ork", ab: { str: 2, con: 1 }, speed: 30, d: "Güçlü ve yılmaz. Barbar ve savaşçılar için çok uygun.", t: "Karanlık görüş (60 ft)\nTehditkâr: Gözdağı yeterliliği\nAmansız Dayanıklılık: 0 CP'ye düşünce bir kez 1 CP ile kalırsın\nVahşi Saldırılar: kritik vuruşta bir hasar zarı daha", skills: ["intimidation"] },
-    { k: "tiefling", n: "Tiefling", ab: { cha: 2, int: 1 }, speed: 30, d: "Cehennemî bir soydan gelen, yanlış anlaşılan bir halk. Cadı ve sihirbazlar için iyi.", t: "Karanlık görüş (60 ft)\nCehennem Direnci: ateş hasarına direnç\nCehennem Mirası: Thaumaturgy hilesi" },
-  ];
-
-  // ac: zırh hesabı. weapon: [ad, yetenek, zar, tür]. order: önerilen yetenek sıralaması (en yüksekten).
-  const CLASSES = [
-    { k: "barbarian", n: "Barbar (Barbarian)", hd: 12, saves: ["str", "con"], pick: 2, skills: ["animal", "athletics", "intimidation", "nature", "perception", "survival"], order: ["str", "con", "dex", "wis", "cha", "int"], ac: { base: 10, dex: true, plus: "con", note: "Zırhsız Savunma: 10 + ÇEV + DAY" }, weapon: ["Büyük balta", "str", "1d12", "kesici"], d: "Öfkesiyle savaşan, en çok canı olan yakın dövüşçü. Basit oynanır, çok dayanıklıdır.", f: "Öfke (günde 2): bonus aksiyonla öfkelen; güç kontrollerinde avantaj, +2 hasar, fiziksel hasara direnç\nZırhsız Savunma", inv: "Büyük balta\n2 el baltası\nKaşif çantası\n4 cirit" },
-    { k: "bard", n: "Ozan (Bard)", hd: 8, saves: ["dex", "cha"], pick: 3, skills: "all", order: ["cha", "dex", "con", "wis", "int", "str"], ac: { base: 11, dex: true, note: "Deri zırh: 11 + ÇEV" }, weapon: ["Meç", "dex", "1d8", "delici"], spell: "cha", slots: 2, d: "Müzikle ve sözle büyü yapan, takımı destekleyen çok yönlü bir karakter.", f: "Büyücülük (Karizma)\nOzan İlhamı (d6): bir müttefikine zar ekleyecek bir ilham ver", inv: "Meç\nDeri zırh, hançer\nBir müzik aleti\nEğlendirici çantası" },
-    { k: "cleric", n: "Rahip (Cleric)", hd: 8, saves: ["wis", "cha"], pick: 2, skills: ["history", "insight", "medicine", "persuasion", "religion"], order: ["wis", "con", "str", "cha", "dex", "int"], ac: { base: 14, dex: 2, shield: true, note: "Pullu zırh: 14 + ÇEV (en çok +2), kalkan +2" }, weapon: ["Gürz", "str", "1d6", "ezici"], spell: "wis", slots: 2, d: "Tanrısının gücünü taşıyan şifacı ve koruyucu. Takımın can simidi.", f: "Büyücülük (Bilgelik)\nİlahi Alan: bir alan seç (örn. Yaşam)", inv: "Gürz\nPullu zırh, kalkan\nKutsal sembol\nRahip çantası" },
-    { k: "druid", n: "Druid", hd: 8, saves: ["int", "wis"], pick: 2, skills: ["arcana", "animal", "insight", "medicine", "nature", "perception", "religion", "survival"], order: ["wis", "con", "dex", "int", "cha", "str"], ac: { base: 11, dex: true, shield: true, note: "Deri zırh: 11 + ÇEV, tahta kalkan +2" }, weapon: ["Pala", "dex", "1d6", "kesici"], spell: "wis", slots: 2, d: "Doğanın gücünü kullanan büyücü. İleride hayvan biçimine girebilir.", f: "Büyücülük (Bilgelik)\nDruidce: druidlerin gizli dili", inv: "Pala\nDeri zırh, tahta kalkan\nDruid odağı\nKaşif çantası" },
-    { k: "fighter", n: "Savaşçı (Fighter)", hd: 10, saves: ["str", "con"], pick: 2, skills: ["acrobatics", "animal", "athletics", "history", "insight", "intimidation", "perception", "survival"], order: ["str", "con", "dex", "wis", "cha", "int"], ac: { base: 16, note: "Zincir zırh: 16" }, weapon: ["Uzun kılıç", "str", "1d8", "kesici"], d: "Her silahı ve zırhı kullanan usta dövüşçü. Yeni başlayanlar için en kolay sınıf.", f: "Savaş Stili: örn. Savunma (+1 ZS) ya da Düello (+2 hasar)\nİkinci Soluk: bonus aksiyonla 1d10 + seviye can kazan (kısa dinlenmede yenilenir)", inv: "Uzun kılıç, kalkan\nZincir zırh\nHafif arbalet ve 20 cıvata\nZindan çantası" },
-    { k: "monk", n: "Keşiş (Monk)", hd: 8, saves: ["str", "dex"], pick: 2, skills: ["acrobatics", "athletics", "history", "insight", "religion", "stealth"], order: ["dex", "wis", "con", "str", "int", "cha"], ac: { base: 10, dex: true, plus: "wis", note: "Zırhsız Savunma: 10 + ÇEV + BİL" }, weapon: ["Kısa kılıç", "dex", "1d6", "delici"], d: "Bedenini silah olarak kullanan hızlı dövüş ustası.", f: "Zırhsız Savunma\nDövüş Sanatları: silahsız vuruşların 1d4; saldırıdan sonra bonus aksiyonla bir vuruş daha", inv: "Kısa kılıç\n10 dart\nKaşif çantası" },
-    { k: "paladin", n: "Paladin", hd: 10, saves: ["wis", "cha"], pick: 2, skills: ["athletics", "insight", "intimidation", "medicine", "persuasion", "religion"], order: ["str", "cha", "con", "wis", "dex", "int"], ac: { base: 16, shield: true, note: "Zincir zırh: 16, kalkan +2" }, weapon: ["Uzun kılıç", "str", "1d8", "kesici"], d: "Yeminine bağlı kutsal savaşçı. Hem dövüşür hem iyileştirir.", f: "İlahi Sezgi: yakındaki kutsal ve kötü varlıkları sezersin\nEl Koyarak İyileştirme: günde 5 × seviye can puanı dağıtabilirsin", inv: "Uzun kılıç, kalkan\nZincir zırh\n5 cirit\nRahip çantası, kutsal sembol" },
-    { k: "ranger", n: "Korucu (Ranger)", hd: 10, saves: ["str", "dex"], pick: 3, skills: ["animal", "athletics", "insight", "investigation", "nature", "perception", "stealth", "survival"], order: ["dex", "wis", "con", "str", "int", "cha"], ac: { base: 14, dex: 2, note: "Pullu zırh: 14 + ÇEV (en çok +2)" }, weapon: ["Uzun yay", "dex", "1d8", "delici"], d: "Vahşi doğada iz süren okçu ve avcı.", f: "Favori Düşman: bir düşman türü seç\nDoğal Kaşif: bir arazi türü seç", inv: "Uzun yay ve 20 ok\n2 kısa kılıç\nPullu zırh\nKaşif çantası" },
-    { k: "rogue", n: "Haydut (Rogue)", hd: 8, saves: ["dex", "int"], pick: 4, skills: ["acrobatics", "athletics", "deception", "insight", "intimidation", "investigation", "perception", "performance", "persuasion", "sleight", "stealth"], order: ["dex", "con", "wis", "int", "cha", "str"], ac: { base: 11, dex: true, note: "Deri zırh: 11 + ÇEV" }, weapon: ["Kısa kılıç", "dex", "1d6", "delici"], expertise: 2, d: "Gizlilik, kilit açma ve sinsi saldırı uzmanı. En çok beceriye sahip sınıf.", f: "Sinsi Saldırı (1d6): avantajla vurduğunda ya da hedefin yanında müttefik varken ek hasar\nUzmanlık: iki beceride yeterlilik bonusu iki katı\nHırsız Argosu", inv: "Kısa kılıç, kısa yay ve 20 ok\nDeri zırh, 2 hançer\nHırsız aletleri\nHırsız çantası" },
-    { k: "sorcerer", n: "Sihirbaz (Sorcerer)", hd: 6, saves: ["con", "cha"], pick: 2, skills: ["arcana", "deception", "insight", "intimidation", "persuasion", "religion"], order: ["cha", "con", "dex", "wis", "int", "str"], ac: { base: 10, dex: true, note: "Zırhsız: 10 + ÇEV" }, weapon: ["Hafif arbalet", "dex", "1d8", "delici"], spell: "cha", slots: 2, d: "Büyü kanında olan, doğuştan büyücü. Az ama güçlü büyüleri vardır.", f: "Büyücülük (Karizma)\nBüyüsel Köken: örn. Ejder Soyu", inv: "Hafif arbalet ve 20 cıvata\nBüyü odağı\n2 hançer\nKaşif çantası" },
-    { k: "warlock", n: "Cadı (Warlock)", hd: 8, saves: ["wis", "cha"], pick: 2, skills: ["arcana", "deception", "history", "intimidation", "investigation", "nature", "religion"], order: ["cha", "con", "dex", "wis", "int", "str"], ac: { base: 11, dex: true, note: "Deri zırh: 11 + ÇEV" }, weapon: ["Hafif arbalet", "dex", "1d8", "delici"], spell: "cha", slots: 1, d: "Güçlü bir varlıkla pakt yapmış büyücü. Büyü yuvaları kısa dinlenmede yenilenir.", f: "Ötedünya Hamisi: pakt yaptığın varlık\nPaktın Büyüsü (Karizma): yuvalar kısa dinlenmede dolar", inv: "Hafif arbalet ve 20 cıvata\nDeri zırh, 2 hançer\nBüyü odağı\nAlim çantası" },
-    { k: "wizard", n: "Büyücü (Wizard)", hd: 6, saves: ["int", "wis"], pick: 2, skills: ["arcana", "history", "insight", "investigation", "medicine", "religion"], order: ["int", "con", "dex", "wis", "cha", "str"], ac: { base: 10, dex: true, note: "Zırhsız: 10 + ÇEV" }, weapon: ["Asa", "str", "1d6", "ezici"], spell: "int", slots: 2, d: "Büyüyü kitaplardan öğrenen bilgin. En geniş büyü listesine sahip ama kırılgan.", f: "Büyücülük (Zekâ): büyü kitabı\nGizemli Toparlanma: kısa dinlenmede bazı yuvaları geri kazan", inv: "Asa\nBüyü kitabı\nBüyü odağı\nAlim çantası" },
-  ];
-
-  const BACKGROUNDS = [
-    { n: "Asker", s: ["athletics", "intimidation"], d: "Bir orduda hizmet ettin; disiplin ve rütbe bilirsin." },
-    { n: "Bilge", s: ["arcana", "history"], d: "Yıllarını kitaplar arasında geçirdin." },
-    { n: "Halk Kahramanı", s: ["animal", "survival"], d: "Sıradan bir köylüyken halkını korudun." },
-    { n: "Mürit", s: ["insight", "religion"], d: "Bir tapınakta tanrına hizmet ettin." },
-    { n: "Soylu", s: ["history", "persuasion"], d: "Varlıklı ve nüfuzlu bir ailede doğdun." },
-    { n: "Suçlu", s: ["deception", "stealth"], d: "Yasanın öteki tarafında yaşadın." },
-    { n: "Şarlatan", s: ["deception", "sleight"], d: "Dilinle ve hilelerinle insanları kandırdın." },
-    { n: "Eğlendirici", s: ["acrobatics", "performance"], d: "Kalabalıkları eğlendirerek geçimini sağladın." },
-    { n: "Denizci", s: ["athletics", "perception"], d: "Yıllarca gemilerde çalıştın." },
-    { n: "Yabani", s: ["athletics", "survival"], d: "Medeniyetten uzakta, vahşi doğada büyüdün." },
-    { n: "Zanaatkâr", s: ["insight", "persuasion"], d: "Bir loncanın üyesi olarak zanaatını öğrendin." },
-    { n: "Münzevi", s: ["medicine", "religion"], d: "Dünyadan uzak, yalnız bir hayat sürdün." },
-  ];
-
-  const ALIGN = [
-    ["Yasal İyi", "Kurallara uyar, doğru olanı yapar."], ["Tarafsız İyi", "Kurallara takılmadan iyilik yapar."], ["Kaotik İyi", "Vicdanını dinler, kuralları umursamaz."],
-    ["Yasal Tarafsız", "Düzene ve geleneğe bağlıdır."], ["Tarafsız", "Taraf tutmaz, dengeyi gözetir."], ["Kaotik Tarafsız", "Özgürlüğüne düşkündür, keyfine göre davranır."],
-    ["Yasal Kötü", "Düzeni kendi çıkarına kullanır."], ["Tarafsız Kötü", "Ne gerekiyorsa yapar, vicdansızdır."], ["Kaotik Kötü", "Yıkıcı ve öfkelidir."],
-  ];
+  const { AB_HELP, RACES, CLASSES, BACKGROUNDS, ALIGN, SPELLS, slotsFor, cantripsAt } = window.ZM5E;
 
   const STD = [15, 14, 13, 12, 10, 8];
   const SKN = Object.fromEntries(SKILLS.map(s => [s[0], s]));
   const ALL_SK = SKILLS.map(s => s[0]);
 
   /* ---------------- Sihirbaz durumu ---------------- */
-  const STEPS = ["Başlarken", "Irk", "Sınıf", "Yetenekler", "Geçmiş", "Beceriler", "Kimlik", "Özet"];
+  const STEPS = ["Başlarken", "Irk", "Sınıf", "Yetenekler", "Geçmiş", "Beceriler", "Büyüler", "Kimlik", "Özet"];
+  const SPELL_STEP = 6;
   let W = null;
-  const fresh = () => ({ step: 0, race: null, cls: null, method: "std", base: { str: null, dex: null, con: null, int: null, wis: null, cha: null }, rolled: null, plus: [], bg: null, skills: [], expertise: [], name: "", align: "Tarafsız", player: ME.name || "" });
+  const fresh = () => ({ step: 0, race: null, cls: null, method: "std", base: { str: null, dex: null, con: null, int: null, wis: null, cha: null }, rolled: null, plus: [], bg: null, skills: [], expertise: [], spells: [], name: "", align: "Tarafsız", player: ME.name || "",
+    // Kendi ırkın / sınıfın / geçmişin (homebrew)
+    cr: { k: "custom", n: "", ab: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, speed: 30, t: "" },
+    cc: { k: "custom", n: "", hd: 8, saves: [], pick: 2, spell: "", kind: "", f: "" },
+    cb: { n: "", s: [], d: "" } });
 
-  const race = () => RACES.find(r => r.k === W.race), cls = () => CLASSES.find(c => c.k === W.cls), bg = () => BACKGROUNDS.find(b => b.n === W.bg);
+  function customCls() {
+    const c = W.cc, main = c.spell || "str";
+    return { ...c, skills: "all", order: [main, ...["con", "dex", "str", "wis", "int", "cha"].filter(k => k !== main)], ac: { base: 10, dex: true, note: "Zırhsız: 10 + ÇEV (zırhın varsa kağıtta değiştir)" },
+      weapon: ["Silah", main === "dex" ? "dex" : "str", "1d8", ""], cant: c.spell ? 2 : 0, code: "", d: "", inv: "", spellsAt1: c.spell && c.kind && c.kind !== "half" ? 2 : 0 };
+  }
+  const race = () => W.race === "custom" ? W.cr : RACES.find(r => r.k === W.race), cls = () => W.cls === "custom" ? customCls() : CLASSES.find(c => c.k === W.cls), bg = () => W.bg === "custom" ? W.cb : BACKGROUNDS.find(b => b.n === W.bg);
+  // 1. seviyede seçilecek hile ve büyü sayıları.
+  function spellNeed() {
+    const c = cls(); if (!c || !c.spell) return null;
+    const wis = mod(finalScore(c.spell) ?? 10);
+    const lv1 = c.k === "custom" ? c.spellsAt1 : { bard: 4, sorcerer: 2, warlock: 2, wizard: 6, cleric: Math.max(1, wis + 1), druid: Math.max(1, wis + 1) }[c.k] || 0;
+    const cant = c.k === "custom" ? c.cant : cantripsAt(c, 1);
+    return cant || lv1 ? { cant, lv1, prep: !!c.prep, book: !!c.book } : null;
+  }
+  const hasSpellStep = () => !!spellNeed();
+  const nextStep = (s, dir) => { s += dir; if (s === SPELL_STEP && !hasSpellStep()) s += dir; return s; };
   function racialBonus(k) { const r = race(); if (!r) return 0; return (r.ab[k] || 0) + (W.plus.includes(k) ? 1 : 0); }
   function finalScore(k) { const b = W.base[k]; return b == null ? null : b + racialBonus(k); }
   function pool() { return W.method === "roll" && W.rolled ? W.rolled : STD; }
@@ -80,15 +43,16 @@
   function pickCount() { return (cls()?.pick || 0) + (race()?.extraSkills || 0); }
 
   function valid(step) {
-    if (step === 1) return !!W.race && (!race().choose || W.plus.length === race().choose);
-    if (step === 2) return !!W.cls;
+    if (step === 1) return !!W.race && (!race().choose || W.plus.length === race().choose) && (W.race !== "custom" || !!W.cr.n.trim());
+    if (step === 2) return !!W.cls && (W.cls !== "custom" || (!!W.cc.n.trim() && W.cc.saves.length === 2));
     if (step === 3) { const used = Object.values(W.base); if (used.some(v => v == null)) return false; const p = [...pool()].sort().join(), u = [...used].sort().join(); return p === u; }
-    if (step === 4) return !!W.bg;
+    if (step === 4) return !!W.bg && (W.bg !== "custom" || (!!W.cb.n.trim() && W.cb.s.length === 2));
     if (step === 5) return W.skills.length === pickCount() && (!cls()?.expertise || W.expertise.length === cls().expertise);
-    if (step === 6) return W.name.trim().length > 0;
+    if (step === SPELL_STEP) { const n = spellNeed(); if (!n) return true; const ct = W.spells.filter(x => !x.lvl).length, l1 = W.spells.filter(x => x.lvl).length; return ct <= n.cant && l1 <= n.lv1; }
+    if (step === 7) return W.name.trim().length > 0;
     return true;
   }
-  const why = step => ({ 1: race()?.choose ? "İki yetenek seçip +1 ver." : "Bir ırk seç.", 2: "Bir sınıf seç.", 3: "Her değeri bir yeteneğe bir kez ver.", 4: "Bir geçmiş seç.", 5: `${pickCount()} beceri seç${cls()?.expertise ? `, sonra ${cls().expertise} uzmanlık işaretle` : ""}.`, 6: "Karakterine bir ad ver." })[step] || "";
+  const why = step => ({ 1: W.race === "custom" ? "Irkına bir ad ver." : race()?.choose ? "İki yetenek seçip +1 ver." : "Bir ırk seç.", 2: W.cls === "custom" ? "Sınıfına bir ad ver ve iki kurtarma zarı seç." : "Bir sınıf seç.", 3: "Her değeri bir yeteneğe bir kez ver.", 4: W.bg === "custom" ? "Geçmişine bir ad ver ve iki beceri seç." : "Bir geçmiş seç.", 5: `${pickCount()} beceri seç${cls()?.expertise ? `, sonra ${cls().expertise} uzmanlık işaretle` : ""}.`, 6: "Seçebileceğin sayıyı aştın.", 7: "Karakterine bir ad ver." })[step] || "";
 
   /* ---------------- Hesaplar ---------------- */
   function computeAC(c, scores) {
@@ -117,31 +81,48 @@
       ac: p.ac, speed: r.speed + " ft", hpMax: p.hp, hp: p.hp, hitDice: "1d" + c.hd,
       attacks: [{ name: c.weapon[0], bonus: sgn(bonus), dmg: `${c.weapon[2]}${dmgMod ? sgn(dmgMod) : ""} ${c.weapon[3]}` }],
       spellAb: c.spell || "",
-      features: `${r.n}:\n${r.t}\n\n${c.n}:\n${c.f}\n\nZırh: ${c.ac.note}`,
-      inventory: c.inv, coins: { cp: 0, sp: 0, ep: 0, gp: 10, pp: 0 },
-      spells: c.spell ? "Hileler (cantrip) ve 1. seviye büyülerini buraya yaz. Hangi büyüleri bilebileceğini DM'ine sorabilirsin." : "",
+      features: [r.t ? `${r.n}:\n${r.t}` : "", c.f ? `${c.n}:\n${c.f}` : "", `Zırh: ${c.ac.note}`].filter(Boolean).join("\n\n"),
+      inventory: c.inv, coins: { cp: 0, sp: 0, ep: 0, gp: 10, pp: 0 }, spells: "", xp: 0,
+      clsKey: c.k, book: W.spells.map(s => ({ ...s, prep: !!s.lvl })), conc: "",
     });
-    if (c.slots) n.slots[0] = { max: c.slots, used: 0 };
+    if (c.k === "custom") { n.clsCustom = { k: "custom", n: c.n, hd: c.hd, saves: c.saves, spell: c.spell, kind: c.kind || null, cant: c.cant, f: c.f }; delete n.clsKey; }
+    if (c.spell) slotsFor(c.kind, 1).forEach((v, i) => n.slots[i] = { max: v, used: 0 });
     return n;
   }
 
   /* ---------------- Görünüm ---------------- */
   const card = (on, act, val, title, body, extra = "") => `<button type="button" class="zw-card" data-zw="${act}" data-v="${esc(val)}" aria-pressed="${on}"><b>${title}</b>${extra}<span>${body}</span></button>`;
   const learn = t => `<aside class="zw-learn"><b>Ne işe yarar?</b> ${t}</aside>`;
+  const hbCard = (on, act, what) => `<button type="button" class="zw-card zw-hb" data-zw="${act}" data-v="custom" aria-pressed="${on}"><b>+ Kendi ${what}</b><span>Kitaptan ya da masanızdan (homebrew) bir ${what.replace(/ın$|in$|un$|ün$/, "")} ekle; içini sen doldur.</span></button>`;
+  const cin = (path, lbl, ph = "", type = "text", extra = "") => { const v = path.split(".").reduce((o, k) => o?.[k], W); return `<label class="zw-field"><span class="lbl">${lbl}</span><input class="f" type="${type}" data-zw-c="${path}" value="${esc(v ?? "")}" placeholder="${esc(ph)}" ${extra}></label>`; };
+  const cta = (path, lbl, ph = "") => `<label class="zw-field" style="max-width:none"><span class="lbl">${lbl}</span><textarea class="f" rows="3" data-zw-c="${path}" placeholder="${esc(ph)}">${esc(path.split(".").reduce((o, k) => o?.[k], W) || "")}</textarea></label>`;
+  const spCard = s => { const on = W.spells.some(x => x.id === s.id || (s.k && x.k === s.k)); return `<button type="button" class="zw-card sm zw-spc" data-zw="spell" data-v="${esc(s.k || s.id)}" aria-pressed="${on}"><b>${esc(s.n)}${s.custom ? ' <small class="zw-tag">özel</small>' : ""}</b><small class="zw-tag">${esc([s.school, s.time, s.range].filter(Boolean).join(" · "))}${s.conc ? " · K" : ""}${s.ritual ? " · R" : ""}</small><span>${esc(s.d || "")}</span></button>`; };
 
   function stepHtml() {
     const s = W.step;
     if (s === 0) return `<h3>Hoş geldin, maceracı!</h3>
       <p>Karakter kağıdı, oyunda canlandıracağın kahramanın kimliğidir: ne kadar güçlü olduğunu, neleri iyi yaptığını ve ne kadar hasara dayanabileceğini gösterir. Zar attığında eklediğin sayıların hepsi buradan gelir.</p>
-      <p>Bu sihirbaz seni 6 adımda birinci seviye bir D&D 5e karakterine götürecek:</p>
-      <ol class="zw-list"><li><b>Irk:</b> karakterin hangi halktan</li><li><b>Sınıf:</b> ne iş yapıyor, nasıl savaşıyor</li><li><b>Yetenekler:</b> güç, çeviklik, zekâ gibi temel puanlar</li><li><b>Geçmiş:</b> maceradan önce kimdi</li><li><b>Beceriler:</b> nelerde eğitimli</li><li><b>Kimlik:</b> adı ve kişiliği</li></ol>
+      <p>Bu sihirbaz seni adım adım birinci seviye bir D&D 5e karakterine götürecek:</p>
+      <ol class="zw-list"><li><b>Irk:</b> karakterin hangi halktan</li><li><b>Sınıf:</b> ne iş yapıyor, nasıl savaşıyor</li><li><b>Yetenekler:</b> güç, çeviklik, zekâ gibi temel puanlar</li><li><b>Geçmiş:</b> maceradan önce kimdi</li><li><b>Beceriler:</b> nelerde eğitimli</li><li><b>Büyüler:</b> büyü yapan sınıflar için ilk büyüler</li><li><b>Kimlik:</b> adı ve kişiliği</li></ol>
+      <p>Irk, sınıf, geçmiş ve büyülerde listede olmayan bir şey istiyorsan (başka bir kitaptan ya da masanızın uydurması, yani <i>homebrew</i>) <b>Kendi …</b> kartını seçip içini kendin doldurabilirsin.</p>
       ${learn("Her adımda seçtiklerinin oyunda neye dönüştüğünü anlatacağım. Sonunda sayıların hepsi otomatik hesaplanır; kağıt üzerinde istediğin zaman değiştirebilirsin.")}`;
     if (s === 1) { const r = race(); return `<h3>Irkını seç</h3><p>Irk, karakterine yetenek puanı bonusları, hız ve özel yetenekler (örneğin karanlıkta görme) verir.</p>
-      <div class="zw-grid">${RACES.map(x => card(W.race === x.k, "race", x.k, x.n, x.d, `<small class="zw-tag">${Object.entries(x.ab).map(([k, v]) => ABN[k][2] + " +" + v).join(" · ")}${x.choose ? " · 2 yetenek +1" : ""} · ${x.speed} ft</small>`)).join("")}</div>
+      <div class="zw-grid">${RACES.map(x => card(W.race === x.k, "race", x.k, x.n, x.d, `<small class="zw-tag">${Object.entries(x.ab).map(([k, v]) => ABN[k][2] + " +" + v).join(" · ")}${x.choose ? " · 2 yetenek +1" : ""} · ${x.speed} ft</small>`)).join("")}${hbCard(W.race === "custom", "race", "ırkın")}</div>
+      ${W.race === "custom" ? `<div class="zw-custom"><div class="zb-fgrid">${cin("cr.n", "Irkın adı", "örn. Kertenkele Halkı")}${cin("cr.speed", "Hız (ft)", "30", "number", 'min="0" step="5"')}</div>
+        <p class="zw-left">Yetenek bonusları (5e'de genellikle toplam +3: bir yeteneğe +2, birine +1):</p>
+        <div class="zw-cab">${ABS.map(([k, nm]) => `<label><span class="lbl">${ABN[k][2]}</span><input class="f num" type="number" min="-2" max="3" data-zw-c="cr.ab.${k}" value="${W.cr.ab[k] || 0}" aria-label="${nm} bonusu"></label>`).join("")}</div>
+        ${cta("cr.t", "Irk özellikleri", "örn. Karanlıkta görüş 60 ft\nDoğal zırh: ZS 13 + ÇEV")}</div>` : ""}
       ${r && r.choose ? `<div class="zw-sub"><b>+1 vereceğin iki yetenek:</b> <span class="chips">${ABS.filter(([k]) => !r.ab[k]).map(([k, nm]) => `<button type="button" class="chip" data-zw="plus" data-v="${k}" aria-pressed="${W.plus.includes(k)}">${nm}</button>`).join("")}</span></div>` : ""}
       ${r ? learn(`<b>Hız (${r.speed} ft):</b> bir turda yürüyebileceğin mesafe; haritada her kare 5 ft. <b>Irk özellikleri</b> kağıdındaki "Özellikler ve Yetenekler" kutusuna yazılacak.`) : ""}`; }
     if (s === 2) { const c = cls(); return `<h3>Sınıfını seç</h3><p>Sınıf, karakterinin mesleğidir: nasıl savaştığını, hangi zırhı giydiğini, büyü yapıp yapmadığını belirler. Yeni başlıyorsan Savaşçı ya da Rahip kolaydır.</p>
-      <div class="zw-grid">${CLASSES.map(x => card(W.cls === x.k, "cls", x.k, x.n, x.d, `<small class="zw-tag">Can zarı d${x.hd} · ${ABN[x.order[0]][1]}${x.spell ? " · büyücü" : ""}</small>`)).join("")}</div>
+      <div class="zw-grid">${CLASSES.map(x => card(W.cls === x.k, "cls", x.k, x.n, x.d, `<small class="zw-tag">Can zarı d${x.hd} · ${ABN[x.order[0]][1]}${x.spell ? " · büyücü" : ""}</small>`)).join("")}${hbCard(W.cls === "custom", "cls", "sınıfın")}</div>
+      ${W.cls === "custom" ? `<div class="zw-custom"><div class="zb-fgrid">${cin("cc.n", "Sınıfın adı", "örn. Kan Avcısı")}
+          <label class="zw-field"><span class="lbl">Can zarı</span><select class="f" data-zw-c="cc.hd">${[6, 8, 10, 12].map(v => `<option value="${v}" ${+W.cc.hd === v ? "selected" : ""}>d${v}</option>`).join("")}</select></label>
+          ${cin("cc.pick", "Seçilecek beceri sayısı", "2", "number", 'min="0" max="6"')}
+          <label class="zw-field"><span class="lbl">Büyü yeteneği</span><select class="f" data-zw-c="cc.spell"><option value="">Büyü yapmaz</option>${ABS.map(([k, nm]) => `<option value="${k}" ${W.cc.spell === k ? "selected" : ""}>${nm}</option>`).join("")}</select></label>
+          ${W.cc.spell ? `<label class="zw-field"><span class="lbl">Büyü yuvaları</span><select class="f" data-zw-c="cc.kind">${[["full", "Tam büyücü (Büyücü gibi)"], ["half", "Yarım (Paladin gibi, 2. seviyeden)"], ["third", "Üçte bir (3. seviyeden)"], ["pact", "Pakt (Cadı gibi)"], ["", "Yuva yok, ben yazarım"]].map(([k, n]) => `<option value="${k}" ${W.cc.kind === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>` : ""}</div>
+        <div class="zw-sub"><b>Kurtarma zarları (iki tane):</b> <span class="chips">${ABS.map(([k, nm]) => `<button type="button" class="chip" data-zw="ccsave" data-v="${k}" aria-pressed="${W.cc.saves.includes(k)}">${nm}</button>`).join("")}</span></div>
+        ${cta("cc.f", "1. seviye özellikleri", "örn. Kan Bağı: günde bir kez...")}</div>` : ""}
       ${c ? learn(`<b>Can zarı (d${c.hd}):</b> 1. seviyede canın ${c.hd} + Dayanıklılık bonusun olur; her seviyede bu zar kadar artar. <b>Kurtarma zarları (${c.saves.map(k => ABN[k][1]).join(", ")}):</b> tehlikeden kaçınmak için attığın zarlar; bu sınıf bu ikisinde eğitimli, yani yeterlilik bonusu eklenir.${c.spell ? ` <b>Büyü yeteneği:</b> ${ABN[c.spell][1]}.` : ""}`) : ""}`; }
     if (s === 3) {
       const c = cls(), p = pool();
@@ -161,7 +142,10 @@
       ${learn("Bu bonuslar her yerde kullanılır: saldırı zarına, hasara, becerilere ve kurtarma zarlarına eklenir. Kağıtta yeteneğin yanındaki büyük düğmeye basınca d20 + bonus atılır.")}`;
     }
     if (s === 4) return `<h3>Geçmişini seç</h3><p>Geçmiş, karakterinin maceraya atılmadan önceki hayatıdır. Sana iki becerinin yeterliliğini verir ve rol yaparken ilham olur.</p>
-      <div class="zw-grid">${BACKGROUNDS.map(x => card(W.bg === x.n, "bg", x.n, x.n, x.d, `<small class="zw-tag">${x.s.map(k => SKN[k][1]).join(", ")}</small>`)).join("")}</div>`;
+      <div class="zw-grid">${BACKGROUNDS.map(x => card(W.bg === x.n, "bg", x.n, x.n, x.d, `<small class="zw-tag">${x.s.map(k => SKN[k][1]).join(", ")}</small>`)).join("")}${hbCard(W.bg === "custom", "bg", "geçmişin")}</div>
+      ${W.bg === "custom" ? `<div class="zw-custom"><div class="zb-fgrid">${cin("cb.n", "Geçmişin adı", "örn. Kervan Muhafızı")}</div>
+        <div class="zw-sub"><b>Verdiği iki beceri:</b> <span class="chips">${SKILLS.map(([k, nm]) => `<button type="button" class="chip" data-zw="cbsk" data-v="${k}" aria-pressed="${W.cb.s.includes(k)}">${nm}</button>`).join("")}</span></div>
+        ${cta("cb.d", "Kısa açıklama", "Maceradan önce ne yapıyordun?")}</div>` : ""}`;
     if (s === 5) {
       const fixed = fixedSkills(), list = classSkillList(), need = pickCount(), c = cls();
       return `<h3>Becerilerini seç</h3>
@@ -173,12 +157,26 @@
       ${c.expertise ? `<div class="zw-sub"><b>Uzmanlık:</b> eğitimli olduğun ${c.expertise} beceride bonus iki katına çıkar (+4). <span class="chips">${[...fixed, ...W.skills].map(k => `<button type="button" class="chip" data-zw="exp" data-v="${k}" aria-pressed="${W.expertise.includes(k)}">${SKN[k][1]}</button>`).join("")}</span></div>` : ""}
       ${learn("Örneğin bir duvara tırmanırken DM \"Atletizm at\" der; d20 atar, Atletizm'in yanındaki sayıyı eklersin. Kağıtta becerinin solundaki yuvarlak, yeterli olup olmadığını gösterir.")}`;
     }
-    if (s === 6) return `<h3>Karakterine kimlik ver</h3>
+    if (s === SPELL_STEP) {
+      const c = cls(), n = spellNeed(), code = c.code;
+      const pool = lvl => SPELLS.filter(x => x.lvl === lvl && (!code || x.cls.includes(code)));
+      const custom = lvl => W.spells.filter(x => x.custom && (lvl ? x.lvl > 0 : !x.lvl));
+      const ct = W.spells.filter(x => !x.lvl).length, l1 = W.spells.filter(x => x.lvl).length;
+      return `<h3>Büyülerini seç</h3>
+      <p>${esc(c.n.split(" (")[0])} büyü yapar. Büyülerin karakter kağıdındaki <b>Büyü Kitabı</b>na eklenecek; orada tek tıkla yapabilir, yuvalarını takip edebilirsin.</p>
+      ${n.cant ? `<div class="zw-gh"><b>Hileler (cantrip)</b><span class="zw-left">${ct}/${n.cant} seçildi</span></div><p class="zw-left">Hileler sınırsızdır, yuva harcamaz. Her gün, her turda kullanabilirsin.</p>
+        <div class="zw-grid">${[...pool(0), ...custom(0)].map(spCard).join("")}</div>` : ""}
+      ${n.lv1 ? `<div class="zw-gh"><b>1. seviye büyüler</b><span class="zw-left">${l1}/${n.lv1} seçildi</span></div><p class="zw-left">${n.book ? `Büyücü bu büyüleri büyü kitabına yazar (${n.lv1} büyü); her gün içlerinden bazılarını hazırlar.` : n.prep ? `${esc(c.n.split(" (")[0])} listesindeki her büyüyü bilir ama günde ${n.lv1} tanesini hazırlayabilir (${ABN[c.spell][1]} bonusu + seviye). Şimdi hazırlayacaklarını seç; kağıtta istediğin zaman değiştirirsin.` : `Bu büyüleri bilirsin. Her biri bir <b>büyü yuvası</b> harcar; 1. seviyede ${slotsFor(c.kind, 1).filter(Boolean).join("") || 0} yuvan var.`}</p>
+        <div class="zw-grid">${[...pool(1), ...custom(1)].map(spCard).join("")}</div>` : ""}
+      <div class="zw-row"><button type="button" class="btn sm" data-zw="cspell">+ Kendi büyünü yaz</button><span class="zw-left">Listede olmayan bir büyü ya da homebrew büyü ekle.</span></div>
+      ${learn("Büyü yuvaları günlük büyü hakkındır; uzun dinlenmede dolar. Hileler hariç her büyü bir yuva harcar. Kağıtta büyünün yanındaki seviye düğmesine basınca yuva kendiliğinden düşer ve zarlar atılır.")}`;
+    }
+    if (s === 7) return `<h3>Karakterine kimlik ver</h3>
       <label class="zw-field"><span class="lbl">Karakterin adı</span><input class="f" data-zw-in="name" value="${esc(W.name)}" placeholder="örn. Aren Gölgeyürek" maxlength="60"></label>
       <label class="zw-field"><span class="lbl">Oyuncu (senin adın)</span><input class="f" data-zw-in="player" value="${esc(W.player)}"></label>
       <p><b>Yönelim</b>, karakterinin ahlaki pusulasıdır. Kesin bir kural değil, rol yaparken yol gösterir.</p>
       <div class="zw-align">${ALIGN.map(([n, d]) => `<button type="button" class="zw-card sm" data-zw="align" data-v="${n}" aria-pressed="${W.align === n}"><b>${n}</b><span>${d}</span></button>`).join("")}</div>`;
-    if (s === 7) {
+    if (s === 8) {
       const p = preview(), c = cls(), r = race();
       return `<h3>${esc(W.name)} hazır!</h3><p>${esc(r.n)} ${esc(c.n)} · ${esc(W.bg)} · ${esc(W.align)}</p>
       <div class="zw-sum">
@@ -188,6 +186,7 @@
         <div><span class="lbl">Yeterlilik</span><b class="num">+2</b><small>Eğitimli olduğun her şeye eklenir; seviye atladıkça artar.</small></div>
       </div>
       <div class="zw-abil sm">${ABS.map(([k, nm]) => `<div class="zw-ab"><b>${ABN[k][2]}</b><span class="num">${p.sc[k]} (${sgn(mod(p.sc[k]))})</span></div>`).join("")}</div>
+      ${W.spells.length ? `<p><b>Büyüler:</b> ${W.spells.map(x => esc(x.n)).join(", ")}</p>` : ""}
       ${learn("Oluştur'a bastıktan sonra kısa bir kağıt turu başlayacak; her bölümün ne işe yaradığını yerinde göstereceğim. Turu istediğin zaman <b>Kağıt rehberi</b> düğmesiyle yeniden açabilirsin.")}`;
     }
   }
@@ -198,7 +197,7 @@
     if (!ov) { ov = document.createElement("div"); ov.id = "zwOv"; ov.className = "joinov zw-ov"; document.body.appendChild(ov); }
     const s = W.step, last = STEPS.length - 1, ok = valid(s);
     ov.innerHTML = `<div class="zw" role="dialog" aria-modal="true" aria-label="Karakter yaratma sihirbazı">
-      <header class="zw-h"><h2>Karakter yaratma</h2><ol class="zw-steps">${STEPS.map((n, i) => `<li class="${i === s ? "on" : i < s ? "done" : ""}">${i ? `<span>${i}</span>` : ""}${n}</li>`).join("")}</ol><button class="btn sm" data-zw="close" aria-label="Kapat">×</button></header>
+      <header class="zw-h"><h2>Karakter yaratma</h2><ol class="zw-steps">${STEPS.map((n, i) => i === SPELL_STEP && !hasSpellStep() ? "" : `<li class="${i === s ? "on" : i < s ? "done" : ""}">${i ? `<span>${i > SPELL_STEP && !hasSpellStep() ? i - 1 : i}</span>` : ""}${n}</li>`).join("")}</ol><button class="btn sm" data-zw="close" aria-label="Kapat">×</button></header>
       <div class="zw-b" id="zwBody">${stepHtml()}</div>
       <footer class="zw-f">${s === 0 ? `<button class="btn" data-zw="blank">Boş kağıtla başla</button>` : `<button class="btn" data-zw="prev">← Geri</button>`}
         <span class="zw-why">${ok ? "" : esc(why(s))}</span>
@@ -224,11 +223,22 @@
     switch (a) {
       case "close": close(); return;
       case "blank": { close(); const n = newChar(); if (!isDM()) n.owner = ME.id; save("chars", n); if (!isDM()) linkMyChar(n.id); S.charId = n.id; render(); return; }
-      case "next": if (valid(W.step)) { W.step++; redraw(false); } return;
-      case "prev": W.step = Math.max(0, W.step - 1); redraw(false); return;
+      case "next": if (valid(W.step)) { W.step = nextStep(W.step, 1); redraw(false); } return;
+      case "prev": W.step = Math.max(0, nextStep(W.step, -1)); redraw(false); return;
       case "race": if (W.race !== v) { W.race = v; W.plus = []; W.skills = []; W.expertise = []; } break;
       case "plus": { const r = race(); if (W.plus.includes(v)) W.plus = W.plus.filter(x => x !== v); else if (W.plus.length < r.choose) W.plus.push(v); break; }
-      case "cls": if (W.cls !== v) { W.cls = v; W.skills = []; W.expertise = []; } break;
+      case "cls": if (W.cls !== v) { W.cls = v; W.skills = []; W.expertise = []; W.spells = []; } break;
+      case "ccsave": { const sv = W.cc.saves; if (sv.includes(v)) W.cc.saves = sv.filter(x => x !== v); else if (sv.length < 2) sv.push(v); break; }
+      case "cbsk": { const sk = W.cb.s; if (sk.includes(v)) W.cb.s = sk.filter(x => x !== v); else if (sk.length < 2) sk.push(v); W.skills = W.skills.filter(k => !W.cb.s.includes(k)); break; }
+      case "spell": {
+        const ex = W.spells.find(x => x.k === v || x.id === v);
+        if (ex) { W.spells = W.spells.filter(x => x !== ex); break; }
+        const sp = window.ZMB.fromSrd(v); if (!sp) break;
+        const n = spellNeed(), have = W.spells.filter(x => !!x.lvl === !!sp.lvl).length, lim = sp.lvl ? n.lv1 : n.cant;
+        if (have >= lim) { toast(`En fazla ${lim} ${sp.lvl ? "1. seviye büyü" : "hile"} seçebilirsin`); return; }
+        W.spells.push(sp); break;
+      }
+      case "cspell": window.ZMB.form({ lvl: spellNeed()?.lv1 ? 1 : 0 }, sp => { W.spells.push({ ...sp, id: uid("sp"), custom: true }); redraw(); }); return;
       case "method": W.method = v; W.base = { str: null, dex: null, con: null, int: null, wis: null, cha: null }; if (v === "std") W.rolled = null; break;
       case "roll": W.rolled = roll4d6(); W.base = { str: null, dex: null, con: null, int: null, wis: null, cha: null }; break;
       case "suggest": suggest(); break;
@@ -252,6 +262,15 @@
     if (v != null) { const count = pool().filter(x => x === v).length; const others = ABS.map(a => a[0]).filter(x => x !== k && W.base[x] === v); if (others.length >= count) W.base[others[0]] = null; }
     W.base[k] = v; redraw();
   });
+  // Kendi ırkın/sınıfın/geçmişin alanları: data-zw-c="cr.ab.str" gibi bir yol.
+  function setC(el) {
+    const keys = el.dataset.zwC.split("."), last = keys.pop(), o = keys.reduce((a, k) => a[k], W);
+    o[last] = el.type === "number" || last === "hd" ? (el.value === "" ? 0 : +el.value) : el.value;
+    if (last === "spell" && el.value && !W.cc.kind) W.cc.kind = "full";
+    if (last === "pick") W.skills = [];
+  }
+  document.addEventListener("change", e => { const el = e.target; if (!W || !el.dataset.zwC || el.tagName !== "SELECT") return; setC(el); redraw(); });
+  document.addEventListener("input", e => { const el = e.target; if (!W || !el.dataset.zwC || el.tagName === "SELECT") return; setC(el); const nx = $("[data-zw=next]"); if (nx) nx.disabled = !valid(W.step); const w = $(".zw-why"); if (w) w.textContent = valid(W.step) ? "" : why(W.step); });
   document.addEventListener("input", e => { const el = e.target; if (!W || !el.dataset.zwIn) return; W[el.dataset.zwIn] = el.value; const nx = $("[data-zw=next]"); if (nx) nx.disabled = !valid(W.step); const w = $(".zw-why"); if (w) w.textContent = valid(W.step) ? "" : why(W.step); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && W) close(); if (e.key === "Escape" && T != null) endTour(); });
 
@@ -271,7 +290,9 @@
     [() => $$("#main .panel .ds")[1], "Ölüm kurtarma", "Canın 0'a düşerse her turunda \"At\"a basarsın: 10 ve üstü başarı, altı başarısızlık. 3 başarıda kendine gelirsin, 3 başarısızlıkta ölürsün."],
     [() => panel("Durumlar"), "Durumlar", "Kör, yerde, zehirlenmiş gibi durumlar. Başına bir şey gelince işaretle, DM ve diğer oyuncular da görür."],
     [() => panel("Saldırılar"), "Saldırılar", "\"Vur\" d20 + saldırı bonusunu atar; sonuç düşmanın ZS'sine ulaşırsa \"Hasar\"a basarsın. Kritikte (20) Shift ile tıklayınca hasar zarları iki kat atılır."],
-    [() => panel("Büyücülük"), "Büyücülük", "Büyü yapıyorsan büyü yeteneğini seç. Yuvalar günlük büyü hakkındır: büyü yaptıkça bir yuvaya tıkla, uzun dinlenmede dolar."],
+    [() => $("#zgBar"), "Deneyim ve seviye", "DM'in verdiği deneyim puanını (XP) buraya yaz; çubuk sonraki seviyeye ne kadar kaldığını gösterir. Seviye atlayınca \"Seviye atla\" sihirbazı canını, yeteneklerini, özelliklerini ve büyülerini adım adım günceller."],
+    [() => panel("Büyücülük"), "Büyücülük", "Büyü yapıyorsan büyü yeteneğin burada seçilir; kurtarma ZK'si ve büyü saldırısı bonusu buradan hesaplanır. Yuvalar günlük büyü hakkındır, uzun dinlenmede dolar."],
+    [() => $("#zbBook"), "Büyü kitabı", "Bildiğin büyüler. Hileler için \"Yap\"a, seviyeli büyüler için hangi yuvayla yapacaksan o seviyenin düğmesine bas: yuva kendiliğinden düşer, saldırı ve hasar zarları atılır. Büyünün adına tıklarsan açıklaması açılır. \"+ Büyü ekle\" ile listeden seçer ya da kendi büyünü yazarsın."],
     [() => panel("Envanter"), "Envanter", "Eşyaların ve paran. Sihirbaz başlangıç teçhizatını yazdı; macerada buldukların buraya."],
   ];
   let T = null, shownT = null;

@@ -58,3 +58,28 @@ test("şifre, belge senkronu, oda mesajları ve kalıcılık", async () => {
   assert.equal(srv2.ownerKey, srv.ownerKey);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test("eklentiler sayfaya eklenir ve sunulur", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir });
+  const port = await srv.listen(0, "127.0.0.1");
+  const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
+  const scripts = [...html.matchAll(/<script src="\/ext\/([a-z0-9-]+)\.js"><\/script>/g)].map(m => m[1]);
+  assert.ok(scripts.indexOf("veri-5e") < scripts.indexOf("sihirbaz"), "veri dosyası önce yüklenmeli");
+  for (const n of scripts) assert.equal((await fetch(`http://127.0.0.1:${port}/ext/${n}.js`)).status, 200, n);
+  await srv.close();
+});
+
+test("5e verisi: büyü yuvaları ve büyüler", () => {
+  global.window = {};
+  require("../web/ext/veri-5e.js");
+  const z = window.ZM5E;
+  assert.deepEqual(z.slotsFor("full", 5).slice(0, 4), [4, 3, 2, 0]);
+  assert.deepEqual(z.slotsFor("half", 1), Array(9).fill(0));
+  assert.deepEqual(z.slotsFor("half", 5).slice(0, 3), [4, 2, 0]);
+  assert.equal(z.slotsFor("pact", 11)[4], 3);
+  assert.equal(z.XP.length, 20);
+  const keys = new Set();
+  for (const s of z.SPELLS) { assert.ok(!keys.has(s.k), "çift büyü " + s.k); keys.add(s.k); assert.ok(s.lvl >= 0 && s.lvl <= 9); assert.ok(/^[BCDPRSKW]+$/.test(s.cls), s.k); }
+  delete global.window;
+});

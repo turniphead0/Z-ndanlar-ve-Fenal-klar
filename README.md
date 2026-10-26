@@ -79,7 +79,7 @@ npm run dist     # bu işletim sistemi için paket
 ```
 web/app.html      Uygulamanın kendisi (Claude ile yapılan Zar Masası artifact'ı, değiştirilmeden)
 web/shim.js       Köprü: uygulamanın kullandığı window.claude.use(...) arayüzlerini sunucuya bağlar
-web/ext/          Eklentiler: ayrı pencereler, haritada açılır savaş takipçisi, karakter sihirbazı ve kağıt rehberi
+web/ext/          Eklentiler: ayrı pencereler, haritada açılır savaş takipçisi, karakter sihirbazı, kağıt rehberi, büyü kitabı ve seviye atlama (5e verisi SRD 5.1, CC-BY-4.0)
 server/           Sunucu: belge deposu, canlı oda (jeton sürükleme, ping, ses efekti), dosya yükleme, Claude vekili
 electron/         Masaüstü kabuğu: bağlan / host et ekranı
 ```
