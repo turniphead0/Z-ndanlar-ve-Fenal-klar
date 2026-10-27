@@ -1,0 +1,179 @@
+/* Sistem temaları: oyunun sistemine göre renk, yazı tipi ve doku. Lobi varsayılan temada kalır.
+   <html data-sys="dnd5e|pf2e|coc7|yze"> ve Year Zero için data-yzp (oyunun şablonu) tema.js tarafından konur.
+   Her tema açık ve koyu sürümüyle gelir; koyu kurallar app.html'deki gibi hem sistem tercihine hem data-theme'e bakar. */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;500;700&family=Marcellus+SC&family=Source+Sans+3:wght@400;500;700&family=IM+Fell+English+SC&family=EB+Garamond:wght@400;500;700&family=Special+Elite&family=Saira+Stencil+One&family=Barlow:wght@400;500;700&family=Share+Tech+Mono&family=Playfair+Display+SC:wght@700&family=Lora:wght@400;500;700&family=Uncial+Antiqua&family=Merriweather+Sans:wght@400;700&display=swap");
+
+/* ---------- Ortak: rayın kendi rengi olabilir ---------- */
+:root[data-sys] .rail{background:var(--rail,var(--surface));border-right-color:var(--rail-line,var(--line))}
+:root[data-sys] .navbtn{color:var(--rail-ink,var(--muted))}
+:root[data-sys] .navbtn:hover{color:var(--rail-hi,var(--ink))}
+:root[data-sys] .navbtn[aria-current="true"]{background:var(--rail-on,var(--accent-soft));color:var(--rail-hi,var(--accent))}
+:root[data-sys] .rail .brand .gname{color:var(--rail-hi,var(--ink))}
+:root[data-sys] .rail .brand .back,:root[data-sys] .rail .sync{color:var(--rail-ink,var(--muted))}
+:root[data-sys] .rail .brand svg{color:var(--rail-hi,var(--accent))}
+:root[data-sys] .rail .brand:hover{background:var(--rail-on,var(--accent-soft))}
+:root[data-sys] body{background:var(--paper,var(--bg)) fixed}
+
+/* ================= D&D 5e: ejder parşömeni ================= */
+:root[data-sys="dnd5e"]{
+  --bg:#E9DFC9; --surface:#FBF6EA; --surface-2:#F3EAD6; --ink:#2A1D14; --muted:#6E5A49; --line:#D6C6A6;
+  --accent:#9B1C1C; --accent-ink:#FFF7EC; --accent-soft:#F3D9CF; --gold:#8A6212; --gold-soft:#F0E0B8;
+  --bad:#A3241A; --good:#3E6B2A; --map-floor:#F5EDDA; --grid:rgba(42,29,20,.16);
+  --f-display:"Cinzel", Georgia, serif; --f-body:"Crimson Pro", Georgia, serif; --r:4px;
+  --rail:#6E1414; --rail-line:#4E0D0D; --rail-ink:#E9C9B4; --rail-hi:#FFF2DC; --rail-on:rgba(255,236,210,.14);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(110,70,30,.18)), repeating-linear-gradient(0deg, rgba(120,90,50,.035) 0 2px, transparent 2px 5px), #E9DFC9;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="dnd5e"]:not([data-theme="light"]){
+  --bg:#17110D; --surface:#221914; --surface-2:#2B2019; --ink:#EFE4D2; --muted:#AE9C86; --line:#3C2E24;
+  --accent:#E0574A; --accent-ink:#1A0B08; --accent-soft:#3D1D19; --gold:#D9A94A; --gold-soft:#3A2D18;
+  --bad:#F07A6E; --good:#8FC47A; --map-floor:#211A15; --grid:rgba(239,228,210,.12);
+  --rail:#2A0D0B; --rail-line:#1A0706; --rail-ink:#C79A88; --rail-hi:#FFE3CF; --rail-on:rgba(224,87,74,.2);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #17110D;
+}}
+:root[data-sys="dnd5e"][data-theme="dark"]{
+  --bg:#17110D; --surface:#221914; --surface-2:#2B2019; --ink:#EFE4D2; --muted:#AE9C86; --line:#3C2E24;
+  --accent:#E0574A; --accent-ink:#1A0B08; --accent-soft:#3D1D19; --gold:#D9A94A; --gold-soft:#3A2D18;
+  --bad:#F07A6E; --good:#8FC47A; --map-floor:#211A15; --grid:rgba(239,228,210,.12);
+  --rail:#2A0D0B; --rail-line:#1A0706; --rail-ink:#C79A88; --rail-hi:#FFE3CF; --rail-on:rgba(224,87,74,.2);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #17110D;
+}
+:root[data-sys="dnd5e"] body{font-size:16px}
+:root[data-sys="dnd5e"] .panel{box-shadow:0 1px 0 var(--line),inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--gold-soft)}
+:root[data-sys="dnd5e"] .panel>h3{border-bottom:1px solid var(--gold-soft);padding-bottom:5px;font-weight:700}
+:root[data-sys="dnd5e"] .panel>h3::before{content:"◆";font-size:9px;color:var(--gold)}
+:root[data-sys="dnd5e"] .vhead h1{color:var(--accent)}
+
+/* ================= Pathfinder 2e: Golarion laciverti ve bronz ================= */
+:root[data-sys="pf2e"]{
+  --bg:#E4E7EE; --surface:#F8F9FC; --surface-2:#EDF0F6; --ink:#141B2D; --muted:#525D75; --line:#C5CCDA;
+  --accent:#1E3F8A; --accent-ink:#FFFFFF; --accent-soft:#D8E1F4; --gold:#A0640F; --gold-soft:#F5E2C4;
+  --bad:#B42318; --good:#2D7A3E; --map-floor:#F1F3F8; --grid:rgba(20,27,45,.15);
+  --f-display:"Marcellus SC", Georgia, serif; --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif; --r:3px;
+  --rail:#14234A; --rail-line:#0C1734; --rail-ink:#AFC0E6; --rail-hi:#F5C46A; --rail-on:rgba(245,196,106,.14);
+  --paper:linear-gradient(180deg, rgba(30,63,138,.07), transparent 240px), #E4E7EE;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="pf2e"]:not([data-theme="light"]){
+  --bg:#0D1220; --surface:#151C2E; --surface-2:#1C2439; --ink:#E4E9F5; --muted:#98A3BC; --line:#29324A;
+  --accent:#7FA3F0; --accent-ink:#0A1226; --accent-soft:#1E2B4D; --gold:#F0A640; --gold-soft:#3A2A14;
+  --bad:#F2786C; --good:#6FCB86; --map-floor:#141A2A; --grid:rgba(228,233,245,.12);
+  --rail:#0A1024; --rail-line:#050915; --rail-ink:#8E9CC0; --rail-hi:#F5C46A; --rail-on:rgba(245,196,106,.12);
+  --paper:linear-gradient(180deg, rgba(127,163,240,.08), transparent 240px), #0D1220;
+}}
+:root[data-sys="pf2e"][data-theme="dark"]{
+  --bg:#0D1220; --surface:#151C2E; --surface-2:#1C2439; --ink:#E4E9F5; --muted:#98A3BC; --line:#29324A;
+  --accent:#7FA3F0; --accent-ink:#0A1226; --accent-soft:#1E2B4D; --gold:#F0A640; --gold-soft:#3A2A14;
+  --bad:#F2786C; --good:#6FCB86; --map-floor:#141A2A; --grid:rgba(228,233,245,.12);
+  --rail:#0A1024; --rail-line:#050915; --rail-ink:#8E9CC0; --rail-hi:#F5C46A; --rail-on:rgba(245,196,106,.12);
+  --paper:linear-gradient(180deg, rgba(127,163,240,.08), transparent 240px), #0D1220;
+}
+:root[data-sys="pf2e"] .panel{border-top:3px solid var(--gold)}
+:root[data-sys="pf2e"] .panel>h3{text-transform:uppercase;letter-spacing:.08em;font-size:14px}
+:root[data-sys="pf2e"] .vhead h1{letter-spacing:.06em}
+:root[data-sys="pf2e"] .btn.pri{box-shadow:inset 0 -2px 0 var(--gold)}
+
+/* ================= Call of Cthulhu: Miskatonik arşivi ================= */
+:root[data-sys="coc7"]{
+  --bg:#DEDAD0; --surface:#F4F1E8; --surface-2:#EAE5D8; --ink:#1E1E1A; --muted:#5F5C50; --line:#C7C0AE;
+  --accent:#2F5D50; --accent-ink:#F4F1E8; --accent-soft:#D4E2DB; --gold:#7A5B22; --gold-soft:#EADDBF;
+  --bad:#8E1E1E; --good:#3F6B34; --map-floor:#EFEBE0; --grid:rgba(30,30,26,.15);
+  --f-display:"IM Fell English SC", Georgia, serif; --f-body:"EB Garamond", Georgia, serif; --f-num:"Special Elite", "Courier New", monospace; --r:1px;
+  --rail:#1F2B27; --rail-line:#141C19; --rail-ink:#A9BBB2; --rail-hi:#E9F1EA; --rail-on:rgba(95,191,156,.16);
+  --paper:repeating-linear-gradient(0deg, transparent 0 27px, rgba(47,93,80,.07) 27px 28px), radial-gradient(140% 100% at 50% 40%, transparent 60%, rgba(60,50,30,.18)), #DEDAD0;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="coc7"]:not([data-theme="light"]){
+  --bg:#0B0F0E; --surface:#121918; --surface-2:#18211F; --ink:#D9E3DC; --muted:#8C9C95; --line:#24302D;
+  --accent:#5FBF9C; --accent-ink:#06120E; --accent-soft:#16302A; --gold:#C9A45A; --gold-soft:#2E2716;
+  --bad:#E8766A; --good:#7EC08A; --map-floor:#101716; --grid:rgba(217,227,220,.11);
+  --rail:#070A09; --rail-line:#030504; --rail-ink:#7E918A; --rail-hi:#8FE3C3; --rail-on:rgba(95,191,156,.14);
+  --paper:radial-gradient(90% 70% at 50% 30%, rgba(95,191,156,.07), transparent 70%), #0B0F0E;
+}}
+:root[data-sys="coc7"][data-theme="dark"]{
+  --bg:#0B0F0E; --surface:#121918; --surface-2:#18211F; --ink:#D9E3DC; --muted:#8C9C95; --line:#24302D;
+  --accent:#5FBF9C; --accent-ink:#06120E; --accent-soft:#16302A; --gold:#C9A45A; --gold-soft:#2E2716;
+  --bad:#E8766A; --good:#7EC08A; --map-floor:#101716; --grid:rgba(217,227,220,.11);
+  --rail:#070A09; --rail-line:#030504; --rail-ink:#7E918A; --rail-hi:#8FE3C3; --rail-on:rgba(95,191,156,.14);
+  --paper:radial-gradient(90% 70% at 50% 30%, rgba(95,191,156,.07), transparent 70%), #0B0F0E;
+}
+:root[data-sys="coc7"] body{font-size:16px}
+:root[data-sys="coc7"] .panel{border-style:solid;box-shadow:2px 3px 0 rgba(0,0,0,.06)}
+:root[data-sys="coc7"] .panel>h3{font-size:17px;letter-spacing:.02em;border-bottom:1px dashed var(--line);padding-bottom:4px}
+:root[data-sys="coc7"] .vhead h1{font-size:28px}
+
+/* ================= Year Zero: endüstriyel (Alien, Mutant) ================= */
+:root[data-sys="yze"]{
+  --bg:#D9DBD6; --surface:#F2F3EF; --surface-2:#E6E8E2; --ink:#16181A; --muted:#545A5E; --line:#B9BEB8;
+  --accent:#B5530F; --accent-ink:#FFFFFF; --accent-soft:#F4DCC8; --gold:#7E6A12; --gold-soft:#ECE3B6;
+  --bad:#B0261B; --good:#2F7A3A; --map-floor:#EDEEEA; --grid:rgba(22,24,26,.15);
+  --f-display:"Saira Stencil One", Impact, sans-serif; --f-body:"Barlow", "Segoe UI", system-ui, sans-serif; --f-num:"Share Tech Mono", ui-monospace, monospace; --r:0px;
+  --rail:#1B1E20; --rail-line:#0F1112; --rail-ink:#9AA2A4; --rail-hi:#F5A35C; --rail-on:rgba(245,163,92,.14);
+  --paper:linear-gradient(rgba(22,24,26,.04) 1px, transparent 1px) 0 0/24px 24px, linear-gradient(90deg, rgba(22,24,26,.04) 1px, transparent 1px) 0 0/24px 24px, #D9DBD6;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="yze"]:not([data-theme="light"]){
+  --bg:#0E1011; --surface:#16191B; --surface-2:#1D2124; --ink:#E2E6E3; --muted:#8F989A; --line:#2A3033;
+  --accent:#F08A3C; --accent-ink:#1A0D03; --accent-soft:#3A2414; --gold:#D9C25A; --gold-soft:#2F2B14;
+  --bad:#F07A6E; --good:#78C48A; --map-floor:#15181A; --grid:rgba(226,230,227,.1);
+  --rail:#08090A; --rail-line:#000; --rail-ink:#7D8588; --rail-hi:#F5A35C; --rail-on:rgba(240,138,60,.14);
+  --paper:linear-gradient(rgba(226,230,227,.03) 1px, transparent 1px) 0 0/24px 24px, linear-gradient(90deg, rgba(226,230,227,.03) 1px, transparent 1px) 0 0/24px 24px, #0E1011;
+}}
+:root[data-sys="yze"][data-theme="dark"]{
+  --bg:#0E1011; --surface:#16191B; --surface-2:#1D2124; --ink:#E2E6E3; --muted:#8F989A; --line:#2A3033;
+  --accent:#F08A3C; --accent-ink:#1A0D03; --accent-soft:#3A2414; --gold:#D9C25A; --gold-soft:#2F2B14;
+  --bad:#F07A6E; --good:#78C48A; --map-floor:#15181A; --grid:rgba(226,230,227,.1);
+  --rail:#08090A; --rail-line:#000; --rail-ink:#7D8588; --rail-hi:#F5A35C; --rail-on:rgba(240,138,60,.14);
+  --paper:linear-gradient(rgba(226,230,227,.03) 1px, transparent 1px) 0 0/24px 24px, linear-gradient(90deg, rgba(226,230,227,.03) 1px, transparent 1px) 0 0/24px 24px, #0E1011;
+}
+:root[data-sys="yze"] .panel{position:relative;border-left:4px solid var(--accent)}
+:root[data-sys="yze"] .panel>h3{text-transform:uppercase;letter-spacing:.1em;font-weight:400}
+:root[data-sys="yze"] .vhead h1{text-transform:uppercase;letter-spacing:.06em;font-weight:400}
+:root[data-sys="yze"] .btn,:root[data-sys="yze"] .chip{text-transform:uppercase;letter-spacing:.04em;font-size:12.5px}
+:root[data-sys="yze"] .chip{border-radius:0}
+
+/* Forbidden Lands: toprak, deri ve yosun */
+:root[data-sys="yze"][data-yzp="forbidden"]{
+  --bg:#E2DCCB; --surface:#F7F3E8; --surface-2:#EDE6D4; --ink:#22201A; --muted:#625C4C; --line:#CDC3A8;
+  --accent:#5B4A1E; --accent-ink:#FBF6E8; --accent-soft:#E7DFC2; --gold:#7B5E12; --gold-soft:#EEDFB0; --good:#41672A; --map-floor:#F1ECDD;
+  --f-display:"Uncial Antiqua", Georgia, serif; --f-body:"Lora", Georgia, serif; --f-num:"JetBrains Mono", ui-monospace, monospace; --r:3px;
+  --rail:#3B2F17; --rail-line:#2A2110; --rail-ink:#D3C29A; --rail-hi:#FFF0C8; --rail-on:rgba(255,240,200,.13);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(80,60,20,.18)), #E2DCCB;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="yze"][data-yzp="forbidden"]:not([data-theme="light"]){
+  --bg:#13110C; --surface:#1D1A13; --surface-2:#252117; --ink:#ECE5D1; --muted:#A79D84; --line:#373022;
+  --accent:#C9A75A; --accent-ink:#17120A; --accent-soft:#332A15; --gold:#D8B24E; --gold-soft:#342A12; --good:#93C47A; --map-floor:#1C1913;
+  --rail:#0C0A06; --rail-line:#050402; --rail-ink:#A2967A; --rail-hi:#F1D58C; --rail-on:rgba(201,167,90,.15);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #13110C;
+}}
+:root[data-sys="yze"][data-yzp="forbidden"][data-theme="dark"]{
+  --bg:#13110C; --surface:#1D1A13; --surface-2:#252117; --ink:#ECE5D1; --muted:#A79D84; --line:#373022;
+  --accent:#C9A75A; --accent-ink:#17120A; --accent-soft:#332A15; --gold:#D8B24E; --gold-soft:#342A12; --good:#93C47A; --map-floor:#1C1913;
+  --rail:#0C0A06; --rail-line:#050402; --rail-ink:#A2967A; --rail-hi:#F1D58C; --rail-on:rgba(201,167,90,.15);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #13110C;
+}
+
+/* Vaesen: 19. yüzyıl İskandinav'ı, koyu şarap ve pirinç */
+:root[data-sys="yze"][data-yzp="vaesen"]{
+  --bg:#E5E0D8; --surface:#FAF7F2; --surface-2:#F0EAE1; --ink:#221A1C; --muted:#665A5C; --line:#D2C7BC;
+  --accent:#6B1E35; --accent-ink:#FBF4F0; --accent-soft:#EED7DC; --gold:#86651A; --gold-soft:#EFE0B9; --good:#3E6A3A; --map-floor:#F3EFE8;
+  --f-display:"Playfair Display SC", Georgia, serif; --f-body:"Lora", Georgia, serif; --f-num:"JetBrains Mono", ui-monospace, monospace; --r:2px;
+  --rail:#2C1219; --rail-line:#1D0A0F; --rail-ink:#CDAFB5; --rail-hi:#F2D9A0; --rail-on:rgba(242,217,160,.13);
+  --paper:radial-gradient(130% 100% at 50% 0%, transparent 55%, rgba(60,20,30,.14)), #E5E0D8;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="yze"][data-yzp="vaesen"]:not([data-theme="light"]){
+  --bg:#120D0F; --surface:#1B1417; --surface-2:#241A1E; --ink:#EEE4E4; --muted:#A8979A; --line:#372A2E;
+  --accent:#D9798F; --accent-ink:#1A0A0F; --accent-soft:#3A1C25; --gold:#D9B45A; --gold-soft:#352A14; --good:#86C08A; --map-floor:#19131A;
+  --rail:#0B0607; --rail-line:#040203; --rail-ink:#9E878C; --rail-hi:#F2D9A0; --rail-on:rgba(217,121,143,.15);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #120D0F;
+}}
+:root[data-sys="yze"][data-yzp="vaesen"][data-theme="dark"]{
+  --bg:#120D0F; --surface:#1B1417; --surface-2:#241A1E; --ink:#EEE4E4; --muted:#A8979A; --line:#372A2E;
+  --accent:#D9798F; --accent-ink:#1A0A0F; --accent-soft:#3A1C25; --gold:#D9B45A; --gold-soft:#352A14; --good:#86C08A; --map-floor:#19131A;
+  --rail:#0B0607; --rail-line:#040203; --rail-ink:#9E878C; --rail-hi:#F2D9A0; --rail-on:rgba(217,121,143,.15);
+  --paper:radial-gradient(120% 90% at 50% 0%, transparent 50%, rgba(0,0,0,.45)), #120D0F;
+}
+:root[data-sys="yze"][data-yzp="forbidden"] .panel,:root[data-sys="yze"][data-yzp="vaesen"] .panel{border-left-width:1px}
+:root[data-sys="yze"][data-yzp="forbidden"] .panel>h3,:root[data-sys="yze"][data-yzp="vaesen"] .panel>h3{text-transform:none;letter-spacing:.03em;font-size:16px}
+:root[data-sys="yze"][data-yzp="forbidden"] .vhead h1,:root[data-sys="yze"][data-yzp="vaesen"] .vhead h1{text-transform:none}
+:root[data-sys="yze"][data-yzp="forbidden"] :is(.btn,.chip),:root[data-sys="yze"][data-yzp="vaesen"] :is(.btn,.chip){text-transform:none;letter-spacing:0;font-size:14px}
+:root[data-sys="yze"][data-yzp="forbidden"] .btn.sm,:root[data-sys="yze"][data-yzp="vaesen"] .btn.sm{font-size:13px}
+:root[data-sys="yze"][data-yzp="forbidden"] .chip,:root[data-sys="yze"][data-yzp="vaesen"] .chip{border-radius:999px}
+:root[data-sys="yze"][data-yzp="vaesen"] .panel{box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--gold-soft)}
+:root[data-sys="yze"][data-yzp="forbidden"] .rail .brand .gname{font-family:var(--f-body);font-weight:700}
