@@ -395,7 +395,7 @@ input[type=color].f{padding:1px;height:32px}
 .yrow{display:flex;align-items:center;gap:8px;font-size:14px}
 .yrow .sp{flex:1}
 .yd{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:5px;font-family:var(--f-num);font-weight:700;font-style:normal;font-size:13px;padding:0 4px}
-.yd.b{background:var(--gold);color:#1b1404} .yd.s{background:var(--good);color:#06150a} .yd.g{background:var(--ink);color:var(--surface)} .yd.st{background:var(--surface);color:var(--bad);border:2px solid var(--bad)}
+.yd.b{background:var(--gold);color:#1b1404} .yd.s{background:var(--good);color:#06150a} .yd.g{background:var(--ink);color:var(--surface)} .yd.st{background:var(--surface);color:var(--bad);border:2px solid var(--bad)} .yd.neg{background:var(--bad);color:var(--surface)}
 .yfaces{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:8px 0 2px}
 .yfaces .yd{opacity:.55} .yfaces .yd.six{opacity:1;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--good)} .yfaces .yd.one{opacity:1;outline:2px solid var(--bad);outline-offset:1px}
 .tunit{font-size:14px;color:var(--muted);font-weight:500}
@@ -917,7 +917,37 @@ function parseRoll(expr){
   if(d20.length===1){ const kept=d20[0].rolls.filter((_,i)=>d20[0].keep[i]); if(kept.length===1){ if(kept[0]===20)crit="20"; else if(kept[0]===1)crit="1" } }
   return {total,detail,crit};
 }
-function d20expr(bonus){ const b=+bonus||0; const base=S.adv===1?"2d20kh1":S.adv===-1?"2d20kl1":"1d20"; return base+(b?sgn(b):"") }
+// 5e durum etkileri (SRD 5.1): karakterin kendi zarlarına avantaj, dezavantaj ya da otomatik başarısızlık. kind: atk, check, save.
+const COND5={"Kör":{atk:-1,d:"Saldırılarına dezavantaj; sana yapılan saldırılara avantaj. Görmeyi gerektiren kontroller başarısız."},"Büyülenmiş":{d:"Seni büyüleyene saldıramazsın; o sana sosyal kontrollerde avantajlıdır."},"Sağır":{d:"Duymayı gerektiren kontroller başarısız."},
+  "Korkmuş":{atk:-1,check:-1,d:"Korku kaynağını görürken kontrollerine ve saldırılarına dezavantaj; ona yaklaşamazsın."},"Tutulmuş":{d:"Hızın 0."},"Aciz":{d:"Eylem ve tepki yapamazsın."},"Görünmez":{atk:1,d:"Saldırılarına avantaj; sana yapılan saldırılara dezavantaj."},
+  "Felçli":{fail:1,d:"Aciz; Güç ve Çeviklik kurtarmaların otomatik başarısız. 1,5 m içinden isabet eden saldırılar kritik."},"Taşlaşmış":{fail:1,d:"Aciz; Güç ve Çeviklik kurtarmaların otomatik başarısız; her hasara direnç."},
+  "Zehirlenmiş":{atk:-1,check:-1,d:"Saldırılarına ve yetenek kontrollerine dezavantaj."},"Yerde":{atk:-1,d:"Saldırılarına dezavantaj; 1,5 m içinden sana yapılan saldırılara avantaj, uzaktan dezavantaj."},
+  "Kısıtlanmış":{atk:-1,dexSave:-1,d:"Hızın 0; saldırılarına ve Çeviklik kurtarmalarına dezavantaj; sana yapılan saldırılara avantaj."},"Sersemlemiş":{fail:1,d:"Aciz; Güç ve Çeviklik kurtarmaların otomatik başarısız; sana yapılan saldırılara avantaj."},
+  "Bilinçsiz":{fail:1,d:"Aciz ve yerde; Güç ve Çeviklik kurtarmaların otomatik başarısız. 1,5 m içinden isabet eden saldırılar kritik."}};
+const EXH5=["","Yetenek kontrollerine dezavantaj","Hızın yarıya iner","Saldırılarına ve kurtarmalarına dezavantaj","Azami canın yarıya iner","Hızın 0","Ölüm"];
+function condRoll(c,kind,ab){
+  const adv=[],dis=[]; let fail=null;
+  (c?.conditions||[]).forEach(n=>{ const e=COND5[n]; if(!e) return;
+    if(kind==="atk"&&e.atk) (e.atk>0?adv:dis).push(n);
+    if(kind==="check"&&e.check) dis.push(n);
+    if(kind==="save"&&ab==="dex"&&e.dexSave) dis.push(n);
+    if(kind==="save"&&e.fail&&(ab==="str"||ab==="dex")) fail=fail||n; });
+  const ex=+c?.exhaustion||0;
+  if(ex>=1&&kind==="check"||ex>=3&&(kind==="atk"||kind==="save")) dis.push(`Bitkinlik ${ex}`);
+  return {adv,dis,fail};
+}
+function d20expr(bonus,c,kind,ab){ const b=+bonus||0; let a=S.adv;
+  if(c&&kind){ const r=condRoll(c,kind,ab), up=a===1||r.adv.length>0, dn=a===-1||r.dis.length>0; a=up&&dn?0:up?1:dn?-1:0 }
+  const base=a===1?"2d20kh1":a===-1?"2d20kl1":"1d20"; return base+(b?sgn(b):"") }
+function condNote(c,kind,ab){ const r=condRoll(c,kind,ab), s=[]; if(r.adv.length) s.push("avantaj: "+r.adv.join(", ")); if(r.dis.length) s.push("dezavantaj: "+r.dis.join(", ")); return s.length?` (${s.join("; ")}${r.adv.length&&r.dis.length?"; birbirini götürür":""})`:"" }
+// Durumu hesaba katarak d20 at; otomatik başarısızlıkta zar atılmaz.
+function condList5(c){ const on=(c.conditions||[]).filter(x=>COND5[x]), ex=+c.exhaustion||0; return on.length||ex?`<ul class="zc-eff">${on.map(x=>`<li><b>${esc(x)}:</b> ${esc(COND5[x].d)}</li>`).join("")}${ex?`<li><b>Bitkinlik ${ex}:</b> ${esc(EXH5.slice(1,ex+1).join(" · "))}</li>`:""}</ul><p class="hint">Zar düğmeleri bu etkileri kendiliğinden uygular; tepsideki avantaj/dezavantajla birleşir.</p>`:"" }
+document.addEventListener("change",e=>{ if(e.target.matches?.('#main [data-k="exhaustion"]')) setTimeout(render,0) });
+function roll5(c,kind,ab,bonus,label,secret){
+  const r=condRoll(c,kind,ab);
+  if(r.fail){ pushRoll({id:uid("l"),t:Date.now(),label,expr:"",total:"✗",detail:`${r.fail}: Güç ve Çeviklik kurtarmaları otomatik başarısız`,crit:"1",secret:!!(isDM()&&(S.secret||secret))}); return }
+  roll(d20expr(bonus,c,kind,ab),label+condNote(c,kind,ab),secret);
+}
 function roll(expr,label,secret){
   let r; try{ r=parseRoll(expr) }catch(e){ showResult({label:"Hata",total:"?",detail:e.message,crit:null}); return }
   const entry={id:uid("l"),t:Date.now(),label:label||expr,expr,total:r.total,detail:r.detail,crit:r.crit,secret:!!(isDM()&&(S.secret||secret))};
@@ -1024,7 +1054,8 @@ function viewChars(){
         <div class="ds"><label class="toggle"><span class="lbl">Can zarları</span> <input class="f" style="width:70px" data-k="hitDice" value="${esc(c.hitDice)}"></label><button class="btn sm" data-act="roll-hd">Can zarı at</button></div>
         <div class="ds"><span class="lbl">Ölüm kurtarma</span><span>Başarı ${[1,2,3].map(i=>`<input type="checkbox" data-act="ds" data-t="s" data-i="${i}" ${(c.ds?.s||0)>=i?"checked":""} aria-label="Başarı ${i}">`).join("")}</span><span>Başarısız ${[1,2,3].map(i=>`<input type="checkbox" data-act="ds" data-t="f" data-i="${i}" ${(c.ds?.f||0)>=i?"checked":""} aria-label="Başarısızlık ${i}">`).join("")}</span><button class="btn sm" data-act="roll-ds">At</button></div>
       </div>
-      <div class="panel"><h3>Durumlar</h3><div class="cond">${CONDS.map(x=>`<button class="chip" data-act="cond" data-c="${x}" aria-pressed="${(c.conditions||[]).includes(x)}">${x}</button>`).join("")}</div>
+      <div class="panel"><h3>Durumlar</h3><div class="cond">${CONDS.map(x=>`<button class="chip" data-act="cond" data-c="${x}" aria-pressed="${(c.conditions||[]).includes(x)}" title="${esc(COND5[x]?.d||"")}">${x}</button>`).join("")}</div>
+        ${condList5(c)}
         <div class="ds"><span class="lbl">Bitkinlik</span><select class="f" style="width:auto" data-k="exhaustion" data-num="1">${[0,1,2,3,4,5,6].map(i=>`<option ${+c.exhaustion===i?"selected":""}>${i}</option>`).join("")}</select></div></div>
     </div>
   </div>
@@ -1507,6 +1538,15 @@ const YZE_PRESETS={
   vaesen:{name:"Vaesen",attrs:["Fizik","Hassasiyet","Mantık","Empati"],skills:[["Çeviklik",0],["Yakın Dövüş",0],["Kuvvet",0],["Tıp",1],["Menzilli Dövüş",1],["Gizlilik",1],["Araştırma",2],["Bilgi",2],["Uyanıklık",2],["İlham",3],["Manipülasyon",3],["Gözlem",3]]}
 };
 const YZE_CONDS=["Aç","Susuz","Uykusuz","Üşümüş","Panik","Kritik yara"];
+// Vaesen'de her fiziksel durum Fizik ve Hassasiyet, her zihinsel durum Mantık ve Empati zarlarına −1 verir.
+const VAESEN_CONDS=[["Bitkin","p"],["Hırpalanmış","p"],["Yaralı","p"],["Öfkeli","m"],["Korkmuş","m"],["Umutsuz","m"]];
+const yzeCondList=c=>c.preset==="vaesen"?VAESEN_CONDS.map(x=>x[0]):YZE_CONDS;
+// Karakterin durumlarından ve sürekli değiştiricisinden gelen zar değiştiricisi.
+function yzeCondMod(c,attr){ let mod=0; const why=[];
+  if(c.preset==="vaesen"){ const t=attr<2?"p":"m"; VAESEN_CONDS.forEach(([n,k])=>{ if(k===t&&(c.conds||[]).includes(n)){ mod--; why.push(n) } }) }
+  const cm=+c.condMod||0; if(cm){ mod+=cm; why.push(`sürekli ${sgn(cm)}`) }
+  return {mod,why};
+}
 function yzeApplyPreset(c,key){ const p=YZE_PRESETS[key]||YZE_PRESETS.alien; c.preset=key; c.attrs=p.attrs.map(n=>({name:n,max:3,cur:3})); c.skills=p.skills.map(([n,a])=>({name:n,attr:a,val:0})); c.useStress=!!p.stress; return c }
 function yzeNewChar(){ const def=S.games[G.id]?.yzePreset||"alien"; return yzeApplyPreset({id:uid("c"),name:"Yeni Karakter",arch:"",age:"",player:"",stress:0,xp:0,conds:[],talents:"",crits:"",notes:"",gear:[{name:"Fener",bonus:1,note:""}]},def) }
 const ab3=n=>String(n||"").slice(0,3).toLocaleUpperCase("tr");
@@ -1524,7 +1564,9 @@ function yzeSheet(c){
     <div class="panel"><h3>Beceriler <button class="btn sm" data-act="yze-addskill">+ Beceri</button></h3><div class="rowlist">${(c.skills||[]).map((s,i)=>`<div class="rl yrl"><select class="f" data-k="skills.${i}.attr" data-num="1" aria-label="Bağlı özellik">${attrs.map((a,j)=>`<option value="${j}" ${+s.attr===j?"selected":""}>${esc(ab3(a.name))}</option>`).join("")}</select><input class="f skn" data-k="skills.${i}.name" value="${esc(s.name)}" aria-label="Beceri adı"><input class="f num" type="number" min="0" max="5" data-k="skills.${i}.val" value="${esc(s.val)}" style="width:48px" aria-label="Seviye"><button class="rollb" data-act="yze-skill" data-i="${i}">At</button></div>`).join("")}</div>
       <p class="hint">At: özellik + beceri zarları, tepsideki ekipman ve stres zarlarıyla birlikte atılır.</p></div>
     <div style="display:grid;gap:14px;min-width:0">
-      <div class="panel"><h3>Durum</h3><div class="cond">${YZE_CONDS.map(x=>`<button class="chip" data-act="yze-cond" data-c="${x}" aria-pressed="${(c.conds||[]).includes(x)}">${x}</button>`).join("")}</div>
+      <div class="panel"><h3>Durum</h3><div class="cond">${yzeCondList(c).map(x=>`<button class="chip" data-act="yze-cond" data-c="${x}" aria-pressed="${(c.conds||[]).includes(x)}">${x}</button>`).join("")}</div>
+        <label class="zc-exh"><span>Sürekli değiştirici</span><input class="f num" type="number" min="-6" max="6" data-k="condMod" value="${esc(c.condMod??0)}" style="width:64px" aria-label="Sürekli zar değiştiricisi"><small style="color:var(--muted)">Kritik yara gibi kalıcı etkiler için; karakterin tüm zarlarına eklenir.</small></label>
+        ${c.preset==="vaesen"?`<p class="hint">Her fiziksel durum (Bitkin, Hırpalanmış, Yaralı) Fizik ve Hassasiyet zarlarına, her zihinsel durum (Öfkeli, Korkmuş, Umutsuz) Mantık ve Empati zarlarına −1 verir; zar düğmeleri bunu kendiliğinden uygular.</p>`:""}
         <div class="ds"><label class="toggle"><span class="lbl">Stres</span> <input class="f num" type="number" min="0" data-k="stress" value="${esc(c.stress)}" style="width:60px"></label><label class="toggle"><span class="lbl">TP</span> <input class="f num" type="number" min="0" data-k="xp" value="${esc(c.xp)}" style="width:60px"></label></div></div>
       <div class="panel"><h3>Ekipman <button class="btn sm" data-act="yze-addgear">+ Ekle</button></h3>${(c.gear||[]).map((g,i)=>`<div class="atk"><input class="f" data-k="gear.${i}.name" value="${esc(g.name)}" aria-label="Ekipman"><input class="f num" type="number" min="0" data-k="gear.${i}.bonus" value="${esc(g.bonus)}" aria-label="Bonus"><input class="f dmgf" data-k="gear.${i}.note" value="${esc(g.note)}" placeholder="Hasar, menzil, not" aria-label="Not"><span style="display:flex;gap:4px"><button class="btn sm" data-act="yze-usegear" data-i="${i}" title="Bonusu tepsideki ekipman zarına koy">Kullan</button><button class="btn sm danger" data-act="yze-delgear" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")||'<p class="hint">Ekipman yok.</p>'}</div>
     </div></div>
@@ -1545,23 +1587,25 @@ function yzeStatBlock(mo){
     <div class="stfoot"><span style="flex:1"></span><button class="btn pri" data-act="mon-place">Haritaya ekle</button><button class="btn" data-act="mon-dup">Kopyala</button><button class="btn danger" data-act="mon-del">Sil</button></div></article>`;
 }
 /* YZE zar havuzu: 6 = başarı; temel/ekipman/stres zarlarındaki 1'ler zorlamada bedel */
-const YZ={base:2,skill:1,gear:0,stress:0,label:"Zar havuzu"};
+const YZ={base:2,skill:1,gear:0,stress:0,mod:0,label:"Zar havuzu"};
 function rollN(n){ return Array.from({length:Math.max(0,Math.min(30,+n||0))},()=>rnd(6)) }
-function yzeTally(r){ const all=[...r.base,...r.skill,...r.gear,...r.stress]; return {succ:all.filter(v=>v===6).length,baneB:r.base.filter(v=>v===1).length,baneG:r.gear.filter(v=>v===1).length,baneS:r.stress.filter(v=>v===1).length} }
-function yzeRoll(base,skill,gear,stress,label,secret){
-  const r={base:rollN(base),skill:rollN(skill),gear:rollN(gear),stress:rollN(stress)};
+function yzeTally(r){ const all=[...r.base,...r.skill,...r.gear,...r.stress]; return {succ:Math.max(0,all.filter(v=>v===6).length-(r.neg||[]).filter(v=>v===6).length),negS:(r.neg||[]).filter(v=>v===6).length,baneB:r.base.filter(v=>v===1).length,baneG:r.gear.filter(v=>v===1).length,baneS:r.stress.filter(v=>v===1).length} }
+// Değiştirici beceri zarı ekler ya da çıkarır; beceri zarı sıfırın altına inerse kalan kadar eksi zar atılır, eksi zardaki her 6 bir başarıyı siler.
+function yzeRoll(base,skill,gear,stress,label,secret,mod=YZ.mod||0){
+  const sk=(+skill||0)+(+mod||0);
+  const r={base:rollN(base),skill:rollN(Math.max(0,sk)),gear:rollN(gear),stress:rollN(stress),neg:rollN(Math.max(0,-sk))};
   return yzeLog(r,label,false,secret);
 }
 function yzeLog(r,label,pushed,secret){
   const t=yzeTally(r); const f=a=>a.length?`[${a.join(",")}]`:"";
-  const e={id:uid("l"),t:Date.now(),label:label+(pushed?" (zorlandı)":""),expr:`${r.base.length}T ${r.skill.length}B ${r.gear.length}E${r.stress.length?` ${r.stress.length}S`:""}`,total:t.succ,
-    detail:`${t.succ} başarı${pushed&&(t.baneB||t.baneG)?` · bedel: ${t.baneB?t.baneB+" özellik hasarı":""}${t.baneB&&t.baneG?", ":""}${t.baneG?t.baneG+" ekipman hasarı":""}`:""}${t.baneS?` · stres zarında ${t.baneS} tane 1: panik!`:""} · T${f(r.base)} B${f(r.skill)} E${f(r.gear)}${r.stress.length?" S"+f(r.stress):""}`,
+  const e={id:uid("l"),t:Date.now(),label:label+(pushed?" (zorlandı)":""),expr:`${r.base.length}T ${r.skill.length}B ${r.gear.length}E${r.stress.length?` ${r.stress.length}S`:""}${r.neg?.length?` ${r.neg.length}Eksi`:""}`,total:t.succ,
+    detail:`${t.succ} başarı${pushed&&(t.baneB||t.baneG)?` · bedel: ${t.baneB?t.baneB+" özellik hasarı":""}${t.baneB&&t.baneG?", ":""}${t.baneG?t.baneG+" ekipman hasarı":""}`:""}${t.baneS?` · stres zarında ${t.baneS} tane 1: panik!`:""}${t.negS?` · eksi zarlar ${t.negS} başarı sildi`:""} · T${f(r.base)} B${f(r.skill)} E${f(r.gear)}${r.stress.length?" S"+f(r.stress):""}${r.neg?.length?" Eksi"+f(r.neg):""}`,
     crit:t.succ>=2?"20":t.succ===0&&(t.baneS)?"1":null,yz:r,secret:!!(isDM()&&(S.secret||secret))};
   pushRoll(e); S.lastYz=pushed?null:{r,label,secret,ctx:YZ.ctx||null}; renderTrayYze(); return e;
 }
-function yzePush(){ const L=S.lastYz; if(!L) return; YZ.ctx=null; const r={base:L.r.base.map(v=>v===6||v===1?v:rnd(6)),skill:L.r.skill.map(v=>v===6?v:rnd(6)),gear:L.r.gear.map(v=>v===6||v===1?v:rnd(6)),stress:[...L.r.stress.map(v=>v===6||v===1?v:rnd(6)),...(YZ.stress||L.r.stress.length?[rnd(6)]:[])]}; yzeLog(r,L.label,true,L.secret);
+function yzePush(){ const L=S.lastYz; if(!L) return; YZ.ctx=null; const r={base:L.r.base.map(v=>v===6||v===1?v:rnd(6)),skill:L.r.skill.map(v=>v===6?v:rnd(6)),gear:L.r.gear.map(v=>v===6||v===1?v:rnd(6)),neg:(L.r.neg||[]).map(v=>v===6?v:rnd(6)),stress:[...L.r.stress.map(v=>v===6||v===1?v:rnd(6)),...(YZ.stress||L.r.stress.length?[rnd(6)]:[])]}; yzeLog(r,L.label,true,L.secret);
   const c=L.ctx&&S.chars[L.ctx.charId]; if(c&&canEditChar(c)){ const t=yzeTally(r), at=c.attrs?.[L.ctx.attr]; const paths=[]; if(at&&t.baneB){ at.cur=Math.max(0,(+at.cur||0)-t.baneB); paths.push("attrs") } if(c.useStress){ c.stress=(+c.stress||0)+1; paths.push("stress") } if(paths.length){ save("chars",c,paths); toast(`${c.name}: ${t.baneB?at.name+" −"+t.baneB:""}${t.baneB&&c.useStress?", ":""}${c.useStress?"stres +1":""}`); if(S.view==="karakterler") render() } } }
-function diceFaces(r){ const g=(a,c)=>a.map(v=>`<i class="yd ${c} ${v===6?"six":v===1?"one":""}">${v}</i>`).join(""); return `<div class="yfaces">${g(r.base,"b")}${g(r.skill,"s")}${g(r.gear,"g")}${g(r.stress,"st")}</div>` }
+function diceFaces(r){ const g=(a,c)=>a.map(v=>`<i class="yd ${c} ${v===6?"six":v===1?"one":""}">${v}</i>`).join(""); return `<div class="yfaces">${g(r.base,"b")}${g(r.skill,"s")}${g(r.gear,"g")}${g(r.stress,"st")}${g(r.neg||[],"neg")}</div>` }
 
 /* ---------- Sistem farkındalıklı inisiyatif ---------- */
 function initForChar(ch,cb){
@@ -1596,15 +1640,16 @@ function renderTrayCoc(){
 function renderTrayYze(){
   const el=$("#trayYze"); if(!el) return;
   const row=(k,n,cls)=>`<div class="yrow"><span class="yd ${cls}">${YZ[k]}</span><span>${n}</span><span class="sp"></span><button class="btn sm" data-yz="${k}" data-d="-1" aria-label="${n} azalt">−</button><button class="btn sm" data-yz="${k}" data-d="1" aria-label="${n} artır">+</button></div>`;
-  el.innerHTML=`<div class="ypool">${row("base","Temel (özellik)","b")}${row("skill","Beceri","s")}${row("gear","Ekipman","g")}${row("stress","Stres","st")}</div>
-    <div class="exprrow"><button class="btn pri" data-yzroll="1" style="flex:1">Havuzu at · ${YZ.base+YZ.skill+YZ.gear+YZ.stress} zar</button>${S.lastYz?`<button class="btn" data-yzpush="1" title="6 ve 1 olmayan zarları yeniden at">Zorla</button>`:""}</div>
-    <p class="hint" style="margin:-4px 0 10px">${esc(YZ.label)}. Her 6 bir başarı. Zorlarsan temel ve ekipman zarlarındaki 1'ler hasar olur.</p>
+  el.innerHTML=`<div class="ypool">${row("base","Temel (özellik)","b")}${row("skill","Beceri","s")}${row("gear","Ekipman","g")}${row("stress","Stres","st")}
+    <div class="yrow"><span class="yd ${YZ.mod<0?"neg":"s"}">${sgn(YZ.mod||0)}</span><span>Değiştirici</span><span class="sp"></span><button class="btn sm" data-yz="mod" data-d="-1" aria-label="Değiştiriciyi azalt">−</button><button class="btn sm" data-yz="mod" data-d="1" aria-label="Değiştiriciyi artır">+</button></div></div>
+    <div class="exprrow"><button class="btn pri" data-yzroll="1" style="flex:1">Havuzu at · ${YZ.base+Math.abs(YZ.skill+(YZ.mod||0))+YZ.gear+YZ.stress} zar</button>${S.lastYz?`<button class="btn" data-yzpush="1" title="6 ve 1 olmayan zarları yeniden at">Zorla</button>`:""}</div>
+    <p class="hint" style="margin:-4px 0 10px">${esc(YZ.label)}. Her 6 bir başarı. Zorlarsan temel ve ekipman zarlarındaki 1'ler hasar olur. Değiştirici beceri zarı ekler ya da siler; beceri zarı yetmezse eksi zar atılır ve eksi zardaki her 6 bir başarıyı götürür.</p>
     <div class="dice">${[6,66,666].map(s=>`<button class="die" data-die="${s===6?6:s}" aria-label="${s===6?"d6":s===66?"d66":"d666"} at"><b>${s===6?"d6":s===66?"d66":"d666"}</b></button>`).join("")}<button class="die" data-die="init" aria-label="İnisiyatif kartları"><b>Kartlar</b></button></div>`;
 }
 document.addEventListener("click",e=>{
   const cm=e.target.closest("[data-cm]"); if(cm){ S.cocMod=+cm.dataset.cm; renderTrayCoc(); return }
   if(e.target.closest("[data-cpush]")){ const L=S.lastCoc; if(L){ cocRoll(L.target,L.label,L.secret,L.mod,true) } return }
-  const yz=e.target.closest("[data-yz]"); if(yz){ const k=yz.dataset.yz; YZ[k]=Math.max(0,Math.min(20,YZ[k]+(+yz.dataset.d))); renderTrayYze(); return }
+  const yz=e.target.closest("[data-yz]"); if(yz){ const k=yz.dataset.yz; YZ[k]=Math.max(k==="mod"?-6:0,Math.min(k==="mod"?6:20,(+YZ[k]||0)+(+yz.dataset.d))); renderTrayYze(); return }
   if(e.target.closest("[data-yzroll]")){ YZ.ctx=null; yzeRoll(YZ.base,YZ.skill,YZ.gear,YZ.stress,YZ.label); return }
   if(e.target.closest("[data-yzpush]")){ yzePush(); return }
 },true);
@@ -1634,10 +1679,10 @@ function sysAction(a,b,e,c,mo){
     case "cocmon-atk": { const at=mo.attacks[+b.dataset.i]; cocRoll(at.pct,`${mo.name} · ${at.name||"Saldırı"}`,true); return true }
     case "yze-preset": { const key=$("#yzePreset").value; armed(b,()=>{ yzeApplyPreset(c,key); save("chars",c,["preset","attrs","skills","useStress"]); render(); toast("Şablon uygulandı") }); return true }
     case "yze-pip": { const at=c.attrs[+b.dataset.i], j=+b.dataset.j; at.cur=j<(+at.cur||0)?j:j+1; save("chars",c,["attrs"]); render(); return true }
-    case "yze-attr": { const at=c.attrs[+b.dataset.i]; YZ.ctx={charId:c.id,attr:+b.dataset.i}; YZ.base=+at.cur||0; YZ.skill=0; YZ.label=`${nm} · ${at.name}`; yzeRoll(YZ.base,0,YZ.gear,YZ.stress,YZ.label); return true }
-    case "yze-skill": { const s=c.skills[+b.dataset.i], at=c.attrs[+s.attr]||{}; YZ.ctx={charId:c.id,attr:+s.attr}; YZ.base=+at.cur||0; YZ.skill=+s.val||0; YZ.stress=c.useStress?(+c.stress||0):YZ.stress; YZ.label=`${nm} · ${s.name}`; yzeRoll(YZ.base,YZ.skill,YZ.gear,YZ.stress,YZ.label); return true }
+    case "yze-attr": { const at=c.attrs[+b.dataset.i], cm=yzeCondMod(c,+b.dataset.i); YZ.ctx={charId:c.id,attr:+b.dataset.i}; YZ.base=+at.cur||0; YZ.skill=0; YZ.label=`${nm} · ${at.name}`; yzeRoll(YZ.base,0,YZ.gear,YZ.stress,YZ.label+(cm.why.length?` (${cm.why.join(", ")}: ${sgn(cm.mod)})`:""),false,(YZ.mod||0)+cm.mod); return true }
+    case "yze-skill": { const s=c.skills[+b.dataset.i], at=c.attrs[+s.attr]||{}; YZ.ctx={charId:c.id,attr:+s.attr}; YZ.base=+at.cur||0; YZ.skill=+s.val||0; YZ.stress=c.useStress?(+c.stress||0):YZ.stress; YZ.label=`${nm} · ${s.name}`; const cm=yzeCondMod(c,+s.attr); yzeRoll(YZ.base,YZ.skill,YZ.gear,YZ.stress,YZ.label+(cm.why.length?` (${cm.why.join(", ")}: ${sgn(cm.mod)})`:""),false,(YZ.mod||0)+cm.mod); return true }
     case "yze-addskill": (c.skills=c.skills||[]).push({name:"Yeni beceri",attr:0,val:0}); save("chars",c,["skills"]); render(); return true;
-    case "yze-cond": { const x=b.dataset.c; c.conds=c.conds||[]; c.conds=c.conds.includes(x)?c.conds.filter(y=>y!==x):[...c.conds,x]; b.setAttribute("aria-pressed",c.conds.includes(x)); save("chars",c,["conds"]); return true }
+    case "yze-cond": { const x=b.dataset.c; c.conds=c.conds||[]; c.conds=c.conds.includes(x)?c.conds.filter(y=>y!==x):[...c.conds,x]; save("chars",c,["conds"]); render(); return true }
     case "yze-addgear": (c.gear=c.gear||[]).push({name:"",bonus:1,note:""}); save("chars",c,["gear"]); render(); return true;
     case "yze-delgear": c.gear.splice(+b.dataset.i,1); save("chars",c,["gear"]); render(); return true;
     case "yze-usegear": { const g=c.gear[+b.dataset.i]; YZ.gear=+g.bonus||0; renderTrayYze(); toast(`${g.name}: ${YZ.gear} ekipman zarı tepside`); return true }
@@ -1749,11 +1794,11 @@ main.addEventListener("click",e=>{
     case "selchar": S.charId=b.dataset.id; render(); break;
     case "dupchar": { const n=clone(c); n.id=uid("c"); n.name=(c.name||"")+" (kopya)"; save("chars",n); S.charId=n.id; render(); break }
     case "delchar": armed(b,()=>{ del("chars",c.id); S.charId=null; render(); toast("Karakter silindi") }); break;
-    case "roll-ab": roll(d20expr(d.m[b.dataset.ab]),`${nm} · ${ABN[b.dataset.ab][1]} kontrolü`); break;
-    case "roll-save": roll(d20expr(d.sv[b.dataset.ab]),`${nm} · ${ABN[b.dataset.ab][1]} kurtarması`); break;
-    case "roll-skill": { const s=SKILLS.find(x=>x[0]===b.dataset.s); roll(d20expr(d.sk[s[0]]),`${nm} · ${s[1]}`); break }
-    case "roll-init": roll(d20expr(d.init),`${nm} · İnisiyatif`); break;
-    case "roll-spell": if(d.satk!=null) roll(d20expr(d.satk),`${nm} · Büyü saldırısı`); else toast("Önce büyü yeteneğini seç"); break;
+    case "roll-ab": roll5(c,"check",b.dataset.ab,d.m[b.dataset.ab],`${nm} · ${ABN[b.dataset.ab][1]} kontrolü`); break;
+    case "roll-save": roll5(c,"save",b.dataset.ab,d.sv[b.dataset.ab],`${nm} · ${ABN[b.dataset.ab][1]} kurtarması`); break;
+    case "roll-skill": { const s=SKILLS.find(x=>x[0]===b.dataset.s); roll5(c,"check",s[2],d.sk[s[0]],`${nm} · ${s[1]}`); break }
+    case "roll-init": roll5(c,"check","dex",d.init,`${nm} · İnisiyatif`); break;
+    case "roll-spell": if(d.satk!=null) roll5(c,"atk",null,d.satk,`${nm} · Büyü saldırısı`); else toast("Önce büyü yeteneğini seç"); break;
     case "skillprof": { const k=b.dataset.s; c.skills=c.skills||{}; c.skills[k]=((c.skills[k]||0)+1)%3; b.dataset.v=c.skills[k]; save("chars",c,["skills."+k]); updateDerived(); break }
     case "dmg": case "heal": { const amt=Math.max(0,+$("#hpAmt").value||0); if(!amt){toast("Önce miktarı yaz");$("#hpAmt").focus();break}
       if(a==="dmg"){ let r=amt; const tmp=+c.hpTemp||0; const u=Math.min(tmp,r); c.hpTemp=tmp-u; r-=u; c.hp=Math.max(0,(+c.hp||0)-r); if(c.hp===0) toast(`${nm} 0 CP'ye düştü — ölüm kurtarmaları başlar`) }
@@ -1766,10 +1811,10 @@ main.addEventListener("click",e=>{
       if(c.ds.s>=3) lab+=" · Stabil"; if(c.ds.f>=3) lab+=" · Öldü";
       const entry={id:uid("l"),t:Date.now(),label:`${nm} · Ölüm kurtarması`,expr:"1d20",total:r,detail:lab,crit:r===20?"20":r===1?"1":null}; pushRoll(entry); save("chars",c,["ds","hp"]); render(); break }
     case "ds": { const t=b.dataset.t,i=+b.dataset.i; c.ds=c.ds||{s:0,f:0}; c.ds[t]=b.checked?i:i-1; save("chars",c,["ds"]); render(); break }
-    case "cond": { const x=b.dataset.c; c.conditions=c.conditions||[]; c.conditions=c.conditions.includes(x)?c.conditions.filter(y=>y!==x):[...c.conditions,x]; b.setAttribute("aria-pressed",c.conditions.includes(x)); save("chars",c,["conditions"]); break }
+    case "cond": { const x=b.dataset.c; c.conditions=c.conditions||[]; c.conditions=c.conditions.includes(x)?c.conditions.filter(y=>y!==x):[...c.conditions,x]; save("chars",c,["conditions"]); render(); break }
     case "addatk": (c.attacks=c.attacks||[]).push({name:"",bonus:"",dmg:""}); save("chars",c,["attacks"]); render(); break;
     case "delatk": c.attacks.splice(+b.dataset.i,1); save("chars",c,["attacks"]); render(); break;
-    case "roll-atk": { const at=c.attacks[+b.dataset.i]; roll(d20expr(atkBonus(at.bonus)),`${nm} · ${at.name||"Saldırı"}`); break }
+    case "roll-atk": { const at=c.attacks[+b.dataset.i]; roll5(c,"atk",null,atkBonus(at.bonus),`${nm} · ${at.name||"Saldırı"}`); break }
     case "roll-dmg": { const at=c.attacks[+b.dataset.i]; const ex=dmgExpr(at.dmg,e.shiftKey); if(!ex){toast("Hasar alanına zar yaz: 1d8+3");break} roll(ex,`${nm} · ${at.name||"Saldırı"} hasarı${e.shiftKey?" (kritik)":""}`); break }
     case "slot": { const s=c.slots[+b.dataset.i], j=+b.dataset.j; s.used=j<s.used?j:j+1; save("chars",c,["slots"]); render(); break }
     /* notlar */
