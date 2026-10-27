@@ -2459,7 +2459,7 @@ document.addEventListener("keydown",e=>{ if(!G.id||S.view!=="harita"||editing()|
 function renderDmbar(){ const el=$("#dmbar"); if(!el) return; el.hidden=G.role!=="dm"; const vb=$$("[data-vm]",el); if(vb.length===2){ vb[0].textContent=gmT()+" görünümü"; vb[1].textContent="Oyuncu görünümü" } $$("[data-vm]",el).forEach(b=>b.setAttribute("aria-pressed",(b.dataset.vm==="player")===!!S.asPlayer)); $("#secretWrap").hidden=!isDM() }
 window.addEventListener("resize",()=>{ if(innerWidth>1000) $("#tray").classList.remove("open") });
 if(window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>drawMap());
-new MutationObserver(()=>drawMap()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+new MutationObserver(()=>drawMap()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme","data-sys","data-yzp"]});
 
 init();
 
