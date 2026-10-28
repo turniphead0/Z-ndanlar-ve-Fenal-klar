@@ -282,3 +282,4 @@
 .mb-name{height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;min-width:140px}
 .mb-chk{display:inline-flex;align-items:center;gap:6px;font-size:14px}
 .kat-hint{margin:0 0 0 8px;font-size:13px}
+.mb-num{min-width:0;width:64px}
