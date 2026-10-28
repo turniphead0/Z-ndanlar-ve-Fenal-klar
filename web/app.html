@@ -1264,6 +1264,8 @@ function drawMap(){
       const k=Math.max(2,r*.14), ir=r-k, w=ti.naturalWidth, h=ti.naturalHeight, c=Math.min(w,h);
       ctx.save(); ctx.beginPath(); ctx.arc(px,py,ir,0,Math.PI*2); ctx.clip(); ctx.drawImage(ti,(w-c)/2,(h-c)/2,c,c,px-ir,py-ir,ir*2,ir*2); ctx.restore() }
     ctx.lineWidth=t.id===S.selTok?3:1.5; ctx.strokeStyle=t.id===S.selTok?cssVar("--gold"):"rgba(0,0,0,.45)"; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.stroke();
+    if(t.dir!=null){ const a=[-Math.PI/2,0,Math.PI/2,Math.PI][+t.dir]||0, ca=Math.cos(a), sa=Math.sin(a), q=Math.max(4,r*.3); // birinci şahısta baktığı yön
+      ctx.fillStyle=t.color||"#555"; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(px+ca*(r+q),py+sa*(r+q)); ctx.lineTo(px+ca*r-sa*q,py+sa*r+ca*q); ctx.lineTo(px+ca*r+sa*q,py+sa*r-ca*q); ctx.closePath(); ctx.fill(); ctx.stroke() }
     const lab=t.label||"?"; const ini=/\d$/.test(lab)?(lab[0]+lab.match(/\d+$/)[0]):lab.split(/\s+/).map(w=>w[0]).join("").slice(0,2);
     if(!ti){ ctx.fillStyle="#fff"; ctx.font=`700 ${Math.max(10,Math.round(r*.8))}px ${cssVar("--f-body")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(ini.toLocaleUpperCase("tr"),px,py+1) }
     else if(/\d$/.test(lab)){ const n=lab.match(/\d+$/)[0], br=Math.max(7,r*.32), bx=px+r*.7, by=py-r*.7; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fillStyle=t.color||"#555"; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle="#fff"; ctx.stroke();
