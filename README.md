@@ -101,3 +101,14 @@ Her DM'in gizli verisi (`data/users/<kişi>/…`: canavarlar, DM notları, senar
 ## Lisans
 
 MIT
+
+## Hazır maceralar
+
+Senaryo bölümündeki **Hazır maceralar** listesi, açık lisanslı başlangıç maceralarının Türkçe çevirilerini tek tıkla masaya kurar: kılavuz, modüller, NPC'ler, el notları, haritalar, canavar kartları ve hazır karakterler. Oyuncular hazır karakterleri Karakterler bölümünde sahiplenebilir.
+
+| Macera | Sistem | Özgün eser | Lisans |
+| --- | --- | --- | --- |
+| Sınav Adası | D&D 5e (4 × 5. seviye) | [Island of Trials](https://kreigd.itch.io/island-of-trials), Kreig Durham | CC BY 4.0 |
+| Pusudaki Korku | Monster of the Week | [The Fear that lurks](https://qui-revient-de-loin.itch.io/the-fear-that-lurks-a-mystery-for-the-road), Qui Revient de Loin | CC BY-NC-SA 4.0 (çeviri de aynı lisansla; satılamaz) |
+
+Macera dosyaları `web/ext/maceralar/` içindedir ve `node tools/maceralar/ada.js` ile `node tools/maceralar/korku.js` tarafından üretilir. Her maceranın son sayfasında atıf, lisans ve yapılan değişiklikler yazar. Özgün PDF'lerdeki açık lisanslı olmayan görseller dahil edilmemiştir.

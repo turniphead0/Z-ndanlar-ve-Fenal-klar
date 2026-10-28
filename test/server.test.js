@@ -99,3 +99,22 @@ test("PF2e verisi: yuvalar, yeterlilik ve büyüler", () => {
   for (const c of p.CLASSES) assert.equal(c.r.length, 7, c.k);
   delete global.window;
 });
+
+test("hazır maceralar: katalogdaki her macera dosyası geçerli ve tutarlı", () => {
+  global.window = {}; global.document = { addEventListener() {} };
+  require("../web/ext/maceralar.js");
+  const list = window.MACERA_LIST;
+  assert.ok(list.length >= 2);
+  for (const m of list) {
+    assert.ok(m.credit && m.license && m.licenseUrl && m.source, m.id + " atıf eksik");
+    const d = JSON.parse(fs.readFileSync(path.join(__dirname, "../web/ext/maceralar", m.id + ".json"), "utf8"));
+    assert.ok(d.pages.length > 0 && d.scenario.guide.premise, m.id);
+    assert.ok(/LİSANS/.test(d.pages[d.pages.length - 1]), m.id + " son sayfa atıf olmalı");
+    for (const col of ["chars", "monsters", "maps", "notes", "dmnotes"]) for (const [id, o] of Object.entries(d[col] || {})) assert.equal(id, o.id, `${m.id} ${col} ${id}`);
+    for (const n of d.scenario.npcs) if (n.cardId) assert.ok(d.monsters[n.cardId], `${m.id} kart yok: ${n.cardId}`);
+    for (const x of d.scenario.maps) assert.ok(d.maps[x.mapId], `${m.id} harita yok: ${x.mapId}`);
+    for (const h of d.scenario.handouts) if (h.img) assert.ok(fs.existsSync(path.join(__dirname, "../web", h.img)), h.img);
+    for (const mp of Object.values(d.maps)) for (const t of Object.values(mp.tokens)) if (t.monsterId) assert.ok(d.monsters[t.monsterId], t.monsterId);
+  }
+  delete global.window; delete global.document;
+});

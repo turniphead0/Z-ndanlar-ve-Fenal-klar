@@ -249,3 +249,10 @@
 .mw-count label.done span{text-decoration:line-through;color:var(--muted)}
 .mw-tray .exprrow{margin:8px 0}
 @media (max-width:720px){ .mw-cols{grid-template-columns:1fr} .mw-gear{grid-template-columns:1fr 80px;} .mw-count label{grid-template-columns:24px 1fr} .mw-count label input{grid-column:1/-1} }
+
+/* ---------- Hazır maceralar ---------- */
+.mc-wrap{margin-top:18px}
+.mc-card p{margin:6px 0}
+.mc-credit a{color:var(--accent)}
+.pgrid.mc-one{grid-template-columns:1fr}
+.pgrid.mc-one .ptext{max-height:none;font-family:var(--f-body);font-size:15px;white-space:pre-wrap}
