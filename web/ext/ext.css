@@ -273,3 +273,12 @@
 .fp-help{position:absolute;left:16px;bottom:12px;margin:0;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.55);color:#fff;font-family:var(--f-body);font-size:13px}
 .fp-tools{display:contents}
 @media (max-width:600px){.fp-mini{width:110px;height:110px}.fp-help{display:none}}
+.fp-stairs{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);display:flex;gap:8px}
+.fp-stairs .btn{font-weight:700}
+
+/* mobilya fırçası ve katlar */
+.mb-bar{flex-wrap:wrap;flex-basis:100%}
+.mb-it img{width:20px;height:20px;vertical-align:-5px;margin-right:4px}
+.mb-name{height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;min-width:140px}
+.mb-chk{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.kat-hint{margin:0 0 0 8px;font-size:13px}
