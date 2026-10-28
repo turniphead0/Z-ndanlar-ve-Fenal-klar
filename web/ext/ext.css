@@ -216,3 +216,36 @@
 .zc-eff{margin:10px 0 4px;padding-left:18px;font-size:13px;display:grid;gap:3px}
 .zc-eff b{color:var(--bad)}
 .zc-exh{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:13.5px}
+
+/* ---------- Monster of the Week ---------- */
+.motw .mw-id{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.mw-rat{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.mw-r{display:grid;grid-template-columns:52px 1fr 54px;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px}
+.mw-r small{display:block;color:var(--muted);font-size:12px}
+.mw-r .score{text-align:center}
+.mw-rb{height:46px;font-family:var(--f-num);font-size:22px;font-weight:700;border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:var(--r);cursor:pointer}
+.mw-rb:hover{background:var(--accent);color:var(--accent-ink)}
+.mw-cols{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.mw-moves{display:grid;gap:8px}
+.mw-mv{display:grid;grid-template-columns:auto auto 1fr;gap:4px 8px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px}
+.mw-mv:last-child{border-bottom:0}
+.mw-mv p{grid-column:1/-1;margin:0;font-size:13px;color:var(--muted)}
+.mw-mv .mw-adv{justify-self:end;font-size:12px}
+.mw-rk{color:var(--muted);font-size:12px}
+.mw-track{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.mw-box{width:24px;height:24px;border:2px solid var(--accent);background:var(--surface);border-radius:3px;cursor:pointer;padding:0}
+.mw-box.on{background:var(--accent)}
+.mw-box.harm.on{background:var(--bad);border-color:var(--bad)}
+.mw-box.luck.on{background:var(--gold);border-color:var(--gold)}
+.mw-skull{font-size:18px;color:var(--bad);margin-left:4px}
+.mw-bad{color:var(--bad)}
+.mw-arm{display:flex;align-items:center;gap:6px}
+.mw-fw{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mw-gear{display:grid;grid-template-columns:minmax(0,1.2fr) 86px minmax(0,1.5fr) auto auto;gap:6px;align-items:center;margin-bottom:6px}
+.mw-gh{display:flex;align-items:center;gap:4px} .mw-gh input{width:52px;text-align:center}
+.mw-atk{grid-template-columns:minmax(0,1.2fr) 60px minmax(0,1fr) auto}
+.mw-count{display:grid;gap:6px}
+.mw-count label{display:grid;grid-template-columns:24px 120px 1fr;gap:8px;align-items:center}
+.mw-count label.done span{text-decoration:line-through;color:var(--muted)}
+.mw-tray .exprrow{margin:8px 0}
+@media (max-width:720px){ .mw-cols{grid-template-columns:1fr} .mw-gear{grid-template-columns:1fr 80px;} .mw-count label{grid-template-columns:24px 1fr} .mw-count label input{grid-column:1/-1} }
