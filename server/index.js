@@ -55,8 +55,8 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "tema"];
-  const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "tema"];
+  const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
     res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
@@ -69,7 +69,7 @@ function createServer(opts = {}) {
     try {
       if (req.method === "GET" && (p === "/" || p === "/index.html")) return send(res, 200, appHtml(), "text/html; charset=utf-8");
       if (req.method === "GET" && p === "/shim.js") return send(res, 200, fs.readFileSync(path.join(WEB, "shim.js")), "text/javascript; charset=utf-8");
-      if (req.method === "GET" && /^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p)) {
+      if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p))) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
