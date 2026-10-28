@@ -167,6 +167,8 @@ input.f:focus,select.f:focus,textarea.f:focus{border-color:var(--accent);outline
 .tok{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-size:14px}
 .tok:last-child{border-bottom:0}
 .tok .dot{width:16px;height:16px;border-radius:50%;flex:none}
+img.dot{width:22px!important;height:22px!important;object-fit:cover;border:2px solid;box-sizing:border-box}
+.tokimg{display:flex;gap:10px;align-items:center}.tokimg img,.tokimg .dot{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--line)}
 .tok button.nm{flex:1;text-align:left;background:none;border:0;padding:0}
 .tok[aria-current="true"] button.nm{font-weight:700;color:var(--accent)}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -554,7 +556,7 @@ input[type=color].f{padding:1px;height:32px}
   </aside>
 </div>
 <button class="btn pri trayfab" id="trayFab">Zar tepsisi</button>
-<input type="file" id="bgFile" accept="image/*" hidden>
+<input type="file" id="bgFile" accept="image/*" hidden><input type="file" id="tokFile" accept="image/*" hidden>
 
 <script>
 const SAMPLE = {"chars": {"c-thalia": {"id": "c-thalia", "name": "Thalia Rüzgârgülü", "cls": "Korucu (Ranger)", "level": 4, "race": "Orman Elfi", "bg": "Yabani (Outlander)", "align": "Kaotik İyi", "player": "Örnek karakter", "ab": {"str": 12, "dex": 17, "con": 14, "int": 10, "wis": 15, "cha": 8}, "saves": {"str": true, "dex": true}, "skills": {"stealth": 1, "survival": 1, "perception": 1, "nature": 1}, "ac": 15, "initBonus": 0, "speed": "35 ft", "hpMax": 36, "hp": 29, "hpTemp": 0, "hitDice": "4d10", "ds": {"s": 0, "f": 0}, "insp": false, "exhaustion": 0, "conditions": [], "attacks": [{"name": "Uzun yay", "bonus": "+7", "dmg": "1d8+3 delici"}, {"name": "Kısa kılıç", "bonus": "+7", "dmg": "1d6+3 delici"}], "spellAb": "wis", "slots": [{"max": 3, "used": 1}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}], "features": "Favori Düşman: Goblinler\nDoğal Kaşif: Orman\nSavaş Stili: Okçuluk (+2 menzilli saldırı)\nAvcının Hedefi (Hunter's Mark)", "spells": "1. seviye: Hunter's Mark, Cure Wounds, Fog Cloud", "inventory": "Uzun yay + 40 ok\nKısa kılıç ×2\nDeri zırh\nKaşif çantası\nAvcı tuzağı", "coins": {"cp": 0, "sp": 14, "ep": 0, "gp": 32, "pp": 0}, "updated": 1792743359255}, "c-borin": {"id": "c-borin", "name": "Borin Demirsakal", "cls": "Rahip (Cleric) — Yaşam", "level": 4, "race": "Tepe Cücesi", "bg": "Yardımcı (Acolyte)", "align": "Yasal İyi", "player": "Örnek karakter", "ab": {"str": 14, "dex": 10, "con": 15, "int": 11, "wis": 17, "cha": 12}, "saves": {"wis": true, "cha": true}, "skills": {"medicine": 1, "religion": 1, "insight": 1, "history": 1}, "ac": 18, "initBonus": 0, "speed": "25 ft", "hpMax": 35, "hp": 35, "hpTemp": 5, "hitDice": "4d8", "ds": {"s": 0, "f": 0}, "insp": true, "exhaustion": 0, "conditions": [], "attacks": [{"name": "Savaş çekici", "bonus": "+4", "dmg": "1d8+2 ezici"}, {"name": "Kutsal Alev (DEX kurtarma, ZK 13)", "bonus": "", "dmg": "1d8 ışıltı"}], "spellAb": "wis", "slots": [{"max": 4, "used": 2}, {"max": 3, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}], "features": "Kutsal Kanal (1/dinlenme): Ölümsüzleri Kovma, Yaşamı Koru\nİyileştirme Müridi: iyileştirme büyülerine +2+büyü seviyesi\nKaranlıkta görüş 60 ft", "spells": "Cantrip: Sacred Flame, Guidance, Spare the Dying\n1: Bless, Cure Wounds, Healing Word\n2: Lesser Restoration, Spiritual Weapon", "inventory": "Savaş çekici\nZincir zırh + kalkan\nKutsal sembol\nRahip çantası", "coins": {"cp": 20, "sp": 5, "ep": 0, "gp": 18, "pp": 1}, "updated": 1792743358255}}, "notes": {"n-1": {"id": "n-1", "title": "Oturum 3 — Eski Değirmen", "cat": "Oturum", "pinned": false, "updated": 1792743354255, "body": "Grup değirmene gece vardı. Bodrumda goblin izleri bulundu.\nThalia iki goblini fark etti (Algı 17).\nBorin yaralı köylüyü iyileştirdi.\n\nSonraki oturum: değirmenin altındaki tünel."}, "n-2": {"id": "n-2", "title": "Usta Varkas", "cat": "NPC", "pinned": false, "updated": 1792743352255, "body": "Değirmenci. Gergin, bir şey saklıyor.\nGoblinlere tahıl veriyor çünkü kızı rehin.\nSes: alçak, hızlı konuşuyor."}, "n-3": {"id": "n-3", "title": "Sisli Bataklık geçidi", "cat": "Mekan", "pinned": false, "updated": 1792743350255, "body": "Zorlu arazi. Her saat DC 12 Hayatta Kalma kontrolü, başarısızlıkta yol kaybı.\nGece sis: görüş 30 ft."}, "n-4": {"id": "n-4", "title": "Kayıp kervan", "cat": "Görev", "pinned": true, "updated": 1792743356255, "body": "Ödül: 150 gp (Tüccar loncası).\nKervan 6 gün önce bataklık yolunda kayboldu.\nİpucu: değirmendeki goblinlerin elinde lonca mührü var."}}, "maps": {"m-degirmen": {"id": "m-degirmen", "name": "Eski Değirmen", "cols": 20, "rows": 14, "cells": {"3,2": "wall", "3,10": "wall", "4,2": "wall", "4,10": "wall", "5,2": "wall", "5,10": "wall", "6,2": "wall", "6,10": "wall", "7,2": "wall", "7,10": "door", "8,2": "wall", "8,10": "wall", "9,2": "wall", "9,10": "wall", "10,2": "wall", "10,10": "wall", "11,2": "wall", "11,10": "wall", "12,2": "wall", "12,10": "wall", "3,3": "wall", "12,3": "wall", "3,4": "wall", "12,4": "wall", "3,5": "wall", "12,5": "wall", "3,6": "wall", "12,6": "door", "3,7": "wall", "12,7": "wall", "3,8": "wall", "12,8": "wall", "3,9": "wall", "12,9": "wall", "16,0": "water", "17,0": "water", "16,1": "water", "17,1": "water", "16,2": "water", "17,2": "water", "16,3": "water", "17,3": "water", "16,4": "water", "17,4": "water", "16,5": "water", "17,5": "water", "16,6": "water", "17,6": "water", "16,7": "water", "17,7": "water", "16,8": "water", "17,8": "water", "16,9": "water", "17,9": "water", "16,10": "water", "17,10": "water", "16,11": "water", "17,11": "water", "16,12": "water", "17,12": "water", "16,13": "water", "17,13": "water", "4,3": "rough", "5,3": "rough", "4,4": "rough", "10,8": "rough", "11,8": "rough", "11,9": "rough", "14,4": "rough", "14,5": "rough", "15,5": "rough", "13,11": "rough", "14,12": "rough", "10,4": "stairs", "5,9": "trap", "0,0": "tree", "1,0": "tree", "0,1": "tree", "18,0": "tree", "19,1": "tree", "19,0": "tree", "18,13": "tree", "19,12": "tree"}, "bg": "", "updated": 1792743359255, "tokens": {"t1": {"id": "t1", "label": "Thalia", "color": "#2f8f86", "x": 6, "y": 12, "size": 1, "charId": "c-thalia"}, "t2": {"id": "t2", "label": "Borin", "color": "#4a6fb0", "x": 8, "y": 12, "size": 1, "charId": "c-borin"}, "t3": {"id": "t3", "label": "Goblin 1", "color": "#b3402e", "x": 9, "y": 5, "size": 1, "hp": 7, "monsterId": "mo-goblin", "hpMax": 7}, "t4": {"id": "t4", "label": "Goblin 2", "color": "#b3402e", "x": 5, "y": 7, "size": 1, "hp": 4, "monsterId": "mo-goblin", "hpMax": 7}}, "labels": {"lb1": {"id": "lb1", "x": 7, "y": 1, "text": "Değirmen", "removed": false}, "lb2": {"id": "lb2", "x": 16, "y": 12, "text": "Dere", "removed": false}}, "fog": {}, "fogOn": false}}, "log": {"entries": [{"id": "l1", "t": 1792743299255, "label": "Thalia · Algı", "expr": "1d20+4", "total": 17, "detail": "[13] +4", "crit": null}, {"id": "l2", "t": 1792743329255, "label": "Borin · Cure Wounds", "expr": "1d8+5", "total": 11, "detail": "[6] +5", "crit": null}]}, "monsters": {"mo-goblin": {"id": "mo-goblin", "name": "Goblin", "meta": "Küçük insansı (goblinoid), nötr kötü", "ac": 15, "acNote": "(deri zırh, kalkan)", "hpMax": 7, "hpDice": "2d6", "speed": "30 ft", "cr": "1/4", "size": 1, "ab": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}, "saves": "", "skills": "Gizlilik +6", "senses": "Karanlıkta görüş 60 ft, Pasif Algı 9", "languages": "Ortak, Goblince", "traits": "Çevik Kaçış: Her turunda bonus eylemle Geri Çekilme ya da Saklanma eylemi yapabilir.", "attacks": [{"name": "Pala", "bonus": "+4", "dmg": "1d6+2 kesici"}, {"name": "Kısa yay (80/320 ft)", "bonus": "+4", "dmg": "1d6+2 delici"}], "notes": "Değirmenci Varkas'ın kızını bodrumdaki tünelde tutuyorlar. Yarı CP'nin altına düşünce kaçmaya çalışırlar.", "updated": 1792740000000}}};
@@ -718,6 +720,7 @@ function members(g){ const ids=new Set(); Object.entries(g.dms||{}).forEach(([k,
 function myCharId(){ const g=S.games[G.id]; return g&&g.players&&g.players[ME.id]&&g.players[ME.id].charId||Object.values(S.chars).find(c=>c.owner===ME.id)?.id||null }
 const canEditChar=c=>!!c&&(isDM()||(!!c.owner&&c.owner===ME.id));
 const ownsTok=t=>isDM()||(!!t.charId&&S.chars[t.charId]?.owner===ME.id);
+const tokImg=t=>(t.charId&&S.chars[t.charId]?.portrait)||t.img||"";
 let gameUnsubs=[];
 function subscribeGame(){
   try{ auStopAll() }catch(e){}
@@ -1169,10 +1172,12 @@ function viewMap(){
         :t.hpMax!==undefined&&t.hpMax!==""&&t.hpMax!==null?(dm?`<label><span class="lbl">CP</span><input class="f num" type="number" data-tk="hp" value="${esc(t.hp)}"></label><label><span class="lbl">Azami</span><input class="f num" type="number" data-tk="hpMax" value="${esc(t.hpMax)}"></label>
           <div class="w2 hpact" style="margin:0"><input class="f num" type="number" id="tokAmt" min="0" placeholder="Miktar" aria-label="Miktar"><button class="btn sm danger" data-act="tdmg">Hasar</button><button class="btn sm" data-act="theal">İyileştir</button></div>`:`<p class="w2" style="margin:0;font-size:13px">Durum: <b>${hpStatus(t.hp,t.hpMax)}</b></p>`)
         :dm?`<label class="w2"><span class="lbl">CP / not</span><input class="f" data-tk="hp" value="${esc(t.hp||"")}" placeholder="7/7"></label>`:""}
+      <div class="w2 tokimg">${tokImg(t)?`<img src="${esc(tokImg(t))}" alt="">`:`<span class="dot" style="background:${esc(t.color)}"></span>`}<div><button class="btn sm" data-act="tokimg">${tokImg(t)?"Resmi değiştir":"Resim ekle"}</button>${tokImg(t)?` <button class="btn sm" data-act="tokimgdel">Kaldır</button>`:""}
+        <p class="hint" style="margin:4px 0 0">${t.charId?"Karakterin portresi olur; bütün haritalardaki jetonlarında görünür.":t.monsterId?"Canavar kartına da kaydedilir; bu karttan konan bütün jetonlarda görünür.":"Kare olmayan resimler ortadan kırpılır."}</p></div></div>
       ${mon&&dm?`<button class="btn sm w2" data-act="openmon" data-id="${mon.id}">Canavar kartını aç</button>`:""}
       <button class="btn sm danger w2" data-act="deltok">Jetonu kaldır</button>`}</div></div>`:""}
     <div class="panel"><h3>Jetonlar</h3>
-      ${visToks(m).map(x=>`<div class="tok" aria-current="${x.id===S.selTok}"><span class="dot" style="background:${esc(x.color)}"></span><button class="nm" data-act="seltok" data-id="${x.id}">${esc(x.label)}${dm&&tokFogged(m,x)?' <small class="fogtag">sisde</small>':""}</button><span class="num" style="color:var(--muted);font-size:12px">${tokHp(x)}</span></div>`).join("")||`<p style="color:var(--muted);margin:0;font-size:14px">Jeton yok.</p>`}
+      ${visToks(m).map(x=>`<div class="tok" aria-current="${x.id===S.selTok}">${tokImg(x)?`<img class="dot" src="${esc(tokImg(x))}" alt="" style="border-color:${esc(x.color)}">`:`<span class="dot" style="background:${esc(x.color)}"></span>`}<button class="nm" data-act="seltok" data-id="${x.id}">${esc(x.label)}${dm&&tokFogged(m,x)?' <small class="fogtag">sisde</small>':""}</button><span class="num" style="color:var(--muted);font-size:12px">${tokHp(x)}</span></div>`).join("")||`<p style="color:var(--muted);margin:0;font-size:14px">Jeton yok.</p>`}
       ${ro?"":`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${dm?`<button class="btn sm" data-act="addtok">+ NPC jetonu</button>`:""}<button class="btn sm" data-act="addchars">${dm?"+ Karakterler":"+ Karakterimi ekle"}</button>${dm?`<button class="btn sm" data-nav="savas">Canavar ekle →</button>`:""}</div>`}
     </div>
     ${dm?`<div class="panel"><h3>Sis <span class="dmtag">DM</span></h3>
@@ -1254,9 +1259,15 @@ function drawMap(){
     const px=dr?dr.px:rd?(rd.x+sz/2)*s:(t.x+sz/2)*s, py=dr?dr.py:rd?(rd.y+sz/2)*s:(t.y+sz/2)*s, r=sz*s/2-3;
     if(act.has(t.id)){ ctx.globalAlpha=1; ctx.strokeStyle=cssVar("--gold"); ctx.lineWidth=3; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.arc(px,py,r+5,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]) }
     ctx.globalAlpha=rd?.75:hid?.55:1; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=t.color||"#555"; ctx.fill();
-    ctx.lineWidth=t.id===S.selTok?3:1.5; ctx.strokeStyle=t.id===S.selTok?cssVar("--gold"):"rgba(0,0,0,.45)"; ctx.stroke();
-    ctx.fillStyle="#fff"; ctx.font=`700 ${Math.max(10,Math.round(r*.8))}px ${cssVar("--f-body")}`; ctx.textAlign="center"; ctx.textBaseline="middle";
-    const lab=t.label||"?"; const ini=/\d$/.test(lab)?(lab[0]+lab.match(/\d+$/)[0]):lab.split(/\s+/).map(w=>w[0]).join("").slice(0,2); ctx.fillText(ini.toLocaleUpperCase("tr"),px,py+1);
+    const ti=getImg(tokImg(t));
+    if(ti){ // resim: daire içine kırpılır, jeton rengi kenarlıkta kalır
+      const k=Math.max(2,r*.14), ir=r-k, w=ti.naturalWidth, h=ti.naturalHeight, c=Math.min(w,h);
+      ctx.save(); ctx.beginPath(); ctx.arc(px,py,ir,0,Math.PI*2); ctx.clip(); ctx.drawImage(ti,(w-c)/2,(h-c)/2,c,c,px-ir,py-ir,ir*2,ir*2); ctx.restore() }
+    ctx.lineWidth=t.id===S.selTok?3:1.5; ctx.strokeStyle=t.id===S.selTok?cssVar("--gold"):"rgba(0,0,0,.45)"; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.stroke();
+    const lab=t.label||"?"; const ini=/\d$/.test(lab)?(lab[0]+lab.match(/\d+$/)[0]):lab.split(/\s+/).map(w=>w[0]).join("").slice(0,2);
+    if(!ti){ ctx.fillStyle="#fff"; ctx.font=`700 ${Math.max(10,Math.round(r*.8))}px ${cssVar("--f-body")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(ini.toLocaleUpperCase("tr"),px,py+1) }
+    else if(/\d$/.test(lab)){ const n=lab.match(/\d+$/)[0], br=Math.max(7,r*.32), bx=px+r*.7, by=py-r*.7; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fillStyle=t.color||"#555"; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle="#fff"; ctx.stroke();
+      ctx.fillStyle="#fff"; ctx.font=`700 ${Math.round(br*1.1)}px ${cssVar("--f-body")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(n,bx,by+.5) }
     let p=null; if(t.charId&&S.chars[t.charId]){ const H=charHp(S.chars[t.charId]); p=pct(H.hp,H.max)/100 } else if(dm&&t.hpMax!==undefined&&t.hpMax!==""&&t.hpMax!==null) p=pct(t.hp,t.hpMax)/100;
     if(p!==null){ ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(px-r,py+r-2,r*2,4); ctx.fillStyle=p<=.25?cssVar("--bad"):p<=.5?cssVar("--gold"):cssVar("--good"); ctx.fillRect(px-r,py+r-2,r*2*p,4) }
   }
@@ -1834,6 +1845,8 @@ main.addEventListener("click",e=>{
     case "undo": undo(-1); break;
     case "redo": undo(1); break;
     case "seltok": S.selTok=b.dataset.id; S.selLab=null; render(); break;
+    case "tokimg": $("#tokFile").click(); break;
+    case "tokimgdel": { const m=curMap(); const t=m&&m.tokens[S.selTok]; if(t) setTokImg(m,t,""); break }
     case "deltok": { const m=curMap(); const t=m.tokens[S.selTok]; if(t){ t.removed=true; save("maps",m,["tokens."+t.id+".removed"]) } S.selTok=null; render(); break }
     case "dellab": { const m=curMap(); const l=m.labels[S.selLab]; if(l){ const before=clone(l); before.removed=false; l.removed=true; pushHist(m,{labels:{[l.id]:[before,null]}}); save("maps",m,["labels."+l.id+".removed"]) } S.selLab=null; render(); break }
     case "addtok": { const m=curMap(); const k=toks(m).filter(t=>!t.charId).length+1; const p=freeCell(m); const t={id:uid("t"),label:"NPC "+k,color:"#8a5aa8",x:p.x,y:p.y,size:1,hp:""}; m.tokens[t.id]=t; S.selTok=t.id; save("maps",m,["tokens."+t.id]); render(); break }
@@ -1875,7 +1888,7 @@ main.addEventListener("click",e=>{
     case "mon-atk": { const at=mo.attacks[+b.dataset.i]; roll(d20expr(atkBonus(at.bonus)),monRollLabel(mo,at.name||"Saldırı"),true); break }
     case "mon-dmg": { const at=mo.attacks[+b.dataset.i]; const ex=sysKey()==="coc7"?cocDmgExpr(at.dmg,String(mo.db||"0"),e.shiftKey):dmgExpr(at.dmg,e.shiftKey); if(!ex){ toast("Hasar alanına zar yaz: 1d6+2"); break } roll(ex,monRollLabel(mo,(at.name||"Saldırı")+" hasarı"+(e.shiftKey?" (kritik)":"")),true); break }
     case "mon-place": { const m=curMap(); if(!m){ toast("Önce bir harita oluştur"); break } const n=toks(m).filter(t=>t.monsterId===mo.id).length+1; const p=freeCell(m);
-      const t={id:uid("t"),label:`${mo.name} ${n}`,color:"#b3402e",x:p.x,y:p.y,size:+mo.size||1,monsterId:mo.id,hp:+mo.hpMax||0,hpMax:+mo.hpMax||0}; m.tokens[t.id]=t; save("maps",m,["tokens."+t.id]); toast(`${t.label} "${m.name}" haritasına eklendi`); break }
+      const t={id:uid("t"),label:`${mo.name} ${n}`,color:"#b3402e",x:p.x,y:p.y,size:+mo.size||1,monsterId:mo.id,hp:+mo.hpMax||0,hpMax:+mo.hpMax||0,...(mo.img?{img:mo.img}:{})}; m.tokens[t.id]=t; save("maps",m,["tokens."+t.id]); toast(`${t.label} "${m.name}" haritasına eklendi`); break }
   }
 });
 function atkBonus(s){ return parseInt(String(s||"").replace(/\s/g,""))||0 }
@@ -2454,6 +2467,22 @@ $("#bgFile").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value=""; const m=curMap(); if(!f||!m) return;
   if(ASSETS){ try{ toast("Görsel yükleniyor…"); const r=await ASSETS.upload(f); m.bg=r.url; save("maps",m,["bg"]); render(); toast("Arka plan eklendi"); return }catch(err){ toast("Görsel yüklenemedi: "+(err.message||err.code||"hata")) } }
   else { m.bg=URL.createObjectURL(f); render(); toast("Görsel yalnızca bu oturumda görünür (kalıcı depolama yok)") }
+});
+// Jeton resmi: 256 px kareye kırpılıp küçültülür, sonra yüklenir.
+async function squareImage(f,size=256){ const url=URL.createObjectURL(f); try{ const im=await new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src=url });
+  const c=Math.min(im.naturalWidth,im.naturalHeight), cv=document.createElement("canvas"); cv.width=cv.height=Math.min(size,c); cv.getContext("2d").drawImage(im,(im.naturalWidth-c)/2,(im.naturalHeight-c)/2,c,c,0,0,cv.width,cv.height);
+  const blob=await new Promise(ok=>cv.toBlob(ok,"image/webp",.88)); return blob&&blob.type==="image/webp"?new File([blob],"jeton.webp",{type:"image/webp"}):await new Promise(ok=>cv.toBlob(b=>ok(new File([b],"jeton.png",{type:"image/png"})),"image/png")) } finally{ URL.revokeObjectURL(url) } }
+function setTokImg(m,t,url){
+  if(t.charId&&S.chars[t.charId]){ const ch=S.chars[t.charId]; if(!canEditChar(ch)){ toast("Bu karakterin portresini yalnızca sahibi değiştirebilir"); return } ch.portrait=url; save("chars",ch,["portrait"]) }
+  else if(t.monsterId&&isDM()){ const mo=S.monsters[t.monsterId]; if(mo){ mo.img=url; save("monsters",mo,["img"]) }
+    for(const mp of Object.values(S.maps)){ const ps=[]; for(const x of toks(mp)) if(x.monsterId===t.monsterId){ x.img=url; ps.push("tokens."+x.id+".img") } if(ps.length) save("maps",mp,ps) } }
+  else { t.img=url; save("maps",m,["tokens."+t.id+".img"]) }
+  render(); toast(url?"Jeton resmi eklendi":"Jeton resmi kaldırıldı") }
+$("#tokFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; const m=curMap(); const t=m&&m.tokens[S.selTok]; if(!f||!t) return;
+  let file=f; try{ file=await squareImage(f) }catch(err){}
+  if(ASSETS){ try{ toast("Resim yükleniyor…"); const r=await ASSETS.upload(file); setTokImg(m,t,r.url); return }catch(err){ toast("Resim yüklenemedi: "+(err.message||err.code||"hata")); return } }
+  setTokImg(m,t,URL.createObjectURL(file)); toast("Resim yalnızca bu oturumda görünür (kalıcı depolama yok)")
 });
 $("#turnbar").addEventListener("click",e=>{ if(e.target.closest("[data-tb=next]")) stepTurn(1) });
 $("#dmbar").addEventListener("click",e=>{ const b=e.target.closest("[data-vm]"); if(!b) return; S.asPlayer=b.dataset.vm==="player"; if(S.asPlayer&&S.noteCat==="DM") S.noteCat="Tümü"; renderDmbar(); render(); renderTurnbar(); renderLog(); if(S.asPlayer&&$("#result .sec")) showResult({label:"Hazır",total:"—",detail:"",crit:null}); toast(S.asPlayer?"Oyuncuların gördüğü görünümdesin":"DM görünümüne döndün") });
