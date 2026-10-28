@@ -10,7 +10,7 @@
   // anahtar:ad:twemoji:geçilmez:birinci şahısta yükseklik
   const RAW = {
     ev: "yatak:Yatak:1f6cf:1:.55|kanepe:Kanepe:1f6cb:1:.55|sandalye:Sandalye:1fa91:1:.55|sofra:Sofra:1f37d:1:.5|dolap:Dolap:1f5c4:1:.75|kitaplik:Kitaplık:1f4da:1:.7|kutu:Kutu:1f4e6:1:.45|kuvet:Küvet:1f6c1:1:.5|tuvalet:Tuvalet:1f6bd:1:.5|ickapi:İç kapı:1f6aa:0:.95|pencere:Pencere:1fa9f:1:.75|ayna:Ayna:1fa9e:1:.8|tablo:Tablo:1f5bc:1:.7|saat:Saat:1f570:1:.6|piyano:Piyano:1f3b9:1:.55|saksi:Saksı:1fab4:1:.55|kandil:Kandil:1fa94:0:.3|caydanlik:Çaydanlık:1fad6:0:.3|sepet:Sepet:1f9fa:0:.35|supurge:Süpürge:1f9f9:0:.7|oyuncak:Oyuncak ayı:1f9f8:0:.35",
-    zindan: "tabut:Tabut:26b0:1:.5|sandik:Sandık:1f9f0:1:.45|varil:Varil:1f6e2:1:.55|kul:Kül vazosu:26b1:1:.45|tugla:Moloz:1f9f1:1:.45|kaya:Kaya:1faa8:1:.5|zincir:Zincir:26d3:0:.6|orumcekagi:Örümcek ağı:1f578:0:.8|kurukafa:Kurukafa:1f480:0:.3|kemik:Kemikler:1f9b4:0:.25|fare:Fare:1f400:0:.25|orumcek:Örümcek:1f577:0:.3|mum:Mum:1f56f:0:.35|anahtar:Anahtar:1f5dd:0:.25|hancer:Hançer:1f5e1:0:.3|kapan:Kapan:1faa4:0:.25|mucevher:Mücevher:1f48e:0:.25|altin:Altın kesesi:1f4b0:0:.3|mantar:Mantar:1f344:0:.3",
+    zindan: "tabut:Tabut:26b0:1:.5|sandik:Sandık:1f9f0:1:.45|varil:Varil:1f6e2:1:.55|kul:Kül vazosu:26b1:1:.45|mesale:Meşale:1f525:0:.6|tugla:Moloz:1f9f1:1:.45|kaya:Kaya:1faa8:1:.5|zincir:Zincir:26d3:0:.6|orumcekagi:Örümcek ağı:1f578:0:.8|kurukafa:Kurukafa:1f480:0:.3|kemik:Kemikler:1f9b4:0:.25|fare:Fare:1f400:0:.25|orumcek:Örümcek:1f577:0:.3|mum:Mum:1f56f:0:.35|anahtar:Anahtar:1f5dd:0:.25|hancer:Hançer:1f5e1:0:.3|kapan:Kapan:1faa4:0:.25|mucevher:Mücevher:1f48e:0:.25|altin:Altın kesesi:1f4b0:0:.3|mantar:Mantar:1f344:0:.3",
     kale: "taht:Taht:1f451:1:.7|silahlik:Silah rafı:2694:1:.7|kalkan:Kalkan:1f6e1:1:.6|sancak:Sancak:1f6a9:1:.95|heykel:Heykel:1f5ff:1:.95|cesme:Çeşme:26f2:1:.85|can:Çan:1f514:1:.6|amfora:Amfora:1f3fa:1:.5|at:At:1f40e:1:.85|fener:Fener:1f3ee:0:.5|yay:Yay:1f3f9:0:.5|balta:Balta:1fa93:0:.5|parsomen:Parşömen:1f4dc:0:.3|kupa:Kupa:1f3c6:0:.4|sarap:Şarap:1f377:0:.3|bira:Bira:1f37a:0:.3|ekmek:Ekmek:1f35e:0:.25|et:Et:1f356:0:.25",
     doga: "cam:Çam:1f332:1:1.35|agac:Ağaç:1f333:1:1.35|palmiye:Palmiye:1f334:1:1.35|kaktus:Kaktüs:1f335:1:.8|kutuk:Kütük:1fab5:1:.4|cadir:Çadır:26fa:1:.9|dag:Dağ:26f0:1:1.4|yanardag:Yanardağ:1f30b:1:1.4|kamp:Kamp ateşi:1f525:0:.45|cali:Çalı:1f33f:0:.4|cicek:Çiçek:1f33c:0:.3|yaprak:Yapraklar:1f342:0:.2|dalga:Dalga:1f30a:0:.4",
     buyu: "kure:Kristal küre:1f52e:1:.5|imbik:İmbik:2697:1:.5|iksir:İksir:1f9ea:0:.3|asa:Asa:1fa84:0:.5|buyukitabi:Büyü kitabı:1f4d6:0:.3|tespih:Tespih:1f4ff:0:.25|nazar:Nazar:1f9ff:0:.25|yuzuk:Yüzük:1f48d:0:.2"
@@ -49,6 +49,7 @@
     if (sel?.custom) { const p = game().props[S.prop.slice(2)];
       panel = `<span class="lbl">Seçili</span><input class="mb-name" data-pname="${esc(p.id)}" value="${esc(p.name || "")}" aria-label="Nesnenin adı" maxlength="40">
         <label class="mb-chk"><input type="checkbox" data-psolid="${esc(p.id)}"${p.solid ? " checked" : ""}> Geçilmez</label>
+        <label class="mb-chk">Işık <input class="mb-name mb-num" type="number" min="0" step="5" data-plight="${esc(p.id)}" value="${esc(p.light || "")}" placeholder="0" aria-label="Verdiği ışık (ft)"> ft</label>
         <button class="tool" data-pskin="${esc(S.prop)}">Resmi değiştir</button><button class="tool" data-pdel="${esc(p.id)}">Nesneyi sil</button>`; }
     else if (sel) panel = `<span class="lbl">${esc(sel.name)}</span><button class="tool" data-pskin="${esc(sel.key)}">${sel.own ? "Resmi değiştir" : "Kendi resmini kullan"}</button>${sel.own ? `<button class="tool" data-pskinreset="${esc(sel.key)}">Varsayılan resim</button>` : ""}`;
     return `<div class="tools sub mb-bar"><span class="lbl">Mobilya</span>${cats}</div>
@@ -100,6 +101,7 @@
   document.addEventListener("change", e => {
     const t = e.target, g = game();
     if (t.dataset.pname && g.props?.[t.dataset.pname]) { g.props[t.dataset.pname].name = t.value.trim().slice(0, 40) || "Nesne"; saveGame(g, ["props." + t.dataset.pname + ".name"]); render(); }
+    if (t.dataset.plight && g.props?.[t.dataset.plight]) { g.props[t.dataset.plight].light = Math.max(0, +t.value || 0); saveGame(g, ["props." + t.dataset.plight + ".light"]); drawMap(); }
     if (t.dataset.psolid && g.props?.[t.dataset.psolid]) { g.props[t.dataset.psolid].solid = t.checked; saveGame(g, ["props." + t.dataset.psolid + ".solid"]); }
   });
 

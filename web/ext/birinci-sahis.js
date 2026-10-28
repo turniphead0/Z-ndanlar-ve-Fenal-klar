@@ -99,7 +99,7 @@
   function pickToken(m) {
     const sel = m.tokens?.[S.selTok];
     if (sel && !sel.removed && ownsTok(sel)) return sel;
-    return myToks(m)[0] || null;
+    return myToks(m)[0] || (isDM() ? toks(m).find(t => t.gm) : null) || null;
   }
   const solidAt = (m, x, y) => x < 0 || y < 0 || x >= m.cols || y >= m.rows || m.cells?.[x + "," + y] === "wall" || (m.cells?.[x + "," + y] === "door" ? "door" : false);
   const darkAt = (m, x, y) => !isDM() && fogged(m, x, y);
@@ -111,7 +111,7 @@
       if (darkAt(m, x, y)) return "Orası karanlık, DM henüz açmadı";
       const pk = m.props?.[x + "," + y]; if (window.PROPS && PROPS.solid(pk)) return `Önünde ${PROPS.get(pk).name.toLocaleLowerCase("tr")} var`; }
     if (t) for (const o of toks(m)) { if (o.id === t.id) continue; const z = +o.size || 1;
-      if (nx < o.x + z && nx + sz > o.x && ny < o.y + z && ny + sz > o.y && (isDM() || !tokFogged(m, o))) return `${o.label || "Biri"} yolu kapatıyor`; }
+      if (nx < o.x + z && nx + sz > o.x && ny < o.y + z && ny + sz > o.y && (isDM() || (!tokFogged(m, o) && !(o.gm && o.gmHidden)))) return `${o.label || "Biri"} yolu kapatıyor`; }
     return null;
   }
   function camFrom(t) { const sz = +t.size || 1; return { x: t.x + sz / 2, y: t.y + sz / 2 }; }
@@ -215,6 +215,11 @@
     const cv = FP.cv, ctx = FP.ctx, W = cv.width, H = cv.height, dm = isDM();
     const dx = Math.cos(ang), dy = Math.sin(ang), plx = -dy * PLANE, ply = dx * PLANE, proj = (W / 2) / PLANE, hor = H / 2;
     const maxD = 14, FOG = FP.fogRGB, CEIL = FP.ceilRGB;
+    // dinamik ışık: jetonun gözünden görülen parlaklık (DM serbest kamerada biraz ışık kalır)
+    const me = FP.tokId && m.tokens?.[FP.tokId], LV = window.LIGHT && LIGHT.on(m) ? LIGHT.view(m, me ? [me] : null) : null, minL = LV && !me ? .3 : 0;
+    const lightAt = (x, y) => !LV ? 1 : x < 0 || y < 0 || x >= LV.W || y >= LV.H ? 0 : Math.max(minL, LV.see[y * LV.W + x]);
+    const grayAt = (x, y) => !!LV && x >= 0 && y >= 0 && x < LV.W && y < LV.H && LV.gray[y * LV.W + x] === 1;
+    FP.LV = LV;
     // zemin ve tavan (satır satır)
     const img = FP.buf && FP.buf.width === W && FP.buf.height === H ? FP.buf : (FP.buf = ctx.createImageData(W, H));
     const out = new Uint32Array(img.data.buffer), F = FP.floor, fd = F.data;
@@ -222,14 +227,16 @@
     for (let y = 0; y < H; y++) {
       const floor = y > hor, p = floor ? y - hor : hor - y; if (p < 1) { out.fill(0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0], y * W, y * W + W); continue; }
       const rd = (floor ? camZ : 1 - camZ) * proj / p, sh = Math.max(0, 1 - rd / maxD), sh2 = sh * sh;
-      if (!floor) { const r = CEIL[0] * sh2 + FOG[0] * (1 - sh2), g = CEIL[1] * sh2 + FOG[1] * (1 - sh2), b = CEIL[2] * sh2 + FOG[2] * (1 - sh2);
+      if (!floor && !LV) { const r = CEIL[0] * sh2 + FOG[0] * (1 - sh2), g = CEIL[1] * sh2 + FOG[1] * (1 - sh2), b = CEIL[2] * sh2 + FOG[2] * (1 - sh2);
         out.fill(0xff000000 | (b | 0) << 16 | (g | 0) << 8 | (r | 0), y * W, y * W + W); continue; }
       let fx = px + rd * r0x, fy = py + rd * r0y; const sx = rd * (r1x - r0x) / W, sy = rd * (r1y - r0y) / W;
+      const ceilC = 0xff000000 | (CEIL[2] | 0) << 16 | (CEIL[1] | 0) << 8 | (CEIL[0] | 0);
       for (let x = 0, o = y * W; x < W; x++, o++, fx += sx, fy += sy) {
         const tx = (fx * P) | 0, ty = (fy * P) | 0; let c;
-        if (fd && fx >= 0 && fy >= 0 && tx < F.w && ty < F.h) c = fd[ty * F.w + tx]; else c = 0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0];
-        const r = (c & 255) * sh2 + FOG[0] * (1 - sh2), g = (c >> 8 & 255) * sh2 + FOG[1] * (1 - sh2), b = (c >> 16 & 255) * sh2 + FOG[2] * (1 - sh2);
-        out[o] = 0xff000000 | (b | 0) << 16 | (g | 0) << 8 | (r | 0);
+        if (!floor) c = ceilC; else if (fd && fx >= 0 && fy >= 0 && tx < F.w && ty < F.h) c = fd[ty * F.w + tx]; else c = 0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0];
+        let k = sh2, r = c & 255, g = c >> 8 & 255, b = c >> 16 & 255;
+        if (LV) { const cx = Math.floor(fx), cy = Math.floor(fy); k *= lightAt(cx, cy); if (grayAt(cx, cy)) { const l = r * .3 + g * .59 + b * .11; r = g = l * .9; b = l; } }
+        out[o] = 0xff000000 | ((b * k + FOG[2] * (1 - k)) | 0) << 16 | ((g * k + FOG[1] * (1 - k)) | 0) << 8 | ((r * k + FOG[0] * (1 - k)) | 0);
       }
     }
     ctx.putImageData(img, 0, 0);
@@ -240,7 +247,9 @@
       let mx = Math.floor(px), my = Math.floor(py); const ddx = Math.abs(1 / rx), ddy = Math.abs(1 / ry);
       const stx = rx < 0 ? -1 : 1, sty = ry < 0 ? -1 : 1;
       let sdx = (rx < 0 ? px - mx : mx + 1 - px) * ddx, sdy = (ry < 0 ? py - my : my + 1 - py) * ddy, side = 0, hit = null;
+      let pmx = mx, pmy = my;
       for (let i = 0; i < 64 && !hit; i++) {
+        pmx = mx; pmy = my;
         if (sdx < sdy) { sdx += ddx; mx += stx; side = 0; } else { sdy += ddy; my += sty; side = 1; }
         const s = solidAt(m, mx, my);
         if (mx < 0 || my < 0 || mx >= m.cols || my >= m.rows) hit = "edge";
@@ -254,12 +263,12 @@
       let wx = side === 0 ? py + perp * ry : px + perp * rx; wx -= Math.floor(wx);
       let tx = (wx * TEX) | 0; if ((side === 0 && rx > 0) || (side === 1 && ry < 0)) tx = TEX - tx - 1;
       ctx.drawImage(FP.tex[hit], tx, 0, 1, TEX, x, top, 1, lh);
-      const a = Math.min(.92, (1 - Math.pow(Math.max(0, 1 - perp / maxD), 2)) + (side ? .18 : 0));
+      const a0 = Math.min(.92, (1 - Math.pow(Math.max(0, 1 - perp / maxD), 2)) + (side ? .18 : 0)), a = LV ? 1 - (1 - a0) * lightAt(pmx, pmy) : a0;
       if (a > .01) { ctx.globalAlpha = a; ctx.fillStyle = fogCss; ctx.fillRect(x, top, 1, lh); ctx.globalAlpha = 1; }
     }
     // karton figürler: jetonlar ve ağaçlar
     const list = [], act = activeTokenIds();
-    for (const t of toks(m)) { if (t.id === FP.tokId || (!dm && tokFogged(m, t))) continue;
+    for (const t of toks(m)) { if (t.id === FP.tokId || (!dm && (tokFogged(m, t) || (t.gm && t.gmHidden)))) continue;
       const sz = +t.size || 1, rd = remoteDrag[t.id] && remoteDrag[t.id].m === m.id ? remoteDrag[t.id] : null;
       const tx = (rd ? rd.x : t.x) + sz / 2, ty = (rd ? rd.y : t.y) + sz / 2, p = spr[t.id] || (spr[t.id] = { x: tx, y: ty });
       p.x += (tx - p.x) * .25; p.y += (ty - p.y) * .25;
@@ -274,7 +283,8 @@
       const c = dieCut(it.img); if (c) list.push({ x: cx + .5, y: cy + .5, c, h: it.h || .6 }); }
     const inv = 1 / (plx * dy - dx * ply);
     for (const s of list) { const rx = s.x - px, ry = s.y - py; s.tx = inv * (dy * rx - dx * ry); s.d = inv * (-ply * rx + plx * ry); }
-    list.filter(s => s.d > .15 && s.d < maxD + 2).sort((a, b) => b.d - a.d).forEach(s => {
+    for (const s of list) s.L = lightAt(Math.floor(s.x), Math.floor(s.y));
+    list.filter(s => s.d > .15 && s.d < maxD + 2 && s.L > 0).sort((a, b) => b.d - a.d).forEach(s => {
       const sx = (W / 2) * (1 + s.tx / s.d), hgt = proj * s.h / s.d, wid = hgt * s.c.width / s.c.height, bot = hor + camZ * proj / s.d, top = bot - hgt;
       const x0 = Math.max(0, Math.floor(sx - wid / 2)), x1 = Math.min(W, Math.ceil(sx + wid / 2)); if (x0 >= x1) return;
       // gölge ve sıra halkası
@@ -283,7 +293,7 @@
         if (s.ring) { ctx.strokeStyle = cssVar("--gold") || "#d4a73a"; ctx.lineWidth = Math.max(1, wid * .03); ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.ellipse(sx, bot, wid * .55, wid * .13, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); } }
       // uzaklıkla kararan kopya
       const sh = FP.shade || (FP.shade = canvas(128, 200)), sx2 = sh.getContext("2d"); sh.width = s.c.width; sh.height = s.c.height;
-      sx2.drawImage(s.c, 0, 0); const a = Math.min(.9, 1 - Math.pow(Math.max(0, 1 - s.d / maxD), 2));
+      sx2.drawImage(s.c, 0, 0); const a = 1 - (1 - Math.min(.9, 1 - Math.pow(Math.max(0, 1 - s.d / maxD), 2))) * s.L;
       if (a > .01) { sx2.globalCompositeOperation = "source-atop"; sx2.globalAlpha = a; sx2.fillStyle = fogCss; sx2.fillRect(0, 0, sh.width, sh.height); sx2.globalAlpha = 1; sx2.globalCompositeOperation = "source-over"; }
       const k = s.c.width / wid;
       for (let x = x0; x < x1; x++) { if (Z[x] <= s.d) continue; let run = x; while (run + 1 < x1 && Z[run + 1] > s.d) run++;
@@ -300,7 +310,9 @@
     x.fillStyle = `rgb(${FP.fogRGB.join(",")})`; x.fillRect(0, 0, c.width, c.height);
     const ox = FP.cx - N / 2, oy = FP.cy - N / 2;
     x.imageSmoothingEnabled = false; x.drawImage(FP.floor.mini, ox * P, oy * P, N * P, N * P, 0, 0, c.width, c.height);
-    for (const t of toks(m)) { if (t.id === FP.tokId || (!isDM() && tokFogged(m, t))) continue; const sz = +t.size || 1;
+    const LV = FP.LV, seen = (cx, cy) => !LV || isDM() || (cx >= 0 && cy >= 0 && cx < LV.W && cy < LV.H && (LV.see[cy * LV.W + cx] > 0 || (LV.mem && LV.mem[cy * LV.W + cx])));
+    if (LV && !isDM()) { x.fillStyle = `rgb(${FP.fogRGB.join(",")})`; for (let j = Math.floor(oy); j < oy + N + 1; j++) for (let i = Math.floor(ox); i < ox + N + 1; i++) if (!seen(i, j)) x.fillRect((i - ox) * cw, (j - oy) * cw, cw + .5, cw + .5); }
+    for (const t of toks(m)) { if (t.id === FP.tokId || (!isDM() && (tokFogged(m, t) || (t.gm && t.gmHidden) || (LV && !(LV.see[t.y * LV.W + t.x] > 0))))) continue; const sz = +t.size || 1;
       x.fillStyle = t.color || "#555"; x.beginPath(); x.arc((t.x + sz / 2 - ox) * cw, (t.y + sz / 2 - oy) * cw, cw * .32 * sz, 0, 7); x.fill(); }
     x.save(); x.translate(c.width / 2, c.height / 2); x.rotate(FP.ang); x.fillStyle = cssVar("--gold") || "#d4a73a"; x.strokeStyle = "#000"; x.lineWidth = 1.5;
     x.beginPath(); x.moveTo(cw * .45, 0); x.lineTo(-cw * .32, cw * .3); x.lineTo(-cw * .16, 0); x.lineTo(-cw * .32, -cw * .3); x.closePath(); x.fill(); x.stroke(); x.restore();
