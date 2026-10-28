@@ -1127,7 +1127,7 @@ function newMap(){ return {id:uid("m"),name:"Yeni harita",cols:20,rows:14,cells:
 function curMap(){ if(!S.maps[S.mapId]||(!isDM()&&S.maps[S.mapId].hidden)) S.mapId=Object.values(S.maps).filter(x=>isDM()||!x.hidden).sort((a,b)=>(b.updated||0)-(a.updated||0))[0]?.id||null; return S.maps[S.mapId] }
 function fogged(m,x,y){ return !!m.fogOn && !(m.fog&&m.fog[x+","+y]) }
 function tokFogged(m,t){ if(t.charId) return false; const z=+t.size||1; for(let i=0;i<z;i++)for(let j=0;j<z;j++) if(!fogged(m,t.x+i,t.y+j)) return false; return true }
-function visToks(m){ return toks(m).filter(t=>isDM()||(!tokFogged(m,t)&&!(window.LIGHT&&LIGHT.tokHidden(m,t)))) }
+function visToks(m){ return toks(m).filter(t=>isDM()||(!tokFogged(m,t)&&!(window.LIGHT&&(LIGHT.tokHidden(m,t)||LIGHT.tokSil(m,t))))) }
 function labs(m){ return Object.values(m.labels||{}).filter(l=>l&&!l.removed) }
 function visLabs(m){ return labs(m).filter(l=>isDM()||!fogged(m,l.x,l.y)) }
 function tokHp(t){
@@ -1260,6 +1260,7 @@ function drawMap(){
   for(const t of toks(m)){ const hid=tokFogged(m,t); if((hid||(window.LIGHT&&LIGHT.tokHidden(m,t)))&&!dm) continue;
     const dr=MV.drag&&MV.drag.id===t.id?MV.drag:null; const sz=+t.size||1; const rd=!dr&&remoteDrag[t.id]&&remoteDrag[t.id].m===m.id?remoteDrag[t.id]:null;
     const px=dr?dr.px:rd?(rd.x+sz/2)*s:(t.x+sz/2)*s, py=dr?dr.py:rd?(rd.y+sz/2)*s:(t.y+sz/2)*s, r=sz*s/2-3;
+    if(!dm&&window.LIGHT&&LIGHT.tokSil(m,t)){ LIGHT.drawSil(ctx,px,py,r); continue } // karanlıkta yalnızca belirsiz gölge
     if(act.has(t.id)){ ctx.globalAlpha=1; ctx.strokeStyle=cssVar("--gold"); ctx.lineWidth=3; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.arc(px,py,r+5,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]) }
     ctx.globalAlpha=rd?.75:hid?.55:1; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=t.color||"#555"; ctx.fill();
     const ti=getImg(tokImg(t));
