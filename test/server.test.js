@@ -118,3 +118,18 @@ test("hazır maceralar: katalogdaki her macera dosyası geçerli ve tutarlı", (
   }
   delete global.window; delete global.document;
 });
+
+test("mobilya simgeleri: katalogdaki her simge sunulur", async () => {
+  const src = fs.readFileSync(path.join(__dirname, "../web/ext/mobilya.js"), "utf8");
+  const codes = [...src.matchAll(/:([0-9a-f]{4,5}):[01]:/g)].map(m => m[1]);
+  assert.ok(codes.length > 50, "katalog okunamadı");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir });
+  const port = await srv.listen(0, "127.0.0.1");
+  for (const c of new Set(codes)) {
+    const r = await fetch(`http://127.0.0.1:${port}/ext/mobilya/${c}.svg`);
+    assert.equal(r.status, 200, c); assert.equal(r.headers.get("content-type"), "image/svg+xml", c);
+  }
+  assert.equal((await fetch(`http://127.0.0.1:${port}/ext/mobilya/..%2fmobilya.js`)).status, 404);
+  await srv.close();
+});

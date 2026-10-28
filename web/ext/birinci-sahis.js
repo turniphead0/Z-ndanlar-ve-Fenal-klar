@@ -70,7 +70,7 @@
   }
 
   /* ---------- zemin dokusu (harita resmi, araziler, ızgara, sis) ---------- */
-  function sig(m) { return [m.id, m.bg, m.fogOn, m.cols, m.rows, JSON.stringify(m.cells), m.fogOn ? JSON.stringify(m.fog) : "", isDM(), document.documentElement.dataset.sys || "", !!getImg(m.bg)].join("§"); }
+  function sig(m) { return [m.id, JSON.stringify((S.games[G.id] || {}).skins || {}), JSON.stringify(m.props || {}), window.PROPS ? Object.values(m.props || {}).filter(v => v && getImg(PROPS.get(v)?.img)).length : 0, m.bg, m.fogOn, m.cols, m.rows, JSON.stringify(m.cells), m.fogOn ? JSON.stringify(m.fog) : "", isDM(), document.documentElement.dataset.sys || "", !!getImg(m.bg)].join("§"); }
   function buildFloor(m) {
     const dm = isDM(), w = m.cols * P, h = m.rows * P, col = { floor: cssVar("--map-floor"), ink: cssVar("--ink") };
     TERRAIN.forEach(t => col[t[0]] = cssVar(t[2]));
@@ -86,9 +86,11 @@
     for (const [k, v] of Object.entries(m.cells || {})) { if (v !== "wall" && v !== "tree") continue; const [cx, cy] = k.split(",").map(Number);
       if (!dm && fogged(m, cx, cy)) continue; drawTerrain(y, v, cx * P, cy * P, P, col, null); }
     y.globalAlpha = 1;
+    if (window.PROPS) for (const [k, v] of Object.entries(m.props || {})) { const [cx, cy] = k.split(",").map(Number); if (v && (dm || !fogged(m, cx, cy))) PROPS.draw(y, v, cx * P, cy * P, P); }
     let data = null; try { data = new Uint32Array(x.getImageData(0, 0, w, h).data.buffer); } catch (e) { data = null; }
     FP.floor = { w, h, data, mini: mc };
-    FP.tex = { wall: wallTex(col.wall), door: doorTex(col.door, col.wall) };
+    const own = k => { const im = window.PROPS && getImg(PROPS.skin(k)); if (!im) return null; const c = canvas(TEX, TEX); c.getContext("2d").drawImage(im, 0, 0, TEX, TEX); return c; };
+    FP.tex = { wall: own("wall") || wallTex(col.wall), door: own("door") || doorTex(col.door, col.wall) };
     FP.treeCol = col.tree; FP.fogRGB = rgb(cssVar("--fog")); FP.ceilRGB = rgb(cssVar("--t-wall")).map(v => v * .45);
   }
 
@@ -106,7 +108,8 @@
     for (let i = 0; i < sz; i++) for (let j = 0; j < sz; j++) { const x = nx + i, y = ny + j;
       if (x < 0 || y < 0 || x >= m.cols || y >= m.rows) return "Haritanın kenarı";
       const v = m.cells?.[x + "," + y]; if (BLOCK.includes(v)) return { wall: "Önünde duvar var", tree: "Önünde ağaç var", pit: "Önünde çukur var", lava: "Önünde lav var" }[v];
-      if (darkAt(m, x, y)) return "Orası karanlık, DM henüz açmadı"; }
+      if (darkAt(m, x, y)) return "Orası karanlık, DM henüz açmadı";
+      const pk = m.props?.[x + "," + y]; if (window.PROPS && PROPS.solid(pk)) return `Önünde ${PROPS.get(pk).name.toLocaleLowerCase("tr")} var`; }
     if (t) for (const o of toks(m)) { if (o.id === t.id) continue; const z = +o.size || 1;
       if (nx < o.x + z && nx + sz > o.x && ny < o.y + z && ny + sz > o.y && (isDM() || !tokFogged(m, o))) return `${o.label || "Biri"} yolu kapatıyor`; }
     return null;
@@ -124,7 +127,7 @@
     const from = { x: FP.cx, y: FP.cy }, to = { x: FP.cx + dx, y: FP.cy + dy };
     FP.anim = { kind: "step", t0: performance.now(), from, to };
     if (t) { t.x = nx; t.y = ny; t.dir = FP.dir; save("maps", m, ["tokens." + t.id + ".x", "tokens." + t.id + ".y", "tokens." + t.id + ".dir"]); }
-    const v = m.cells?.[nx + "," + ny]; if (v === "door") hud("Kapıdan geçiyorsun"); else if (v === "water") hud("Suya girdin"); else if (v === "stairs") hud("Merdivendesin"); else if (v === "rough") hud("Zorlu arazi");
+    const v = m.cells?.[nx + "," + ny]; if (v === "door") hud("Kapıdan geçiyorsun"); else if (v === "water") hud("Suya girdin"); else if (v === "stairs") hud(stairsMsg(m)); else if (v === "rough") hud("Zorlu arazi");
     else if (v === "trap" && isDM()) hud("Tuzak karesi");
   }
   function turn(k) {
@@ -132,6 +135,58 @@
     const a0 = FP.ang; FP.dir = (FP.dir + k + 4) % 4;
     FP.anim = { kind: "turn", t0: performance.now(), a0, a1: a0 + k * Math.PI / 2 };
     const m = curMap(), t = FP.tokId && m?.tokens?.[FP.tokId]; if (t && !S.ro) { t.dir = FP.dir; save("maps", m, ["tokens." + t.id + ".dir"]); }
+  }
+
+  /* ---------- merdivenler ve katlar ---------- */
+  const mapTitle = m => window.FLOORS && FLOORS.floors(m).length > 1 ? `${m.name || "Harita"} · ${FLOORS.lvlName(FLOORS.lvlOf(m))}` : m.name || "Harita";
+  function here(m) { const t = FP.tokId && m.tokens?.[FP.tokId]; return t ? { x: t.x, y: t.y, t } : { x: Math.floor(FP.cx), y: Math.floor(FP.cy), t: null }; }
+  function exits(m) {
+    if (!window.FLOORS) return { up: null, down: null }; const h = here(m), on = m.cells?.[h.x + "," + h.y] === "stairs";
+    const l = FLOORS.lvlOf(m), ok = x => x && (isDM() || !x.hidden) ? x : null;
+    return on ? { up: ok(FLOORS.floorAt(m, l + 1)), down: ok(FLOORS.floorAt(m, l - 1)) } : { up: null, down: null, off: true };
+  }
+  function stairsMsg(m) { const e = exits(m); return e.up && e.down ? "Merdiven: yukarı çıkabilir ya da aşağı inebilirsin" : e.up ? "Merdiven: Boşluk ile yukarı çık" : e.down ? "Merdiven: Boşluk ile aşağı in" : "Merdivendesin ama bu binada başka kat yok"; }
+  function stairsPanel(m) {
+    const p = $("#fpStairs"); if (!p) return; const e = exits(m);
+    p.hidden = !(e.up || e.down); $("[data-fp=up]", p).hidden = !e.up; $("[data-fp=down]", p).hidden = !e.down;
+  }
+  function stairs(dir) {
+    const m = curMap(); if (!m || FP.anim) return; const e = exits(m);
+    if (e.off) return hud("Kat değiştirmek için merdivene çık");
+    if (!dir) dir = e.up ? 1 : e.down ? -1 : 0;
+    if (!dir || !(dir > 0 ? e.up : e.down)) return hud(dir > 0 ? "Yukarıda kat yok" : dir < 0 ? "Aşağıda kat yok" : "Bu binada başka kat yok");
+    if (S.ro && FP.tokId) return hud("Bu masada yalnızca görüntüleme iznin var");
+    let to;
+    if (FP.tokId) { const r = FLOORS.climb(m, m.tokens[FP.tokId], dir); if (r.err) return hud(r.err); to = r.map; const c = camFrom(r.tok); FP.cx = c.x; FP.cy = c.y; }
+    else { to = dir > 0 ? e.up : e.down; S.mapId = to.id; }
+    FP.sig = null; for (const k of Object.keys(spr)) delete spr[k];
+    FP.fade = performance.now(); const n = $("#fpName"); if (n) n.textContent = mapTitle(to);
+    hud(`${FLOORS.lvlName(FLOORS.lvlOf(to))}: ${dir > 0 ? "yukarı çıktın" : "aşağı indin"}`); render();
+  }
+
+  let stairC = null;
+  function stairStandee() {
+    const own = window.PROPS && dieCut(PROPS.skin("stairs")); if (own) return own;
+    const col = cssVar("--t-stairs") || "#a39780"; if (stairC?.col === col) return stairC.c;
+    const W = 128, c = canvas(W, W), x = c.getContext("2d"), step = (W - 16) / 5;
+    x.lineJoin = "round"; x.lineWidth = 8; x.strokeStyle = "#fbf8f1";
+    const path = () => { x.beginPath(); x.moveTo(8, W - 4); for (let i = 0; i < 5; i++) { const y = W - 4 - (i + 1) * step * .9; x.lineTo(8 + i * step, y); x.lineTo(8 + (i + 1) * step, y); } x.lineTo(W - 8, W - 4); x.closePath(); };
+    path(); x.stroke(); x.fillStyle = col; path(); x.fill();
+    x.strokeStyle = "rgba(0,0,0,.3)"; x.lineWidth = 2; for (let i = 1; i < 5; i++) { x.beginPath(); x.moveTo(8 + i * step, W - 4); x.lineTo(8 + i * step, W - 4 - i * step * .9); x.stroke(); }
+    stairC = { col, c }; return c;
+  }
+
+  // Resmi beyaz kesim kenarlı, ayaklı karton figüre çevirir (mobilyalar, kendi resimlerin).
+  const cutCache = {};
+  function dieCut(url) {
+    if (!url) return null; if (cutCache[url]) return cutCache[url]; const im = getImg(url); if (!im) return null;
+    const W = 128, B = 16, pad = 8, w = im.naturalWidth || W, h = im.naturalHeight || W, k = (W - pad * 2) / Math.max(w, h), dw = w * k, dh = h * k, ox = (W - dw) / 2, oy = W - pad / 2 - dh;
+    const sil = canvas(W, W), sx = sil.getContext("2d"); sx.drawImage(im, ox, oy, dw, dh); sx.globalCompositeOperation = "source-in"; sx.fillStyle = "#fbf8f1"; sx.fillRect(0, 0, W, W);
+    const c = canvas(W, W + B), x = c.getContext("2d");
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; x.drawImage(sil, Math.cos(a) * 4, Math.sin(a) * 4); }
+    x.drawImage(im, ox, oy, dw, dh);
+    x.fillStyle = "#6b4a2b"; x.beginPath(); x.moveTo(W * .22, W + B - 1); x.lineTo(W * .78, W + B - 1); x.lineTo(W * .7, W - 2); x.lineTo(W * .3, W - 2); x.closePath(); x.fill();
+    return cutCache[url] = c;
   }
 
   /* ---------- çizim ---------- */
@@ -151,7 +206,8 @@
     let ox = 0, oy = 0; if (FP.bump) { const k = (now - FP.bump.t) / 220; if (k >= 1) FP.bump = null; else { const s = Math.sin(k * Math.PI) * .08; ox = FP.bump.dx * s; oy = FP.bump.dy * s; } }
     const s = sig(m); if (s !== FP.sig) { FP.sig = s; buildFloor(m); }
     draw(m, FP.cx + ox, FP.cy + oy, FP.ang, .5 + bob, now);
-    if (now - (FP.miniT || 0) > 80) { FP.miniT = now; drawMini(m); }
+    if (FP.fade) { const k = (now - FP.fade) / 450; if (k >= 1) FP.fade = 0; else { FP.ctx.fillStyle = `rgba(0,0,0,${(1 - k).toFixed(3)})`; FP.ctx.fillRect(0, 0, FP.cv.width, FP.cv.height); } }
+    if (now - (FP.miniT || 0) > 80) { FP.miniT = now; drawMini(m); stairsPanel(m); }
     if (FP.msgT && now > FP.msgT) { FP.msgT = 0; const h = $("#fpMsg"); if (h) h.classList.remove("on"); }
   }
 
@@ -210,7 +266,12 @@
       list.push({ x: p.x, y: p.y, c: standee(t), h: .82 * Math.min(sz, 2.4), ring: act.has(t.id) }); }
     for (const [k, v] of Object.entries(m.cells || {})) { if (v !== "tree") continue; const [cx, cy] = k.split(",").map(Number);
       if (!dm && fogged(m, cx, cy)) continue; if (Math.abs(cx + .5 - px) > maxD || Math.abs(cy + .5 - py) > maxD) continue;
-      list.push({ x: cx + .5, y: cy + .5, c: treeStandee(FP.treeCol), h: 1.35 }); }
+      list.push({ x: cx + .5, y: cy + .5, c: (window.PROPS && dieCut(PROPS.skin("tree"))) || treeStandee(FP.treeCol), h: 1.35 }); }
+    for (const [k, v] of Object.entries(m.cells || {})) { if (v !== "stairs") continue; const [cx, cy] = k.split(",").map(Number);
+      if ((cx === Math.floor(px) && cy === Math.floor(py)) || (!dm && fogged(m, cx, cy))) continue; list.push({ x: cx + .5, y: cy + .5, c: stairStandee(), h: .55 }); }
+    if (window.PROPS) for (const [k, v] of Object.entries(m.props || {})) { const it = v && PROPS.get(v); if (!it) continue; const [cx, cy] = k.split(",").map(Number);
+      if ((!dm && fogged(m, cx, cy)) || Math.abs(cx + .5 - px) > maxD || Math.abs(cy + .5 - py) > maxD) continue;
+      const c = dieCut(it.img); if (c) list.push({ x: cx + .5, y: cy + .5, c, h: it.h || .6 }); }
     const inv = 1 / (plx * dy - dx * ply);
     for (const s of list) { const rx = s.x - px, ry = s.y - py; s.tx = inv * (dy * rx - dx * ry); s.d = inv * (-ply * rx + plx * ry); }
     list.filter(s => s.d > .15 && s.d < maxD + 2).sort((a, b) => b.d - a.d).forEach(s => {
@@ -265,13 +326,14 @@
     const ov = document.createElement("div"); ov.id = "fpOv"; ov.className = "fp-ov"; ov.tabIndex = -1;
     ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true"); ov.setAttribute("aria-label", "Birinci şahıs görünümü");
     ov.innerHTML = `<canvas id="fpCv" class="fp-cv" aria-label="${esc(m.name || "Harita")}: birinci şahıs görünümü"></canvas>
-      <header class="fp-top"><b>${esc(m.name || "Harita")}</b><span>${t ? esc(t.label || "Jeton") + " gözünden" : "Serbest kamera (DM)"}</span><span style="flex:1"></span><button class="btn sm" data-fp="close">2B haritaya dön</button></header>
+      <header class="fp-top"><b id="fpName">${esc(mapTitle(m))}</b><span>${t ? esc(t.label || "Jeton") + " gözünden" : "Serbest kamera (DM)"}</span><span style="flex:1"></span><button class="btn sm" data-fp="close">2B haritaya dön</button></header>
       <canvas id="fpMini" class="fp-mini" width="154" height="154" aria-hidden="true"></canvas>
       <div id="fpMsg" class="fp-msg" role="status" aria-live="polite"></div>
       <div class="fp-pad" aria-label="Yürüme düğmeleri">
         <button class="btn" data-fp="turn" data-k="-1" aria-label="Sola dön">⟲</button><button class="btn" data-fp="step" data-f="1" aria-label="İleri">↑</button><button class="btn" data-fp="turn" data-k="1" aria-label="Sağa dön">⟳</button>
         <button class="btn" data-fp="side" data-s="-1" aria-label="Sola adım">←</button><button class="btn" data-fp="step" data-f="-1" aria-label="Geri">↓</button><button class="btn" data-fp="side" data-s="1" aria-label="Sağa adım">→</button></div>
-      <p class="fp-help">↑ ↓ ileri / geri · ← → dön · A D yana adım · Esc çık</p>`;
+      <div id="fpStairs" class="fp-stairs" hidden><button class="btn" data-fp="up">▲ Yukarı çık</button><button class="btn" data-fp="down">▼ Aşağı in</button></div>
+      <p class="fp-help">↑ ↓ ileri / geri · ← → dön · A D yana adım · Boşluk merdiven · Esc çık</p>`;
     document.body.appendChild(ov);
     FP.cv = $("#fpCv"); FP.ctx = FP.cv.getContext("2d"); resize(); ov.focus();
     FP.raf = requestAnimationFrame(frame);
@@ -309,6 +371,8 @@
     if (a === "step") return move(+b.dataset.f, 0);
     if (a === "side") return move(0, +b.dataset.s);
     if (a === "turn") return turn(+b.dataset.k);
+    if (a === "up") return stairs(1);
+    if (a === "down") return stairs(-1);
   });
 
   document.addEventListener("keydown", e => {
@@ -316,7 +380,7 @@
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     const act = { ArrowUp: () => move(1, 0), w: () => move(1, 0), ArrowDown: () => move(-1, 0), s: () => move(-1, 0),
       ArrowLeft: () => turn(-1), q: () => turn(-1), ArrowRight: () => turn(1), e: () => turn(1),
-      a: () => move(0, -1), d: () => move(0, 1), Escape: () => close() }[k];
+      a: () => move(0, -1), d: () => move(0, 1), Escape: () => close(), " ": () => stairs(0), PageUp: () => stairs(1), PageDown: () => stairs(-1) }[k];
     if (!act) return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat || k !== "Escape") act();
   }, true);
   window.addEventListener("resize", resize);
