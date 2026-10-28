@@ -1,7 +1,7 @@
 /* Sistem temaları: oyunun sistemine göre renk, yazı tipi ve doku. Lobi varsayılan temada kalır.
-   <html data-sys="dnd5e|pf2e|coc7|yze"> ve Year Zero için data-yzp (oyunun şablonu) tema.js tarafından konur.
+   <html data-sys="dnd5e|pf2e|coc7|yze|motw"> ve Year Zero için data-yzp (oyunun şablonu) tema.js tarafından konur.
    Her tema açık ve koyu sürümüyle gelir; koyu kurallar app.html'deki gibi hem sistem tercihine hem data-theme'e bakar. */
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;500;700&family=Marcellus+SC&family=Source+Sans+3:wght@400;500;700&family=IM+Fell+English+SC&family=EB+Garamond:wght@400;500;700&family=Special+Elite&family=Saira+Stencil+One&family=Barlow:wght@400;500;700&family=Share+Tech+Mono&family=Playfair+Display+SC:wght@700&family=Lora:wght@400;500;700&family=Uncial+Antiqua&family=Merriweather+Sans:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:wght@400;500;700&family=Marcellus+SC&family=Source+Sans+3:wght@400;500;700&family=IM+Fell+English+SC&family=EB+Garamond:wght@400;500;700&family=Special+Elite&family=Saira+Stencil+One&family=Barlow:wght@400;500;700&family=Share+Tech+Mono&family=Playfair+Display+SC:wght@700&family=Lora:wght@400;500;700&family=Uncial+Antiqua&family=Merriweather+Sans:wght@400;700&family=Anton&family=Work+Sans:wght@400;500;700&family=Courier+Prime:wght@400;700&display=swap");
 
 /* ---------- Ortak: rayın kendi rengi olabilir ---------- */
 :root[data-sys] .rail{background:var(--rail,var(--surface));border-right-color:var(--rail-line,var(--line))}
@@ -177,3 +177,29 @@
 :root[data-sys="yze"][data-yzp="forbidden"] .chip,:root[data-sys="yze"][data-yzp="vaesen"] .chip{border-radius:999px}
 :root[data-sys="yze"][data-yzp="vaesen"] .panel{box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--gold-soft)}
 :root[data-sys="yze"][data-yzp="forbidden"] .rail .brand .gname{font-family:var(--f-body);font-weight:700}
+
+/* ================= Monster of the Week: gece yarısı mor, tabela sarısı ================= */
+:root[data-sys="motw"]{
+  --bg:#E7E2EC; --surface:#FAF8FC; --surface-2:#EFEAF3; --ink:#1B1622; --muted:#5E5668; --line:#CFC6D8;
+  --accent:#5B2A86; --accent-ink:#FFFFFF; --accent-soft:#E6DAF1; --gold:#8A6D00; --gold-soft:#F4ECB8;
+  --bad:#B3261E; --good:#2E6B3A; --map-floor:#F1EDF4; --grid:rgba(27,22,34,.14);
+  --f-display:"Anton", Impact, sans-serif; --f-body:"Work Sans", system-ui, sans-serif; --f-num:"Courier Prime", "Courier New", monospace; --r:4px;
+  --rail:#1E1230; --rail-line:#120A1E; --rail-ink:#B9A8CF; --rail-hi:#E8D44D; --rail-on:rgba(232,212,77,.14);
+  --paper:radial-gradient(120% 80% at 80% 0%, rgba(91,42,134,.12), transparent 60%), #E7E2EC;
+}
+@media (prefers-color-scheme: dark){:root[data-sys="motw"]:not([data-theme="light"]){
+  --bg:#0F0B14; --surface:#18121F; --surface-2:#211929; --ink:#ECE6F2; --muted:#9C91A8; --line:#2E2438;
+  --accent:#B88CFF; --accent-ink:#140A22; --accent-soft:#2C1D40; --gold:#E8D44D; --gold-soft:#332D10;
+  --bad:#FF7A70; --good:#7FD18C; --map-floor:#16101C; --grid:rgba(236,230,242,.1);
+  --rail:#0A0710; --rail-line:#05030A; --rail-ink:#8F82A0; --rail-hi:#E8D44D; --rail-on:rgba(232,212,77,.12);
+  --paper:radial-gradient(90% 60% at 85% 0%, rgba(184,140,255,.1), transparent 65%), #0F0B14;
+}}
+:root[data-sys="motw"][data-theme="dark"]{
+  --bg:#0F0B14; --surface:#18121F; --surface-2:#211929; --ink:#ECE6F2; --muted:#9C91A8; --line:#2E2438;
+  --accent:#B88CFF; --accent-ink:#140A22; --accent-soft:#2C1D40; --gold:#E8D44D; --gold-soft:#332D10;
+  --bad:#FF7A70; --good:#7FD18C; --map-floor:#16101C; --grid:rgba(236,230,242,.1);
+  --rail:#0A0710; --rail-line:#05030A; --rail-ink:#8F82A0; --rail-hi:#E8D44D; --rail-on:rgba(232,212,77,.12);
+  --paper:radial-gradient(90% 60% at 85% 0%, rgba(184,140,255,.1), transparent 65%), #0F0B14;
+}
+:root[data-sys="motw"] .panel>h3,:root[data-sys="motw"] .vhead h1{text-transform:uppercase;letter-spacing:.04em;font-weight:400}
+:root[data-sys="motw"] .panel{border-left:3px solid var(--accent)}

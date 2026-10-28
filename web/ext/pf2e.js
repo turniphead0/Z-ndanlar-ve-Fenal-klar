@@ -378,4 +378,6 @@
   document.addEventListener("change", e => { if (sysKey() === "pf2e" && /^(sp\.slots\.\d+\.max|focus\.max|strikes\.\d+\.agile|armor\.raised)$/.test(e.target.dataset?.k || "")) setTimeout(render, 0); });
 
   window.PF2 = { newChar, sheet, derive, updateDerived, action, check, tray, statBlock, newMonster, initChar, initMon, picker, form, addToBook, fromSrd, degree, DEG };
+  window.ZSYS = window.ZSYS || {};
+  window.ZSYS.pf2e = { ...window.PF2, levels: true, initLabel: "1d20+Algı", d20: () => check(0, "d20"), monChip: m => `<small>Sv ${esc(m.level)}</small>` };
 })();
