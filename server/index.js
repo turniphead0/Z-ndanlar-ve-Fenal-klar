@@ -52,7 +52,7 @@ function createServer(opts = {}) {
     const ext = '<link rel="stylesheet" href="/ext/ext.css"><link rel="stylesheet" href="/ext/temalar.css">' + EXT_SCRIPTS.map(n => `<script src="/ext/${n}.js"></script>`).join("");
     const i = html.lastIndexOf("</body>");
     const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
-    return withExt.replace("<body>", '<body><script src="/shim.js"></script>');
+    return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
   const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "mobilya", "katlar", "isik", "saldiri", "birinci-sahis", "tema"];
@@ -68,6 +68,13 @@ function createServer(opts = {}) {
     const p = url.pathname;
     try {
       if (req.method === "GET" && (p === "/" || p === "/index.html")) return send(res, 200, appHtml(), "text/html; charset=utf-8");
+      if (req.method === "GET" && p === "/i18n.js") return send(res, 200, fs.readFileSync(path.join(WEB, "i18n.js")), "text/javascript; charset=utf-8");
+      // Dil sözlüğü: web/i18n/<dil>.json, sayfaya eşzamanlı yüklenen bir betik olarak.
+      if (req.method === "GET" && /^\/i18n\/[a-z]{2}\.js$/.test(p)) {
+        const f = path.join(WEB, "i18n", path.basename(p, ".js") + ".json");
+        const body = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "{}";
+        return send(res, 200, `window.ZM_EN=${body};window.I18N&&I18N.ready(window.ZM_EN);`, "text/javascript; charset=utf-8");
+      }
       if (req.method === "GET" && p === "/shim.js") return send(res, 200, fs.readFileSync(path.join(WEB, "shim.js")), "text/javascript; charset=utf-8");
       if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
         const f = path.join(WEB, p);

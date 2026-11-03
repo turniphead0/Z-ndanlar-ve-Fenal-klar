@@ -9,11 +9,15 @@ let win = null, host = null;
 const cfgFile = () => path.join(app.getPath("userData"), "ayarlar.json");
 const readCfg = () => { try { return JSON.parse(fs.readFileSync(cfgFile(), "utf8")); } catch { return {}; } };
 const writeCfg = c => { fs.mkdirSync(path.dirname(cfgFile()), { recursive: true }); fs.writeFileSync(cfgFile(), JSON.stringify(c, null, 2)); };
+const lang = () => readCfg().lang === "en" ? "en" : "tr";
+const L = (tr, en) => lang() === "en" ? en : tr;
+// Masanın adresine dil seçimini ekler; uygulama bu dili bu sunucu için de hatırlar.
+const withLang = url => { const u = new URL(url); u.searchParams.set("lang", lang()); return u.toString(); };
 const lanIps = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === "IPv4" && !i.internal).map(i => i.address);
 
 function normalize(addr) {
   let a = String(addr || "").trim();
-  if (!a) throw new Error("Sunucu adresi boş");
+  if (!a) throw new Error(L("Sunucu adresi boş", "The server address is empty"));
   if (!/^https?:\/\//i.test(a)) a = "http://" + a;
   const u = new URL(a);
   // Port yazılmadıysa: http için varsayılan sunucu portu, https için (ters vekil arkasında) 443.
@@ -46,37 +50,42 @@ ipcMain.handle("cfg:get", () => ({ ...readCfg(), ips: lanIps(), hosting: host ? 
 ipcMain.handle("join", async (_e, addr) => {
   const origin = normalize(addr);
   const r = await fetch(origin + "/api/info").catch(() => null);
-  if (!r || !r.ok) throw new Error("Bu adreste Zar Masası sunucusu bulunamadı");
+  if (!r || !r.ok) throw new Error(L("Bu adreste Zar Masası sunucusu bulunamadı", "No Zar Masası server was found at this address"));
   const c = readCfg(); c.recent = [origin, ...(c.recent || []).filter(x => x !== origin)].slice(0, 6); writeCfg(c);
-  win.loadURL(origin + "/");
+  win.loadURL(withLang(origin + "/"));
 });
 
 ipcMain.handle("host", async (_e, o) => {
   if (host) await host.srv.close();
   const port = Math.max(1024, Math.min(65535, +o.port || 7373));
   const srv = createServer({ dataDir: path.join(app.getPath("userData"), "masa-verisi"), password: o.password || "", name: o.name || "Zar Masası", anthropicApiKey: o.apiKey || undefined });
-  try { await srv.listen(port); } catch (e) { throw new Error(e.code === "EADDRINUSE" ? `${port} portu kullanımda, başka bir port dene` : String(e.message || e)); }
+  try { await srv.listen(port); } catch (e) { throw new Error(e.code === "EADDRINUSE" ? L(`${port} portu kullanımda, başka bir port dene`, `Port ${port} is in use, try another port`) : String(e.message || e)); }
   host = { srv, port };
   const c = readCfg(); c.host = { name: o.name, port, password: o.password || "", apiKey: o.apiKey || "" }; writeCfg(c);
-  win.loadURL(`http://localhost:${port}/?owner=${srv.ownerKey}`);
+  win.loadURL(withLang(`http://localhost:${port}/?owner=${srv.ownerKey}`));
 });
 
-ipcMain.handle("openHost", () => { if (host) win.loadURL(`http://localhost:${host.port}/?owner=${host.srv.ownerKey}`); });
+ipcMain.handle("openHost", () => { if (host) win.loadURL(withLang(`http://localhost:${host.port}/?owner=${host.srv.ownerKey}`)); });
 ipcMain.handle("stopHost", async () => { if (host) { await host.srv.close(); host = null; } });
 ipcMain.handle("back", () => launcher());
+ipcMain.handle("setLang", (_e, l) => { const c = readCfg(); c.lang = l === "en" ? "en" : "tr"; writeCfg(c); menu(); });
+
+function menu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { label: L("Masa", "Table"), submenu: [
+      { label: L("Başlangıç ekranı", "Start screen"), accelerator: "CmdOrCtrl+L", click: () => launcher() },
+      { role: "reload", label: L("Yenile", "Reload") },
+      { role: "togglefullscreen", label: L("Tam ekran", "Full screen") },
+      { type: "separator" },
+      { role: "quit", label: L("Çıkış", "Quit") },
+    ] },
+    { label: L("Düzen", "Edit"), submenu: [{ role: "undo", label: L("Geri al", "Undo") }, { role: "redo", label: L("Yinele", "Redo") }, { type: "separator" }, { role: "cut", label: L("Kes", "Cut") }, { role: "copy", label: L("Kopyala", "Copy") }, { role: "paste", label: L("Yapıştır", "Paste") }, { role: "selectAll", label: L("Tümünü seç", "Select all") }] },
+    { label: L("Görünüm", "View"), submenu: [{ role: "zoomIn", label: L("Yakınlaştır", "Zoom in") }, { role: "zoomOut", label: L("Uzaklaştır", "Zoom out") }, { role: "resetZoom", label: L("Gerçek boyut", "Actual size") }, { role: "toggleDevTools", label: L("Geliştirici araçları", "Developer tools") }] },
+  ]));
+}
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: "Masa", submenu: [
-      { label: "Başlangıç ekranı", accelerator: "CmdOrCtrl+L", click: () => launcher() },
-      { role: "reload", label: "Yenile" },
-      { role: "togglefullscreen", label: "Tam ekran" },
-      { type: "separator" },
-      { role: "quit", label: "Çıkış" },
-    ] },
-    { label: "Düzen", submenu: [{ role: "undo", label: "Geri al" }, { role: "redo", label: "Yinele" }, { type: "separator" }, { role: "cut", label: "Kes" }, { role: "copy", label: "Kopyala" }, { role: "paste", label: "Yapıştır" }, { role: "selectAll", label: "Tümünü seç" }] },
-    { label: "Görünüm", submenu: [{ role: "zoomIn", label: "Yakınlaştır" }, { role: "zoomOut", label: "Uzaklaştır" }, { role: "resetZoom", label: "Gerçek boyut" }, { role: "toggleDevTools", label: "Geliştirici araçları" }] },
-  ]));
+  menu();
   createWindow();
 });
 app.on("window-all-closed", async () => { if (host) await host.srv.close().catch(() => {}); app.quit(); });

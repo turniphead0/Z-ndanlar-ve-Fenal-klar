@@ -310,7 +310,7 @@
     });
     // pusula
     ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(W / 2 - 26, 6, 52, 18); ctx.fillStyle = "#fff"; ctx.font = `700 12px ${cssVar("--f-num") || "monospace"}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(["K", "D", "G", "B"][FP.dir], W / 2, 15);
+    ctx.fillText((window.LANG && LANG() === "en" ? ["N", "E", "S", "W"] : ["K", "D", "G", "B"])[FP.dir], W / 2, 15);
   }
 
   function drawMini(m) {

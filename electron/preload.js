@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// Her sayfada: masadan başlangıç ekranına dönüş.
-const api = { backToLauncher: () => ipcRenderer.invoke("back") };
+// Her sayfada: masadan başlangıç ekranına dönüş ve dil seçimi.
+const api = { backToLauncher: () => ipcRenderer.invoke("back"), setLang: l => ipcRenderer.invoke("setLang", l) };
 // Yalnızca yerel başlangıç ekranında: ayarlar, bağlanma ve host etme.
 if (location.protocol === "file:") Object.assign(api, {
   config: () => ipcRenderer.invoke("cfg:get"),

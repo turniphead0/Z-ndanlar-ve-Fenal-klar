@@ -229,8 +229,8 @@
 
   // Hasar türü önerileri (bütün hasar türü kutuları kullanır).
   function datalist() { if ($("#dmgTypes")) return; const d = document.createElement("datalist"); d.id = "dmgTypes";
-    const sys = sysKey(), keep = sys === "pf2e" ? k => !["thunder", "necrotic", "radiant"].includes(k) : k => !["sonic", "vitality", "void", "spirit", "bleed"].includes(k);
-    d.innerHTML = DT.filter(x => keep(x[0])).map(x => `<option value="${esc(x[2])}">`).join("") + `<option value="fiziksel">`; document.body.appendChild(d); }
+    const en = window.LANG && LANG() === "en", sys = sysKey(), keep = sys === "pf2e" ? k => !["thunder", "necrotic", "radiant"].includes(k) : k => !["sonic", "vitality", "void", "spirit", "bleed"].includes(k);
+    d.innerHTML = DT.filter(x => keep(x[0])).map(x => `<option value="${esc(en ? x[0] : x[2])}">`).join("") + `<option value="${en ? "physical" : "fiziksel"}">`; document.body.appendChild(d); }
 
   const _render = window.render;
   window.render = function () {

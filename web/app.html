@@ -532,6 +532,7 @@ input[type=color].f{padding:1px;height:32px}
     <button class="navbtn" data-nav="senaryo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h12v18l-6-4-6 4z"/><path d="M9 8h6M9 11h4"/></svg>Senaryo</button>
     <button class="navbtn" data-nav="oyun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.2 5 2.5 5 5.8"/></svg>Oyun</button>
     <button class="navbtn helpbtn" data-help="1" aria-pressed="false" title="Yeni yöneticiler için ipuçları"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.2v.3"/></svg>Destek</button>
+    <button class="navbtn langbtn" data-lang-toggle data-noi18n title="Dil / Language"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/></svg><span class="lname">English</span></button>
     <div class="sync" id="sync" data-s="wait"><i></i><span>Yükleniyor</span></div>
   </nav>
 
@@ -848,7 +849,7 @@ function renderLobby(){
       <div class="chips"><button class="btn pri" type="submit">Oyunu kur ve ${gmT(S.ngSys||"dnd5e")} olarak gir</button><button class="btn" type="button" data-lobby="cancelnew">Vazgeç</button></div></form>`:"";
   el.innerHTML=`<div class="lwrap">${S.help?`<aside class="helpbox"><div class="hbh"><b>Yeni yöneticiler için</b><span class="sp"></span><button class="btn sm" data-help="1" aria-pressed="true">Kapat</button></div><ul>${TIPS.lobby.all.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></aside>`:""}
     <header class="lhead"><div class="lbrand"><svg width="40" height="40" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M16 2 29 9.5v13L16 30 3 22.5v-13z"/><path d="M16 2 9 13h14zM9 13 3 22.5M23 13l6 9.5M9 13l7 17 7-17M3 9.5 9 13M29 9.5 23 13"/></svg><div><h1>Zar Masası</h1><p>D&amp;D 5e oyun masaları</p></div></div>
-      <span class="sp"></span><span class="lme">${esc(ME.name||"")}</span><button class="btn" data-help="1" aria-pressed="${!!S.help}">Destek ${S.help?"açık":"kapalı"}</button>${S.ro?"":`<button class="btn pri" data-lobby="new">+ Yeni oyun</button>`}</header>
+      <span class="sp"></span><button class="btn" data-lang-toggle data-noi18n title="Dil / Language">${window.I18N?I18N.label():"English"}</button><span class="lme">${esc(ME.name||"")}</span><button class="btn" data-help="1" aria-pressed="${!!S.help}">Destek ${S.help?"açık":"kapalı"}</button>${S.ro?"":`<button class="btn pri" data-lobby="new">+ Yeni oyun</button>`}</header>
     ${S.ro?`<div class="robanner">Bu masada yalnızca görüntüleme iznin var. Oyunlara katılmak için masa sahibinden seni Düzenleyici olarak eklemesini iste.</div>`:""}
     ${form}
     ${!S.gamesLoaded&&!all.length?`<div class="empty"><h2>Masalar yükleniyor</h2></div>`:""}
@@ -1285,7 +1286,7 @@ function drawMap(){
   ctx.globalAlpha=1;
   for(const p of PEERS){ const pr=p.presence||{}; if(p.isMe||pr.m!==m.id||!Array.isArray(pr.cur)) continue; const x=pr.cur[0]*s, y=pr.cur[1]*s, c2=peerColor(p.by);
     ctx.fillStyle=c2; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+11,y+4); ctx.lineTo(x+4,y+11); ctx.closePath(); ctx.fill();
-    ctx.font=`700 11px ${cssVar("--f-body")}`; ctx.textAlign="left"; ctx.textBaseline="top"; const nm=who(p.by)||"Oyuncu"; const w=ctx.measureText(nm).width+8; ctx.fillRect(x+10,y+10,w,16); ctx.fillStyle="#fff"; ctx.fillText(nm,x+14,y+12) }
+    ctx.font=`700 11px ${cssVar("--f-body")}`; ctx.textAlign="left"; ctx.textBaseline="top"; const nm=who(p.by)||(window.LANG&&LANG()==="en"?"Player":"Oyuncu"); const w=ctx.measureText(nm).width+8; ctx.fillRect(x+10,y+10,w,16); ctx.fillStyle="#fff"; ctx.fillText(nm,x+14,y+12) }
   const now=performance.now();
   for(const pg of pings){ const k=(now-pg.t)/1600; if(k>1) continue; for(const off of [0,.33]){ const kk=k-off; if(kk<0) continue; ctx.globalAlpha=Math.max(0,1-kk); ctx.strokeStyle=pg.color; ctx.lineWidth=3; ctx.beginPath(); ctx.arc((pg.x+.5)*s,(pg.y+.5)*s,s*.3+kk*s*1.4,0,Math.PI*2); ctx.stroke() } }
   ctx.globalAlpha=1;
@@ -1767,7 +1768,7 @@ function gameContext(){
 document.addEventListener("submit",async e=>{
   if(!e.target.dataset.hask) return; e.preventDefault(); const q=$("#hq").value.trim(); if(!q||!SAMPLE_FN) return;
   helpCtl?.abort(); helpCtl=new AbortController(); const out=$("#hans"); out.textContent="Düşünüyor…";
-  const prompt=`Sen deneyimli bir masaüstü rol yapma oyunu yöneticisisin ve yeni bir ${gmT()}'e yardım ediyorsun. Kısa, uygulanabilir, Türkçe cevap ver (en fazla 6 madde ya da 120 kelime). Kural sorularında ${SYSINFO[sysKey()].name} kurallarına göre cevap ver; emin değilsen söyle.\n\n${gameContext()}\n\nSoru: ${q}`;
+  const prompt=`Sen deneyimli bir masaüstü rol yapma oyunu yöneticisisin ve yeni bir ${gmT()}'e yardım ediyorsun. Kısa, uygulanabilir, ${AI_ANSWER()} cevap ver (en fazla 6 madde ya da 120 kelime). Kural sorularında ${SYSINFO[sysKey()].name} kurallarına göre cevap ver; emin değilsen söyle.\n\n${gameContext()}\n\nSoru: ${q}`;
   try{ const {text}=await SAMPLE_FN(prompt,{signal:helpCtl.signal,cache:false,onText:({text})=>{ out.textContent=text; S.helpAns=text }}); S.helpAns=text }
   catch(err){ if(err.code==="cancelled") return; out.textContent=err.code==="not_granted"||err.code==="sampling_disabled"?"Claude bu sayfada kullanılamıyor.":err.code==="rate_limited"?"Şu an çok fazla istek var, birazdan tekrar dene.":"Cevap alınamadı, tekrar dene."; }
 });
@@ -1986,7 +1987,11 @@ async function importPdf(file){
   }catch(e){ setBusy(null); toast("PDF okunamadı: "+(e.message||"hata")); render() }
 }
 
-const CHUNK_RULE=(sys,a,b)=>`Bir ${sys} senaryo PDF'inin ${a}-${b}. sayfalarını okuyorsun. Metin kullanıcının sahip olduğu senaryodur; oyun yöneticisinin hazırlığı için yapılandırıyorsun. Türkçe yaz, özel isimleri değiştirme. Metni uzun alıntılama, kendi cümlelerinle özetle.
+// Yapay zekâ çıktısının dili: İngilizce seçiliyse yüklenen PDF'in İngilizce adları ve terimleri olduğu gibi kalır.
+const AI_EN=()=>!!(window.LANG&&LANG()==="en");
+const AI_WRITE=()=>AI_EN()?"Write every text value in English. Keep the PDF's original English names, terms, spell, monster and item names exactly as written; do not translate anything into Turkish.":"Türkçe yaz, özel isimleri değiştirme.";
+const AI_ANSWER=()=>AI_EN()?"İngilizce (in English; keep the original English names and rules terms, do not translate them)":"Türkçe";
+const CHUNK_RULE=(sys,a,b)=>`Bir ${sys} senaryo PDF'inin ${a}-${b}. sayfalarını okuyorsun. Metin kullanıcının sahip olduğu senaryodur; oyun yöneticisinin hazırlığı için yapılandırıyorsun. ${AI_WRITE()} Metni uzun alıntılama, kendi cümlelerinle özetle.
 Yalnızca tek bir JSON nesnesi döndür:
 {"sections":[{"title":"","startPage":0,"summary":"2-3 cümle"}],
 "npcs":[{"name":"","role":"","page":0,"description":"görünüş ve kişilik, 1-2 cümle","motivation":"","secret":"","stats":"metinde varsa kısa istatistik satırı"}],
@@ -2009,7 +2014,7 @@ async function analyzeScenario(){
     const npcs=[...byName.values()].map(p=>({...p,id:uid("np")}));
     setBusy({msg:"Claude modülleri ve DM kılavuzunu hazırlıyor",step:chunks.length,total:chunks.length+1});
     const brief=JSON.stringify({sections:acc.sections,npcs:npcs.map(p=>({name:p.name,role:p.role,page:p.page,motivation:p.motivation,secret:p.secret})),clues:acc.clues,maps:acc.maps.map(m=>({title:m.title,page:m.page})),handouts:acc.handouts.map(h=>({title:h.title,page:h.page}))}).slice(0,180000);
-    const fin=await SAMPLE_FN.json(`Bir ${sys} senaryosunun bölüm özetleri, NPC'leri ve ipuçları aşağıda (toplam ${meta.pageCount} sayfa). Yeni bir oyun yöneticisi için senaryoyu oynanabilir modüllere böl ve bir yönetici kılavuzu yaz. Türkçe yaz, özel isimleri değiştirme.
+    const fin=await SAMPLE_FN.json(`Bir ${sys} senaryosunun bölüm özetleri, NPC'leri ve ipuçları aşağıda (toplam ${meta.pageCount} sayfa). Yeni bir oyun yöneticisi için senaryoyu oynanabilir modüllere böl ve bir yönetici kılavuzu yaz. ${AI_WRITE()}
 Yalnızca tek bir JSON nesnesi döndür:
 {"title":"senaryonun adı","guide":{"premise":"gerçekte ne oluyor, sırlar dahil, 3-5 cümle","hook":"oyuncular hikâyeye nasıl girer","structure":"genel akış, 2-3 cümle","secrets":["oyunculardan saklanacak gerçekler"],"pacing":["tempo ve hazırlık önerileri"],"ifStuck":["oyuncular takılırsa ne yapılır"],"ending":"olası sonlar"},
 "modules":[{"title":"","pages":[0,0],"summary":"2-4 cümle","goal":"bu bölümde oyuncuların amacı","scenes":[{"title":"","page":0,"note":"yöneticiye kısa not"}],"npcs":["isim"],"clues":["ipucu"],"maps":["harita başlığı"],"handouts":["el notu başlığı"]}]}
@@ -2078,7 +2083,7 @@ function relevantPages(q,mod){ const pages=scPages(); const words=String(q).toLo
 async function askAssistant(q,mod){
   if(!SAMPLE_FN||!q) return; const m=scMeta(); S.chat=S.chat||[]; S.chat.push({role:"user",content:q}); S.chatBusy=true; S.chatLive=""; render();
   chatCtl?.abort(); chatCtl=new AbortController();
-  const rules=`Sen "${m.title}" adlı ${SYSINFO[sysKey()].name} senaryosunu yöneten bir ${gmT()}'in asistanısın. Türkçe, kısa ve uygulanabilir cevap ver. Bilgiyi aşağıdaki kılavuzdan ve sayfa metinlerinden al; kullandığın sayfaları (s. N) diye belirt. Metinde olmayan bir şeyi uyduruyorsan bunun bir öneri olduğunu söyle. Senaryo metnini uzun uzun alıntılama.
+  const rules=`Sen "${m.title}" adlı ${SYSINFO[sysKey()].name} senaryosunu yöneten bir ${gmT()}'in asistanısın. ${AI_ANSWER()}, kısa ve uygulanabilir cevap ver. Bilgiyi aşağıdaki kılavuzdan ve sayfa metinlerinden al; kullandığın sayfaları (s. N) diye belirt. Metinde olmayan bir şeyi uyduruyorsan bunun bir öneri olduğunu söyle. Senaryo metnini uzun uzun alıntılama.
 KILAVUZ: ${JSON.stringify(m.guide||{}).slice(0,6000)}
 MODÜLLER: ${(m.modules||[]).map((x,i)=>`${i+1}. ${x.title} (s. ${(x.pages||[]).join("-")}): ${x.summary}`).join(" | ").slice(0,8000)}
 MASA: ${gameContext()}
