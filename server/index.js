@@ -55,7 +55,7 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "mobilya", "katlar", "isik", "birinci-sahis", "tema"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "mobilya", "katlar", "isik", "saldiri", "birinci-sahis", "tema"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });

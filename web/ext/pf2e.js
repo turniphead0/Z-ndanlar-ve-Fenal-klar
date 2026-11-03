@@ -117,6 +117,7 @@
         <div class="pf-vc">${P.VCONDS.map(([k, n]) => `<span class="pf-cv ${+c.conds?.[k] ? "on" : ""}" title="${esc(P.COND_HELP[k] || "")}"><span>${n}</span><button class="btn sm" data-act="pf-cond" data-c="${k}" data-d="-1" aria-label="${n} azalt">−</button><b class="num">${+c.conds?.[k] || 0}</b><button class="btn sm" data-act="pf-cond" data-c="${k}" data-d="1" aria-label="${n} artır">+</button></span>`).join("")}</div>
         <div class="cond">${P.TCONDS.map(([k, n]) => `<button class="chip" data-act="pf-tcond" data-c="${k}" aria-pressed="${!!c.conds?.[k]}" title="${esc(P.COND_HELP[k] || "")}">${n}</button>`).join("")}</div>
         ${activeConds(c)}<p class="hint">Durum cezaları kağıttaki tüm sayılara ve zarlara kendiliğinden yansır. Aynı türden cezalar toplanmaz, en büyüğü geçerlidir.</p></div>
+      ${resPanel(c, true)}
     </div>
   </div>
   <div class="panel"><h3>Zırh ve kalkan</h3><div class="pf-armor">
@@ -267,7 +268,7 @@
   /* ---------------- Canavar kartı ---------------- */
   function newMonster() {
     return { id: uid("mo"), name: "Yeni yaratık", meta: "Orta · İnsansı", level: 1, perc: 6, senses: "", languages: "Ortak", skills: "Atletizm +7", ab: { str: 3, dex: 2, con: 2, int: 0, wis: 1, cha: 0 },
-      ac: 16, fort: 7, ref: 5, will: 4, hpMax: 20, immun: "", speed: "25 ft", attacks: [{ name: "Kılıç", bonus: "+8", dmg: "1d8+4 kesici", agile: false }], traits: "", notes: "", size: 1 };
+      ac: 16, fort: 7, ref: 5, will: 4, hpMax: 20, immun: "", speed: "25 ft", attacks: [{ name: "Kılıç", bonus: "+8", dmg: "1d8+4", type: "kesici", agile: false }], traits: "", notes: "", size: 1 };
   }
   function statBlock(mo) {
     const M = (k, ph, cls = "f", type = "text") => `<input class="${cls}" type="${type}" data-mo="${k}" value="${esc(getPath(mo, k) ?? "")}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">`;
@@ -279,10 +280,11 @@
     <div class="stab">${P.ATTR.map(([k, , ab]) => `<div><span class="lbl">${ab}</span>${M("ab." + k, "0", "f num", "number")}<button class="rollb" data-act="pfm-ab" data-ab="${k}">At</button></div>`).join("")}</div><hr>
     <div class="strow"><b>ZS</b>${M("ac", "16", "f num n", "number")}<b style="min-width:auto">Fort</b>${M("fort", "7", "f num n", "number")}<button class="btn sm" data-act="pfm-check" data-k="fort">At</button></div>
     <div class="strow"><b>Ref</b>${M("ref", "5", "f num n", "number")}<button class="btn sm" data-act="pfm-check" data-k="ref">At</button><b style="min-width:auto">İrade</b>${M("will", "4", "f num n", "number")}<button class="btn sm" data-act="pfm-check" data-k="will">At</button></div>
-    <div class="strow"><b>Can</b>${M("hpMax", "20", "f num n", "number")}${M("immun", "Bağışıklık, direnç, zayıflık")}</div>
+    <div class="strow"><b>Can</b>${M("hpMax", "20", "f num n", "number")}<b style="min-width:auto">Bağışıklık</b>${M("immun", "zehir")}</div>
+    <div class="strow"><b>Direnç</b>${M("res", "soğuk 5, fiziksel 3")}<b style="min-width:auto">Zayıflık</b>${M("vuln", "gümüş 5")}</div>
     <div class="strow"><b>Hız</b>${M("speed", "25 ft")}</div>
     <h4>Saldırılar <button class="btn sm" data-act="mon-addatk">+ Ekle</button></h4>
-    ${(mo.attacks || []).map((a, i) => `<div class="atk pfm-atk"><input class="f" data-mo="attacks.${i}.name" value="${esc(a.name)}" aria-label="Saldırı"><input class="f num" data-mo="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+8" aria-label="Bonus"><input class="f dmgf" data-mo="attacks.${i}.dmg" value="${esc(a.dmg)}" placeholder="1d8+4 kesici" aria-label="Hasar">
+    ${(mo.attacks || []).map((a, i) => `<div class="atk pfm-atk"><input class="f" data-mo="attacks.${i}.name" value="${esc(a.name)}" aria-label="Saldırı"><input class="f num" data-mo="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+8" aria-label="Bonus">${dmgInputs("data-mo", i, a, "1d8+4")}
       <span style="display:flex;gap:4px;flex-wrap:wrap"><label class="toggle" title="Çevik: −4/−8"><input type="checkbox" data-mo="attacks.${i}.agile" ${a.agile ? "checked" : ""}>Çevik</label>${[0, 1, 2].map(n => `<button class="btn sm" data-act="pfm-atk" data-i="${i}" data-n="${n}">${sgn(atkBonus(a.bonus) + mapPen(n, a.agile))}</button>`).join("")}<button class="btn sm" data-act="pfm-dmg" data-i="${i}">Hasar</button><button class="btn sm" data-act="pfm-dmg" data-i="${i}" data-crit="1">×2</button><button class="btn sm danger" data-act="mon-delatk" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")}
     <h4>Yetenekler ve eylemler</h4><textarea class="f" data-mo="traits" placeholder="Saldırı Fırsatı ↺ …">${esc(mo.traits)}</textarea>
     <h4>GM notları</h4><textarea class="f" data-mo="notes">${esc(mo.notes)}</textarea>
@@ -342,8 +344,8 @@
       case "pf-spellguide": window.PF2G?.spellGuide(); return true;
       case "pfm-check": { const k = b.dataset.k, v = +mo[k] || 0; check(v, monRollLabel(mo, { perc: "Algı", fort: "Dayanıklılık", ref: "Refleks", will: "İrade" }[k])); return true; }
       case "pfm-ab": check(+mo.ab?.[b.dataset.ab] || 0, monRollLabel(mo, AN[b.dataset.ab][1])); return true;
-      case "pfm-atk": { const at = mo.attacks[+b.dataset.i], n = +b.dataset.n; const r = check(atkBonus(at.bonus) + mapPen(n, at.agile), monRollLabel(mo, `${at.name || "Saldırı"} (${n + 1}.)`)); const ex = dmgExpr(at.dmg); if (r && r.g != null && r.g >= 2 && ex) dmg(ex, monRollLabel(mo, (at.name || "Saldırı") + " hasarı"), r.g === 3); return true; }
-      case "pfm-dmg": { const at = mo.attacks[+b.dataset.i], ex = dmgExpr(at.dmg); if (!ex) { toast("Hasar alanına zar yaz: 1d8+4"); return true; } dmg(ex, monRollLabel(mo, (at.name || "Saldırı") + " hasarı"), !!b.dataset.crit); return true; }
+      case "pfm-atk": { const at = mo.attacks[+b.dataset.i], n = +b.dataset.n; const r = check(atkBonus(at.bonus) + mapPen(n, at.agile), monRollLabel(mo, `${at.name || "Saldırı"} (${n + 1}.)`)); const ex = dmgExpr(at.dmg); const ty = splitDmg(at).type; if (r && r.g != null && r.g >= 2 && ex) dmg(ex, monRollLabel(mo, (at.name || "Saldırı") + " hasarı" + (ty ? " (" + ty + ")" : "")), r.g === 3); return true; }
+      case "pfm-dmg": { const at = mo.attacks[+b.dataset.i], ex = dmgExpr(at.dmg); if (!ex) { toast("Hasar alanına zar yaz: 1d8+4"); return true; } const ty = splitDmg(at).type; dmg(ex, monRollLabel(mo, (at.name || "Saldırı") + " hasarı" + (ty ? " (" + ty + ")" : "")), !!b.dataset.crit); return true; }
     }
     return false;
   }

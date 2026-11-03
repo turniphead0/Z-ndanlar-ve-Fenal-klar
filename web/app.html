@@ -115,6 +115,8 @@ input.f:focus,select.f:focus,textarea.f:focus{border-color:var(--accent);outline
 .ds span{display:flex;gap:4px;align-items:center}
 .ds input{accent-color:var(--accent);width:16px;height:16px}
 .atk{display:grid;grid-template-columns:minmax(0,1.4fr) 62px minmax(0,1.2fr) auto;gap:6px;align-items:center;margin-bottom:6px}
+.resg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dmgw{display:flex;gap:4px;min-width:0}.dmgw .f{min-width:0;flex:1 1 0}.dmgw .dtype{flex:1.2 1 0}
 .atkh{font-size:11px}
 .cond{display:flex;flex-wrap:wrap;gap:5px}
 .cond .chip{font-size:13px;padding:2px 9px}
@@ -556,7 +558,7 @@ input[type=color].f{padding:1px;height:32px}
   </aside>
 </div>
 <button class="btn pri trayfab" id="trayFab">Zar tepsisi</button>
-<input type="file" id="bgFile" accept="image/*" hidden><input type="file" id="tokFile" accept="image/*" hidden>
+<input type="file" id="bgFile" accept="image/*" hidden><input type="file" id="mapImgFile" accept="image/*" hidden><input type="file" id="tokFile" accept="image/*" hidden>
 
 <script>
 const SAMPLE = {"chars": {"c-thalia": {"id": "c-thalia", "name": "Thalia Rüzgârgülü", "cls": "Korucu (Ranger)", "level": 4, "race": "Orman Elfi", "bg": "Yabani (Outlander)", "align": "Kaotik İyi", "player": "Örnek karakter", "ab": {"str": 12, "dex": 17, "con": 14, "int": 10, "wis": 15, "cha": 8}, "saves": {"str": true, "dex": true}, "skills": {"stealth": 1, "survival": 1, "perception": 1, "nature": 1}, "ac": 15, "initBonus": 0, "speed": "35 ft", "hpMax": 36, "hp": 29, "hpTemp": 0, "hitDice": "4d10", "ds": {"s": 0, "f": 0}, "insp": false, "exhaustion": 0, "conditions": [], "attacks": [{"name": "Uzun yay", "bonus": "+7", "dmg": "1d8+3 delici"}, {"name": "Kısa kılıç", "bonus": "+7", "dmg": "1d6+3 delici"}], "spellAb": "wis", "slots": [{"max": 3, "used": 1}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}], "features": "Favori Düşman: Goblinler\nDoğal Kaşif: Orman\nSavaş Stili: Okçuluk (+2 menzilli saldırı)\nAvcının Hedefi (Hunter's Mark)", "spells": "1. seviye: Hunter's Mark, Cure Wounds, Fog Cloud", "inventory": "Uzun yay + 40 ok\nKısa kılıç ×2\nDeri zırh\nKaşif çantası\nAvcı tuzağı", "coins": {"cp": 0, "sp": 14, "ep": 0, "gp": 32, "pp": 0}, "updated": 1792743359255}, "c-borin": {"id": "c-borin", "name": "Borin Demirsakal", "cls": "Rahip (Cleric) — Yaşam", "level": 4, "race": "Tepe Cücesi", "bg": "Yardımcı (Acolyte)", "align": "Yasal İyi", "player": "Örnek karakter", "ab": {"str": 14, "dex": 10, "con": 15, "int": 11, "wis": 17, "cha": 12}, "saves": {"wis": true, "cha": true}, "skills": {"medicine": 1, "religion": 1, "insight": 1, "history": 1}, "ac": 18, "initBonus": 0, "speed": "25 ft", "hpMax": 35, "hp": 35, "hpTemp": 5, "hitDice": "4d8", "ds": {"s": 0, "f": 0}, "insp": true, "exhaustion": 0, "conditions": [], "attacks": [{"name": "Savaş çekici", "bonus": "+4", "dmg": "1d8+2 ezici"}, {"name": "Kutsal Alev (DEX kurtarma, ZK 13)", "bonus": "", "dmg": "1d8 ışıltı"}], "spellAb": "wis", "slots": [{"max": 4, "used": 2}, {"max": 3, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}, {"max": 0, "used": 0}], "features": "Kutsal Kanal (1/dinlenme): Ölümsüzleri Kovma, Yaşamı Koru\nİyileştirme Müridi: iyileştirme büyülerine +2+büyü seviyesi\nKaranlıkta görüş 60 ft", "spells": "Cantrip: Sacred Flame, Guidance, Spare the Dying\n1: Bless, Cure Wounds, Healing Word\n2: Lesser Restoration, Spiritual Weapon", "inventory": "Savaş çekici\nZincir zırh + kalkan\nKutsal sembol\nRahip çantası", "coins": {"cp": 20, "sp": 5, "ep": 0, "gp": 18, "pp": 1}, "updated": 1792743358255}}, "notes": {"n-1": {"id": "n-1", "title": "Oturum 3 — Eski Değirmen", "cat": "Oturum", "pinned": false, "updated": 1792743354255, "body": "Grup değirmene gece vardı. Bodrumda goblin izleri bulundu.\nThalia iki goblini fark etti (Algı 17).\nBorin yaralı köylüyü iyileştirdi.\n\nSonraki oturum: değirmenin altındaki tünel."}, "n-2": {"id": "n-2", "title": "Usta Varkas", "cat": "NPC", "pinned": false, "updated": 1792743352255, "body": "Değirmenci. Gergin, bir şey saklıyor.\nGoblinlere tahıl veriyor çünkü kızı rehin.\nSes: alçak, hızlı konuşuyor."}, "n-3": {"id": "n-3", "title": "Sisli Bataklık geçidi", "cat": "Mekan", "pinned": false, "updated": 1792743350255, "body": "Zorlu arazi. Her saat DC 12 Hayatta Kalma kontrolü, başarısızlıkta yol kaybı.\nGece sis: görüş 30 ft."}, "n-4": {"id": "n-4", "title": "Kayıp kervan", "cat": "Görev", "pinned": true, "updated": 1792743356255, "body": "Ödül: 150 gp (Tüccar loncası).\nKervan 6 gün önce bataklık yolunda kayboldu.\nİpucu: değirmendeki goblinlerin elinde lonca mührü var."}}, "maps": {"m-degirmen": {"id": "m-degirmen", "name": "Eski Değirmen", "cols": 20, "rows": 14, "cells": {"3,2": "wall", "3,10": "wall", "4,2": "wall", "4,10": "wall", "5,2": "wall", "5,10": "wall", "6,2": "wall", "6,10": "wall", "7,2": "wall", "7,10": "door", "8,2": "wall", "8,10": "wall", "9,2": "wall", "9,10": "wall", "10,2": "wall", "10,10": "wall", "11,2": "wall", "11,10": "wall", "12,2": "wall", "12,10": "wall", "3,3": "wall", "12,3": "wall", "3,4": "wall", "12,4": "wall", "3,5": "wall", "12,5": "wall", "3,6": "wall", "12,6": "door", "3,7": "wall", "12,7": "wall", "3,8": "wall", "12,8": "wall", "3,9": "wall", "12,9": "wall", "16,0": "water", "17,0": "water", "16,1": "water", "17,1": "water", "16,2": "water", "17,2": "water", "16,3": "water", "17,3": "water", "16,4": "water", "17,4": "water", "16,5": "water", "17,5": "water", "16,6": "water", "17,6": "water", "16,7": "water", "17,7": "water", "16,8": "water", "17,8": "water", "16,9": "water", "17,9": "water", "16,10": "water", "17,10": "water", "16,11": "water", "17,11": "water", "16,12": "water", "17,12": "water", "16,13": "water", "17,13": "water", "4,3": "rough", "5,3": "rough", "4,4": "rough", "10,8": "rough", "11,8": "rough", "11,9": "rough", "14,4": "rough", "14,5": "rough", "15,5": "rough", "13,11": "rough", "14,12": "rough", "10,4": "stairs", "5,9": "trap", "0,0": "tree", "1,0": "tree", "0,1": "tree", "18,0": "tree", "19,1": "tree", "19,0": "tree", "18,13": "tree", "19,12": "tree"}, "bg": "", "updated": 1792743359255, "tokens": {"t1": {"id": "t1", "label": "Thalia", "color": "#2f8f86", "x": 6, "y": 12, "size": 1, "charId": "c-thalia"}, "t2": {"id": "t2", "label": "Borin", "color": "#4a6fb0", "x": 8, "y": 12, "size": 1, "charId": "c-borin"}, "t3": {"id": "t3", "label": "Goblin 1", "color": "#b3402e", "x": 9, "y": 5, "size": 1, "hp": 7, "monsterId": "mo-goblin", "hpMax": 7}, "t4": {"id": "t4", "label": "Goblin 2", "color": "#b3402e", "x": 5, "y": 7, "size": 1, "hp": 4, "monsterId": "mo-goblin", "hpMax": 7}}, "labels": {"lb1": {"id": "lb1", "x": 7, "y": 1, "text": "Değirmen", "removed": false}, "lb2": {"id": "lb2", "x": 16, "y": 12, "text": "Dere", "removed": false}}, "fog": {}, "fogOn": false}}, "log": {"entries": [{"id": "l1", "t": 1792743299255, "label": "Thalia · Algı", "expr": "1d20+4", "total": 17, "detail": "[13] +4", "crit": null}, {"id": "l2", "t": 1792743329255, "label": "Borin · Cure Wounds", "expr": "1d8+5", "total": 11, "detail": "[6] +5", "crit": null}]}, "monsters": {"mo-goblin": {"id": "mo-goblin", "name": "Goblin", "meta": "Küçük insansı (goblinoid), nötr kötü", "ac": 15, "acNote": "(deri zırh, kalkan)", "hpMax": 7, "hpDice": "2d6", "speed": "30 ft", "cr": "1/4", "size": 1, "ab": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}, "saves": "", "skills": "Gizlilik +6", "senses": "Karanlıkta görüş 60 ft, Pasif Algı 9", "languages": "Ortak, Goblince", "traits": "Çevik Kaçış: Her turunda bonus eylemle Geri Çekilme ya da Saklanma eylemi yapabilir.", "attacks": [{"name": "Pala", "bonus": "+4", "dmg": "1d6+2 kesici"}, {"name": "Kısa yay (80/320 ft)", "bonus": "+4", "dmg": "1d6+2 delici"}], "notes": "Değirmenci Varkas'ın kızını bodrumdaki tünelde tutuyorlar. Yarı CP'nin altına düşünce kaçmaya çalışırlar.", "updated": 1792740000000}}};
@@ -1060,11 +1062,12 @@ function viewChars(){
       <div class="panel"><h3>Durumlar</h3><div class="cond">${CONDS.map(x=>`<button class="chip" data-act="cond" data-c="${x}" aria-pressed="${(c.conditions||[]).includes(x)}" title="${esc(COND5[x]?.d||"")}">${x}</button>`).join("")}</div>
         ${condList5(c)}
         <div class="ds"><span class="lbl">Bitkinlik</span><select class="f" style="width:auto" data-k="exhaustion" data-num="1">${[0,1,2,3,4,5,6].map(i=>`<option ${+c.exhaustion===i?"selected":""}>${i}</option>`).join("")}</select></div></div>
+      ${resPanel(c)}
     </div>
   </div>
   <div class="panel"><h3>Saldırılar ve Büyü Saldırıları <button class="btn sm" data-act="addatk">+ Ekle</button></h3>
     <div class="atk atkh"><span class="lbl">Ad</span><span class="lbl">Saldırı</span><span class="lbl dmgf">Hasar / Tür</span><span></span></div>
-    ${(c.attacks||[]).map((a,i)=>`<div class="atk"><input class="f" data-k="attacks.${i}.name" value="${esc(a.name)}" aria-label="Saldırı adı"><input class="f num" data-k="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+5" aria-label="Saldırı bonusu"><input class="f dmgf" data-k="attacks.${i}.dmg" value="${esc(a.dmg)}" placeholder="1d8+3 kesici" aria-label="Hasar"><span style="display:flex;gap:4px"><button class="btn sm" data-act="roll-atk" data-i="${i}">Vur</button><button class="btn sm" data-act="roll-dmg" data-i="${i}">Hasar</button><button class="btn sm danger" data-act="delatk" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")||`<p style="color:var(--muted);margin:0">Saldırı yok. Kritikte hasar zarları için <b>Hasar</b> düğmesine Shift ile tıkla.</p>`}
+    ${(c.attacks||[]).map((a,i)=>`<div class="atk"><input class="f" data-k="attacks.${i}.name" value="${esc(a.name)}" aria-label="Saldırı adı"><input class="f num" data-k="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+5" aria-label="Saldırı bonusu">${dmgInputs("data-k",i,a,"1d8+3")}<span style="display:flex;gap:4px"><button class="btn sm" data-act="roll-atk" data-i="${i}">Vur</button><button class="btn sm" data-act="roll-dmg" data-i="${i}">Hasar</button><button class="btn sm danger" data-act="delatk" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")||`<p style="color:var(--muted);margin:0">Saldırı yok. Kritikte hasar zarları için <b>Hasar</b> düğmesine Shift ile tıkla.</p>`}
   </div>
   <div class="panel"><h3>Büyücülük</h3>
     <div class="spellstat"><label class="toggle">Büyü yeteneği <select class="f" style="width:auto" data-k="spellAb"><option value="">—</option>${ABS.map(([k,n])=>`<option value="${k}" ${c.spellAb===k?"selected":""}>${n}</option>`).join("")}</select></label><span>Kurtarma ZK <b data-d="sdc">—</b></span><span>Büyü saldırısı <button class="rollb" style="padding:0 8px" data-act="roll-spell" data-d="satk">—</button></span></div>
@@ -1141,9 +1144,9 @@ const HINTS={move:"Jetonları sürükleyerek taşı. Etiketleri de sürükleyebi
 function viewMap(){
   const l=loadingOr("maps"); if(l) return l;
   const dm=isDM(), ro=S.ro; const list=Object.values(S.maps).filter(x=>dm||!x.hidden); const m=curMap();
-  const head=`<div class="vhead"><h1>Haritalar</h1><div class="chips">${list.map(x=>`<button class="chip" data-act="selmap" data-id="${x.id}" aria-pressed="${x.id===S.mapId}">${esc(x.name)}</button>`).join("")}</div><span class="sp"></span>${ro||!dm?"":`<button class="btn pri" data-act="newmap">+ Yeni harita</button>`}</div>`;
+  const head=`<div class="vhead"><h1>Haritalar</h1><div class="chips">${list.map(x=>`<button class="chip" data-act="selmap" data-id="${x.id}" aria-pressed="${x.id===S.mapId}">${esc(x.name)}</button>`).join("")}</div><span class="sp"></span>${ro||!dm?"":`<button class="btn" data-act="imgmap" title="Bir harita resmi seç; kareler resmin üstüne yerleşir">+ Resimden harita</button><button class="btn pri" data-act="newmap">+ Yeni harita</button>`}</div>`;
   if(!m&&!dm) return head+`<div class="empty"><h2>Henüz paylaşılan harita yok</h2><p>DM bir haritayı oyunculara açtığında burada görünecek.</p></div>`;
-  if(!m) return head+`<div class="empty"><h2>Henüz harita yok</h2><p>Kareli bir savaş haritası çiz, duvar ve arazi boya, jetonları sürükle. Her kare 5 ft.</p><div class="chips"><button class="btn pri" data-act="newmap">+ Yeni harita</button>${sampleBtn()}</div></div>`;
+  if(!m) return head+`<div class="empty"><h2>Henüz harita yok</h2><p>Kareli bir savaş haritası çiz, duvar ve arazi boya, jetonları sürükle. Her kare 5 ft.</p><div class="chips"><button class="btn pri" data-act="newmap">+ Yeni harita</button><button class="btn" data-act="imgmap">+ Resimden harita</button>${sampleBtn()}</div><p class="hint">Hazır bir harita resmin varsa <b>Resimden harita</b> onu doğrudan harita yapar.</p></div>`;
   if(!dm&&!["move","pan","measure","ping"].includes(S.tool)) S.tool="move";
   if(!dm&&TERRAIN.find(x=>x[0]===S.terrain)?.[3]) S.terrain="wall";
   const terr=TERRAIN.filter(t=>dm||!t[3]);
@@ -1187,8 +1190,10 @@ function viewMap(){
     ${ro||!dm?"":`<div class="panel"><h3>Harita</h3><div class="fgrid">
       <label class="toggle w2"><input type="checkbox" data-act="maphide" ${m.hidden?"":"checked"}> Oyuncular bu haritayı görebilir</label>
       <label class="w2"><span class="lbl">Ad</span><input class="f" data-mk="name" value="${esc(m.name)}"></label>
-      <label><span class="lbl">Sütun</span><input class="f num" type="number" min="5" max="60" data-mk="cols" value="${m.cols}"></label>
-      <label><span class="lbl">Satır</span><input class="f num" type="number" min="5" max="60" data-mk="rows" value="${m.rows}"></label>
+      <label><span class="lbl">Sütun</span><input class="f num" type="number" min="5" max="100" data-mk="cols" value="${m.cols}"></label>
+      <label><span class="lbl">Satır</span><input class="f num" type="number" min="5" max="100" data-mk="rows" value="${m.rows}"></label>
+      ${m.bg&&m.bgW?`<p class="hint w2" style="margin:0">Resimde kendi ızgarası varsa Sütun'u resimdeki kare sayısına eşitle; satır resmin oranına göre kendiliğinden ayarlanır.</p>`:""}
+      <label class="toggle w2"><input type="checkbox" data-act="gridoff" ${m.gridOff?"checked":""}> Izgara çizgilerini gizle</label>
       <button class="btn sm" data-act="bg">${m.bg?"Arka planı değiştir":"Arka plan görseli"}</button>${m.bg?`<button class="btn sm" data-act="bgclear">Görseli kaldır</button>`:`<span></span>`}
       ${dm?`<button class="btn sm w2" data-act="clearterr">Araziyi temizle</button>
       <button class="btn sm danger w2" data-act="delmap">Haritayı sil</button>`:""}</div></div>`}
@@ -1243,8 +1248,8 @@ function drawMap(){
   for(const [k,v] of Object.entries(m.cells||{})){ if(!v) continue; const [x,y]=k.split(",").map(Number); if(x>=m.cols||y>=m.rows) continue;
     if(v==="trap"&&!dm) continue; if(!dm&&fogged(m,x,y)) continue; drawTerrain(ctx,v,x*s,y*s,s,col,im) }
   if(window.PROPS) for(const [k,v] of Object.entries(m.props||{})){ if(!v) continue; const [x,y]=k.split(",").map(Number); if(x>=m.cols||y>=m.rows||(!dm&&fogged(m,x,y))) continue; ctx.globalAlpha=1; PROPS.draw(ctx,v,x*s,y*s,s) }
-  ctx.globalAlpha=1; ctx.strokeStyle=cssVar("--grid"); ctx.lineWidth=1; ctx.beginPath();
-  for(let x=0;x<=m.cols;x++){ctx.moveTo(x*s+.5,0);ctx.lineTo(x*s+.5,m.rows*s)} for(let y=0;y<=m.rows;y++){ctx.moveTo(0,y*s+.5);ctx.lineTo(m.cols*s,y*s+.5)} ctx.stroke();
+  ctx.globalAlpha=1; if(!m.gridOff){ ctx.strokeStyle=cssVar("--grid"); ctx.lineWidth=1; ctx.beginPath();
+  for(let x=0;x<=m.cols;x++){ctx.moveTo(x*s+.5,0);ctx.lineTo(x*s+.5,m.rows*s)} for(let y=0;y<=m.rows;y++){ctx.moveTo(0,y*s+.5);ctx.lineTo(m.cols*s,y*s+.5)} ctx.stroke() }
   // etiketler
   ctx.textAlign="center"; ctx.textBaseline="middle";
   for(const l of visLabs(m)){ const dr=MV.ldrag&&MV.ldrag.id===l.id?MV.ldrag:null; const x=dr?dr.x:l.x, y=dr?dr.y:l.y;
@@ -1407,7 +1412,7 @@ function combatTracker(){
 /* ---------- Canavar kartları (yalnızca DM) ---------- */
 const CR_XP={"0":10,"1/8":25,"1/4":50,"1/2":100,"1":200,"2":450,"3":700,"4":1100,"5":1800,"6":2300,"7":2900,"8":3900,"9":5000,"10":5900,"11":7200,"12":8400,"13":10000,"14":11500,"15":13000,"16":15000,"17":18000,"18":20000,"19":22000,"20":25000,"21":33000,"22":41000,"23":50000,"24":62000,"30":155000};
 const SIZES=[[1,"Küçük/Orta (1×1)"],[2,"Büyük (2×2)"],[3,"Devasa (3×3)"],[4,"Muazzam (4×4)"]];
-function newMonster(){ return {id:uid("mo"),name:"Yeni yaratık",meta:"Orta insansı, tarafsız",ac:12,acNote:"",hpMax:11,hpDice:"2d8+2",speed:"30 ft",cr:"1/2",size:1,ab:{str:10,dex:10,con:10,int:10,wis:10,cha:10},saves:"",skills:"",senses:"Pasif Algı 10",languages:"Ortak",traits:"",attacks:[{name:"Kılıç",bonus:"+3",dmg:"1d6+1 kesici"}],notes:""} }
+function newMonster(){ return {id:uid("mo"),name:"Yeni yaratık",meta:"Orta insansı, tarafsız",ac:12,acNote:"",hpMax:11,hpDice:"2d8+2",speed:"30 ft",cr:"1/2",size:1,ab:{str:10,dex:10,con:10,int:10,wis:10,cha:10},saves:"",skills:"",senses:"Pasif Algı 10",languages:"Ortak",traits:"",attacks:[{name:"Kılıç",bonus:"+3",dmg:"1d6+1",type:"kesici"}],notes:""} }
 function viewMonsters(){
   const list=Object.values(S.monsters).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr"));
   if(!S.monsters[S.monId]) S.monId=list[0]?.id||null; const mo=S.monsters[S.monId];
@@ -1430,12 +1435,15 @@ function statBlock(mo){
     <hr>
     <div class="strow"><b>Kurtarmalar</b>${M("saves","ÇEV +4")}</div>
     <div class="strow"><b>Beceriler</b>${M("skills","Gizlilik +6")}</div>
+    <div class="strow"><b>Direnç</b>${M("res","ateş, soğuk")}</div>
+    <div class="strow"><b>Zayıflık</b>${M("vuln","ışıltı")}</div>
+    <div class="strow"><b>Bağışıklık</b>${M("immun","zehir")}</div>
     <div class="strow"><b>Duyular</b>${M("senses","Karanlıkta görüş 60 ft")}</div>
     <div class="strow"><b>Diller</b>${M("languages","Ortak")}</div>
     <div class="strow"><b>Tehlike</b>${M("cr","1/4","f num n")}<span class="hint" style="margin:0" data-xp>${xp!=null?xp.toLocaleString("tr-TR")+" TP":""}</span></div>
     <h4>Özellikler</h4><textarea class="f" data-mo="traits" placeholder="Çevik Kaçış: …" aria-label="Özellikler">${esc(mo.traits)}</textarea>
     <h4>Eylemler <button class="btn sm" data-act="mon-addatk">+ Ekle</button></h4>
-    ${(mo.attacks||[]).map((a,i)=>`<div class="atk"><input class="f" data-mo="attacks.${i}.name" value="${esc(a.name)}" aria-label="Eylem adı"><input class="f num" data-mo="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+4" aria-label="Saldırı bonusu"><input class="f dmgf" data-mo="attacks.${i}.dmg" value="${esc(a.dmg)}" placeholder="1d6+2 kesici" aria-label="Hasar"><span style="display:flex;gap:4px"><button class="btn sm" data-act="mon-atk" data-i="${i}">Vur</button><button class="btn sm" data-act="mon-dmg" data-i="${i}">Hasar</button><button class="btn sm danger" data-act="mon-delatk" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")||`<p class="hint">Eylem yok.</p>`}
+    ${(mo.attacks||[]).map((a,i)=>`<div class="atk"><input class="f" data-mo="attacks.${i}.name" value="${esc(a.name)}" aria-label="Eylem adı"><input class="f num" data-mo="attacks.${i}.bonus" value="${esc(a.bonus)}" placeholder="+4" aria-label="Saldırı bonusu">${dmgInputs("data-mo",i,a,"1d6+2")}<span style="display:flex;gap:4px"><button class="btn sm" data-act="mon-atk" data-i="${i}">Vur</button><button class="btn sm" data-act="mon-dmg" data-i="${i}">Hasar</button><button class="btn sm danger" data-act="mon-delatk" data-i="${i}" aria-label="Sil">×</button></span></div>`).join("")||`<p class="hint">Eylem yok.</p>`}
     <h4>DM notları</h4><textarea class="f" data-mo="notes" placeholder="Taktik, ganimet, motivasyon…" aria-label="DM notları">${esc(mo.notes)}</textarea>
     <div class="stfoot"><label class="toggle">Boyut <select class="f" style="width:auto" data-mo="size" data-num="1">${SIZES.map(([v,n])=>`<option value="${v}" ${+mo.size===v?"selected":""}>${n}</option>`).join("")}</select></label><span style="flex:1"></span>
       <button class="btn pri" data-act="mon-place">Haritaya ekle</button><button class="btn" data-act="mon-dup">Kopyala</button><button class="btn danger" data-act="mon-del">Sil</button></div>
@@ -1780,7 +1788,8 @@ main.addEventListener("input",e=>{
   if(el.dataset.nk){ const col=noteCol(); const n=S[col][S.noteId]; if(!n) return; n[el.dataset.nk]=el.type==="checkbox"?el.checked:el.value; save(col,n,[el.dataset.nk]);
     const it=$(`[data-act="selnote"][data-id="${n.id}"]`); if(it&&el.dataset.nk==="title") $("b",it).textContent=n.title||"Başlıksız";
     if(el.tagName==="SELECT"||el.type==="checkbox") render(); return }
-  if(el.dataset.mk){ const m=curMap(); if(!m) return; let v=el.value; if(el.type==="number"){ v=Math.max(5,Math.min(60,+v||5)); m[el.dataset.mk]=v; save("maps",m,[el.dataset.mk]); setupMap(); return } m[el.dataset.mk]=v; save("maps",m,[el.dataset.mk]);
+  if(el.dataset.mk){ const m=curMap(); if(!m) return; let v=el.value; if(el.type==="number"){ v=Math.max(5,Math.min(100,+v||5)); m[el.dataset.mk]=v; const ps=[el.dataset.mk];
+      if(el.dataset.mk==="cols"&&m.bg&&m.bgW&&m.bgH){ m.rows=Math.max(5,Math.min(100,Math.round(v*m.bgH/m.bgW))); ps.push("rows") } save("maps",m,ps); setupMap(); return } m[el.dataset.mk]=v; save("maps",m,[el.dataset.mk]);
     const chip=$(`[data-act="selmap"][data-id="${m.id}"]`); if(chip) chip.textContent=v; return }
   if(el.dataset.tk){ const m=curMap(); const t=m&&m.tokens[S.selTok]; if(!t) return; const k=el.dataset.tk; t[k]=(k==="size"||el.type==="number")?(el.value===""?"":+el.value):el.value; save("maps",m,["tokens."+t.id+"."+k]); drawMap();
     if(el.tagName==="SELECT") render(); else { const nb=$(`[data-act="seltok"][data-id="${t.id}"]`); if(nb) nb.textContent=t.label; const dot=nb&&nb.previousElementSibling; if(dot) dot.style.background=t.color } return }
@@ -1835,7 +1844,7 @@ main.addEventListener("click",e=>{
     case "addatk": (c.attacks=c.attacks||[]).push({name:"",bonus:"",dmg:""}); save("chars",c,["attacks"]); render(); break;
     case "delatk": c.attacks.splice(+b.dataset.i,1); save("chars",c,["attacks"]); render(); break;
     case "roll-atk": { const at=c.attacks[+b.dataset.i]; roll5(c,"atk",null,atkBonus(at.bonus),`${nm} · ${at.name||"Saldırı"}`); break }
-    case "roll-dmg": { const at=c.attacks[+b.dataset.i]; const ex=dmgExpr(at.dmg,e.shiftKey); if(!ex){toast("Hasar alanına zar yaz: 1d8+3");break} roll(ex,`${nm} · ${at.name||"Saldırı"} hasarı${e.shiftKey?" (kritik)":""}`); break }
+    case "roll-dmg": { const at=c.attacks[+b.dataset.i]; const ex=dmgExpr(at.dmg,e.shiftKey); if(!ex){toast("Hasar alanına zar yaz: 1d8+3");break} const ty=splitDmg(at).type; roll(ex,`${nm} · ${at.name||"Saldırı"} hasarı${ty?" ("+ty+")":""}${e.shiftKey?" (kritik)":""}`); break }
     case "slot": { const s=c.slots[+b.dataset.i], j=+b.dataset.j; s.used=j<s.used?j:j+1; save("chars",c,["slots"]); render(); break }
     /* notlar */
     case "newnote": { const col=noteCol(); const n={id:uid("n"),title:"",cat:col==="dmnotes"?"DM":(S.noteCat!=="Tümü"?S.noteCat:"Oturum"),body:"",pinned:false}; save(col,n); S.noteId=n.id; S.noteQ=""; render(); $(".ttl")?.focus(); break }
@@ -1844,6 +1853,8 @@ main.addEventListener("click",e=>{
     case "delnote": armed(b,()=>{ del(noteCol(),S.noteId); S.noteId=null; render() }); break;
     case "lastroll": { const col=noteCol(); const n=S[col][S.noteId], l=allLog()[0]; if(!l){toast("Henüz zar atılmadı");break} n.body=(n.body?n.body.replace(/\s*$/,"")+"\n":"")+`Zar · ${l.label}: ${l.total} (${l.detail})`; save(col,n,["body"]); render(); break }
     /* harita */
+    case "imgmap": $("#mapImgFile").click(); break;
+    case "gridoff": { const m=curMap(); m.gridOff=b.checked; save("maps",m,["gridOff"]); drawMap(); break }
     case "newmap": { const m=newMap(); save("maps",m); S.mapId=m.id; S.selTok=null; S.selLab=null; render(); break }
     case "selmap": S.mapId=b.dataset.id; S.selTok=null; S.selLab=null; render(); break;
     case "delmap": armed(b,()=>{ del("maps",S.mapId); S.mapId=null; render() }); break;
@@ -1892,13 +1903,20 @@ main.addEventListener("click",e=>{
     case "mon-addatk": (mo.attacks=mo.attacks||[]).push({name:"",bonus:"",dmg:""}); save("monsters",mo,["attacks"]); render(); break;
     case "mon-delatk": mo.attacks.splice(+b.dataset.i,1); save("monsters",mo,["attacks"]); render(); break;
     case "mon-atk": { const at=mo.attacks[+b.dataset.i]; roll(d20expr(atkBonus(at.bonus)),monRollLabel(mo,at.name||"Saldırı"),true); break }
-    case "mon-dmg": { const at=mo.attacks[+b.dataset.i]; const ex=sysKey()==="coc7"?cocDmgExpr(at.dmg,String(mo.db||"0"),e.shiftKey):dmgExpr(at.dmg,e.shiftKey); if(!ex){ toast("Hasar alanına zar yaz: 1d6+2"); break } roll(ex,monRollLabel(mo,(at.name||"Saldırı")+" hasarı"+(e.shiftKey?" (kritik)":"")),true); break }
+    case "mon-dmg": { const at=mo.attacks[+b.dataset.i]; const ex=sysKey()==="coc7"?cocDmgExpr(at.dmg,String(mo.db||"0"),e.shiftKey):dmgExpr(at.dmg,e.shiftKey); if(!ex){ toast("Hasar alanına zar yaz: 1d6+2"); break } const ty=sysKey()==="coc7"?"":splitDmg(at).type; roll(ex,monRollLabel(mo,(at.name||"Saldırı")+" hasarı"+(ty?" ("+ty+")":"")+(e.shiftKey?" (kritik)":"")),true); break }
     case "mon-place": { const m=curMap(); if(!m){ toast("Önce bir harita oluştur"); break } const n=toks(m).filter(t=>t.monsterId===mo.id).length+1; const p=freeCell(m);
       const t={id:uid("t"),label:`${mo.name} ${n}`,color:"#b3402e",x:p.x,y:p.y,size:+mo.size||1,monsterId:mo.id,hp:+mo.hpMax||0,hpMax:+mo.hpMax||0,...(mo.img?{img:mo.img}:{})}; m.tokens[t.id]=t; save("maps",m,["tokens."+t.id]); toast(`${t.label} "${m.name}" haritasına eklendi`); break }
   }
 });
 function atkBonus(s){ return parseInt(String(s||"").replace(/\s/g,""))||0 }
-function dmgExpr(s,crit){ const mm=String(s||"").match(/^\s*([0-9d+\-\s%kh]+)/i); if(!mm||!/d/i.test(mm[1])) return null; let ex=mm[1].replace(/\s+/g,"").replace(/[+-]$/,""); if(crit) ex=ex.replace(/(\d*)d(\d+)/g,(_,n,s2)=>((+n||1)*2)+"d"+s2); return ex }
+// Hasar zarı ile hasar türü ayrı tutulur. Eski kayıtlardaki "1d8+3 delici" gibi birleşik metin de okunur: zar ifadesi baştan alınır, kalanı tür olur.
+const DICE_RE=/^\s*((?:\d*d\d+(?:k[hl]\d+)?|\d+)(?:\s*[+\-]\s*(?:\d*d\d+(?:k[hl]\d+)?|\d+))*)/i;
+function splitDmg(a){ const s=String(a?.dmg||""), mm=s.match(DICE_RE); const dice=mm?mm[1].replace(/\s+/g,""):""; return {dice:dice||s.trim(),type:String(a?.type||"").trim()||(dice?s.slice(mm[0].length).trim():"")} }
+// Direnç, zayıflık ve bağışıklık: hedefli saldırılarda hasar bunlara göre hesaplanır (web/ext/saldiri.js).
+function resPanel(c,pf){ const I=(k,n,ph)=>`<label><span class="lbl">${n}</span><input class="f" data-k="${k}" value="${esc(c[k]||"")}" placeholder="${ph}" list="dmgTypes" aria-label="${n}"></label>`;
+  return `<div class="panel"><h3>Direnç ve zayıflık</h3><div class="resg">${I("res","Direnç",pf?"ateş 5":"ateş")}${I("vuln","Zayıflık",pf?"gümüş 5":"soğuk")}${I("immun","Bağışıklık","zehir")}</div><p class="hint">Birden fazlasını virgülle ayır${pf?"; direnç ve zayıflıkta miktarı yaz":""}. Savaşta hedef seçerek yapılan saldırılar hasarı buna göre işler.</p></div>` }
+function dmgInputs(attr,i,a,ph){ const d=splitDmg(a); return `<span class="dmgf dmgw"><input class="f" ${attr}="attacks.${i}.dmg" value="${esc(d.dice)}" placeholder="${ph}" aria-label="Hasar zarı"><input class="f dtype" ${attr}="attacks.${i}.type" value="${esc(d.type)}" placeholder="Tür" list="dmgTypes" aria-label="Hasar türü"></span>` }
+function dmgExpr(s,crit){ const mm=String(s||"").match(DICE_RE); if(!mm||!/d/i.test(mm[1])) return null; let ex=mm[1].replace(/\s+/g,""); if(crit) ex=ex.replace(/(\d*)d(\d+)/g,(_,n,s2)=>((+n||1)*2)+"d"+s2); return ex }
 function freeCell(m){ for(let y=0;y<m.rows;y++)for(let x=0;x<m.cols;x++){ if(!toks(m).some(t=>{const z=+t.size||1;return x>=t.x&&x<t.x+z&&y>=t.y&&y<t.y+z})&&!["wall","pit","water","lava","tree"].includes(m.cells[x+","+y])&&!(window.PROPS&&PROPS.solid(m.props?.[x+","+y]))) return {x,y} } return {x:0,y:0} }
 
 /* ---------- Karakter sahipliği ---------- */
@@ -2471,8 +2489,21 @@ setInterval(()=>{ if(S.view==="ses") updateProgress() },1000);
 
 $("#bgFile").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value=""; const m=curMap(); if(!f||!m) return;
-  if(ASSETS){ try{ toast("Görsel yükleniyor…"); const r=await ASSETS.upload(f); m.bg=r.url; save("maps",m,["bg"]); render(); toast("Arka plan eklendi"); return }catch(err){ toast("Görsel yüklenemedi: "+(err.message||err.code||"hata")) } }
+  const sz=await imgSize(f).catch(()=>null); if(sz){ m.bgW=sz.w; m.bgH=sz.h }
+  if(ASSETS){ try{ toast("Görsel yükleniyor…"); const r=await ASSETS.upload(f); m.bg=r.url; save("maps",m,["bg","bgW","bgH"]); render(); toast("Arka plan eklendi"); return }catch(err){ toast("Görsel yüklenemedi: "+(err.message||err.code||"hata")) } }
   else { m.bg=URL.createObjectURL(f); render(); toast("Görsel yalnızca bu oturumda görünür (kalıcı depolama yok)") }
+});
+function imgSize(f){ const url=URL.createObjectURL(f); return new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>{ ok({w:i.naturalWidth,h:i.naturalHeight}); URL.revokeObjectURL(url) }; i.onerror=()=>{ URL.revokeObjectURL(url); no(new Error("Resim okunamadı")) }; i.src=url }) }
+// Resimden harita: resim haritanın kendisi olur. Kare sayısı resmin boyutundan tahmin edilir (yaklaşık 70 piksel bir kare), Sütun ile düzeltilir.
+$("#mapImgFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f||!isDM()) return;
+  let sz; try{ sz=await imgSize(f) }catch(err){ toast("Bu dosya resim olarak açılamadı"); return }
+  const cols=Math.max(5,Math.min(100,Math.round(sz.w/70))), rows=Math.max(5,Math.min(100,Math.round(cols*sz.h/sz.w)));
+  const m=newMap(); Object.assign(m,{name:f.name.replace(/\.[^.]+$/,"")||"Resim haritası",cols,rows,bgW:sz.w,bgH:sz.h});
+  if(ASSETS){ try{ toast("Harita resmi yükleniyor…"); m.bg=(await ASSETS.upload(f)).url }catch(err){ toast("Resim yüklenemedi: "+(err.message||err.code||"hata")); return } }
+  else m.bg=URL.createObjectURL(f);
+  save("maps",m); S.mapId=m.id; S.selTok=null; S.selLab=null; S.view="harita"; render();
+  toast(`Harita hazır: ${cols}×${rows} kare. Kareler resimdeki ızgaraya uymuyorsa Harita panelinden Sütun sayısını değiştir.`);
 });
 // Jeton resmi: 256 px kareye kırpılıp küçültülür, sonra yüklenir.
 async function squareImage(f,size=256){ const url=URL.createObjectURL(f); try{ const im=await new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src=url });

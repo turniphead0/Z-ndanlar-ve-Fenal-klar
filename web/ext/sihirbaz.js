@@ -79,7 +79,7 @@
       ab: { ...p.sc }, saves: Object.fromEntries(c.saves.map(k => [k, true])),
       skills: Object.fromEntries([...fixedSkills(), ...W.skills].map(k => [k, W.expertise.includes(k) ? 2 : 1])),
       ac: p.ac, speed: r.speed + " ft", hpMax: p.hp, hp: p.hp, hitDice: "1d" + c.hd,
-      attacks: [{ name: c.weapon[0], bonus: sgn(bonus), dmg: `${c.weapon[2]}${dmgMod ? sgn(dmgMod) : ""} ${c.weapon[3]}` }],
+      attacks: [{ name: c.weapon[0], bonus: sgn(bonus), dmg: `${c.weapon[2]}${dmgMod ? sgn(dmgMod) : ""}`, type: c.weapon[3] }],
       spellAb: c.spell || "",
       features: [r.t ? `${r.n}:\n${r.t}` : "", c.f ? `${c.n}:\n${c.f}` : "", `Zırh: ${c.ac.note}`].filter(Boolean).join("\n\n"),
       inventory: c.inv, coins: { cp: 0, sp: 0, ep: 0, gp: 10, pp: 0 }, spells: "", xp: 0,
