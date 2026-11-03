@@ -44,7 +44,7 @@
   function panel() {
     const list = forSys(sysKey());
     if (!list.length) return `<section class="panel mc-wrap"><h3>Hazır maceralar</h3><p class="hint" style="margin:0">Bu sistem için henüz açık lisanslı hazır macera yok. Elindeki senaryonun PDF'ini yükleyebilirsin.</p></section>`;
-    return `<section class="mc-wrap"><h2 class="h2">Hazır maceralar</h2><p class="hint">Açık lisanslı başlangıç maceralarının Türkçe çevirileri. Masaya kurunca kılavuz, modüller, NPC'ler, el notları, haritalar, canavar kartları ve hazır karakterler gelir; oyuncular hazır karakterleri Karakterler bölümünde sahiplenebilir.</p>
+    return `<section class="mc-wrap"><h2 class="h2">Hazır maceralar</h2><p class="hint">Açık lisanslı başlangıç maceralarının Türkçe çevirileri. Masaya kurunca kılavuz, modüller, NPC'ler, el notları, haritalar, canavar kartları ve hazır karakterler gelir; oyuncular hazır karakterleri Karakterler bölümünde sahiplenebilir.</p>${window.LANG && LANG() === "en" ? `<p class="hint" data-noi18n>These ready-made adventures are Turkish translations. To run one in English, download the original from its "original version" link and upload that PDF on this page: the assistant prepares it in English and keeps its names and terms as written.</p>` : ""}
       <div class="npcgrid">${list.map(card).join("")}</div></section>`;
   }
 

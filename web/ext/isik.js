@@ -47,7 +47,8 @@
   const cache = {}, mem = {};
   function compute(m, viewers, key) {
     const W = m.cols, H = m.rows, N = W * H, amb = AMB_LVL[m.light?.amb || "dark"] ?? 0;
-    const lit = new Float32Array(N).fill(amb), warm = new Float32Array(N), see = new Float32Array(N), gray = new Uint8Array(N);
+    const lit = new Float32Array(N).fill(amb), warm = new Float32Array(N), see = new Float32Array(N), gray = new Uint8Array(N), sil = new Uint8Array(N);
+    const near = (m.light?.near ?? 10) / 5;   // ışıksız yakın görüş: çok loş, cisimler yalnızca belirsiz gölge
     for (const s of sources(m)) {
       const R = (s.b + s.d) / 5, sx = Math.round(s.x), sy = Math.round(s.y);
       for (let y = Math.max(0, Math.floor(sy - R)); y <= Math.min(H - 1, Math.ceil(sy + R)); y++)
@@ -59,21 +60,21 @@
           const i = y * W + x; if (v > lit[i]) lit[i] = v; if (v > warm[i]) warm[i] = v;
         }
     }
-    if (!viewers) { for (let i = 0; i < N; i++) see[i] = lit[i]; return { W, H, lit, see, gray, warm, key }; }
+    if (!viewers) { for (let i = 0; i < N; i++) see[i] = lit[i]; return { W, H, lit, see, gray, warm, sil, key }; }
     for (const t of viewers) {
       const sz = +t.size || 1, vx = t.x + (sz - 1) / 2, vy = t.y + (sz - 1) / 2, cx = Math.round(vx), cy = Math.round(vy), dv = dvOf(t) / 5, sr = sightOf(t) / 5;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = y * W + x, d = Math.hypot(x - vx, y - vy); if (sr && d > sr + .5) continue;
-        const l = lit[i], inDv = dv && d <= dv + .5; if (l <= 0 && !inDv) continue;
+        const l = lit[i], inDv = dv && d <= dv + .5, inNear = near && d <= near + .5; if (l <= 0 && !inDv && !inNear) continue;
         if (see[i] >= 1) continue;
         if (!(Math.abs(x - cx) <= sz && Math.abs(y - cy) <= sz) && !los(m, cx, cy, x, y)) continue;
-        const v = inDv ? (l > 0 ? 1 : .55) : l;    // karanlıkta görme: loş ışık parlak, karanlık gri
-        if (v > see[i]) { see[i] = v; gray[i] = inDv && l <= 0 ? 1 : 0; }
+        const v = inDv ? (l > 0 ? 1 : .55) : l > 0 ? l : .16;    // karanlıkta görme: loş ışık parlak, karanlık gri; yoksa yakın çok loş
+        if (v > see[i]) { see[i] = v; gray[i] = inDv && l <= 0 ? 1 : 0; sil[i] = !inDv && l <= 0 ? 1 : 0; }
       }
     }
     const mm = mem[m.id] && mem[m.id].length === N ? mem[m.id] : (mem[m.id] = new Uint8Array(N));
     for (let i = 0; i < N; i++) if (see[i] > 0) mm[i] = 1;
-    return { W, H, lit, see, gray, warm, key, mem: mm };
+    return { W, H, lit, see, gray, warm, sil, key, mem: mm };
   }
   function keyOf(m, viewers) {
     return [m.id, m.cols, m.rows, JSON.stringify(m.light), JSON.stringify(m.cells), JSON.stringify(m.props || {}),
@@ -101,6 +102,19 @@
     return true;
   }
 
+  // Jeton yalnızca ışıksız yakın görüşle mi seçiliyor (şekli, adı, resmi belli değil)?
+  function tokSil(m, t, v) {
+    if (!on(m) || (!v && isDM()) || (t.charId && S.chars[t.charId]?.owner === ME.id)) return false;
+    v = v || playerView(m); const sz = +t.size || 1; let any = false;
+    for (let i = 0; i < sz; i++) for (let j = 0; j < sz; j++) { const x = t.x + i, y = t.y + j; if (x < 0 || y < 0 || x >= v.W || y >= v.H) continue; const k = y * v.W + x;
+      if (v.see[k] > 0 && !v.sil[k]) return false; if (v.sil[k]) any = true; }
+    return any;
+  }
+  function drawSil(ctx, px, py, r) {   // belirsiz koyu gölge
+    const g = ctx.createRadialGradient(px, py, r * .2, px, py, r * 1.15); g.addColorStop(0, "rgba(8,10,14,.85)"); g.addColorStop(1, "rgba(8,10,14,0)");
+    ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r * 1.15, 0, 7); ctx.fill(); ctx.restore();
+  }
+
   const sm = document.createElement("canvas"), wm = document.createElement("canvas");
   function draw2D(ctx, m, s) {
     if (!on(m)) return; const dm = isDM(), v = dm ? view(m, null) : playerView(m), W = v.W, H = v.H;
@@ -109,7 +123,7 @@
     for (let i = 0; i < W * H; i++) {
       const sv = v.see[i]; let al;
       if (dm) al = (1 - v.lit[i]) * .45;
-      else al = sv > 0 ? (1 - sv) * .8 + (v.gray[i] ? .1 : 0) : v.mem && v.mem[i] ? .72 : 1;
+      else al = v.sil[i] ? .9 : sv > 0 ? (1 - sv) * .8 + (v.gray[i] ? .1 : 0) : v.mem && v.mem[i] ? .72 : 1;
       da.data[i * 4] = fog[0]; da.data[i * 4 + 1] = fog[1]; da.data[i * 4 + 2] = v.gray[i] ? Math.min(255, fog[2] + 40) : fog[2]; da.data[i * 4 + 3] = Math.round(al * 255);
       const w = (dm || sv > 0) && !v.gray[i] ? v.warm[i] : 0;
       db.data[i * 4] = 255; db.data[i * 4 + 1] = 176; db.data[i * 4 + 2] = 80; db.data[i * 4 + 3] = Math.round(w * 40);
@@ -134,7 +148,8 @@
       el.innerHTML = `<h3>Işık <span class="dmtag">DM</span></h3>
         <label class="toggle"><input type="checkbox" data-lm="on" ${on(m) ? "checked" : ""}> Dinamik ışık</label>
         <label style="display:block;margin-top:8px"><span class="lbl">Ortam ışığı</span><select class="f" data-lm="amb">${AMB.map(([k, n]) => `<option value="${k}" ${(m.light?.amb || "dark") === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
-        <p class="hint">Açıkken oyuncular yalnızca jetonlarının görebildiği yeri görür. Duvarlar ve kapılar görüşü keser. Mum, kandil, meşale, kamp ateşi, fener ve lav ışık verir; jetonlara da ışık verilebilir. Karanlıkta görme karakter kağıdından okunur.</p>`;
+        <label style="display:block;margin-top:8px"><span class="lbl">Işıksız yakın görüş</span><select class="f" data-lm="near">${[0, 5, 10, 15, 20].map(n => `<option value="${n}" ${(m.light?.near ?? 10) === n ? "selected" : ""}>${n ? n + " ft" : "Yok"}</option>`).join("")}</select></label>
+        <p class="hint">Açıkken oyuncular yalnızca jetonlarının görebildiği yeri görür. Duvarlar ve kapılar görüşü keser. Mum, kandil, meşale, kamp ateşi, fener ve lav ışık verir; jetonlara da ışık verilebilir. Karanlıkta görme karakter kağıdından okunur. Işığı ve karanlıkta görmesi olmayanlar yakını çok loş görür; oradaki cisimler yalnızca belirsiz gölge olarak seçilir.</p>`;
       sis.after(el);
     }
     // Seçili jeton: ışık, karanlıkta görme, görüş mesafesi
@@ -158,7 +173,7 @@
   document.addEventListener("change", e => {
     const el = e.target, m = curMap(); if (!m || !el.dataset) return;
     if (el.dataset.lm) { if (!isDM()) return; m.light = m.light || { on: false, amb: "dark" };
-      if (el.dataset.lm === "on") m.light.on = el.checked; else m.light.amb = el.value;
+      if (el.dataset.lm === "on") m.light.on = el.checked; else if (el.dataset.lm === "near") m.light.near = +el.value; else m.light.amb = el.value;
       save("maps", m, ["light"]); render(); if (el.dataset.lm === "on") toast(el.checked ? "Dinamik ışık açık: oyuncular yalnızca gördüklerini görür" : "Dinamik ışık kapandı"); return; }
     const k = el.dataset.lt; if (!k || k === "gmtok") return; const t = m.tokens?.[S.selTok]; if (!t || !ownsTok(t)) return;
     if (k === "gmShow") { t.gmHidden = !el.checked; save("maps", m, ["tokens." + t.id + ".gmHidden"]); }
@@ -173,5 +188,5 @@
     S.selTok = t.id; render();
   });
 
-  window.LIGHT = { on, view, playerView, tokHidden, draw2D, opaque, dvOf, sightOf, PROP_LIGHT };
+  window.LIGHT = { on, view, playerView, tokHidden, tokSil, drawSil, draw2D, opaque, dvOf, sightOf, PROP_LIGHT };
 })();

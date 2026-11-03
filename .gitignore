@@ -2,3 +2,5 @@ node_modules/
 dist/
 zar-masasi-veri/
 *.log
+tools/i18n/keys.json
+tools/i18n/missing.json

@@ -164,6 +164,13 @@
     hud(`${FLOORS.lvlName(FLOORS.lvlOf(to))}: ${dir > 0 ? "yukarı çıktın" : "aşağı indin"}`); render();
   }
 
+  let blobC = null;
+  function blob() {
+    if (blobC) return blobC; const c = canvas(128, 200), x = c.getContext("2d");
+    const g = x.createRadialGradient(64, 120, 6, 64, 120, 70); g.addColorStop(0, "rgba(6,8,12,.9)"); g.addColorStop(.6, "rgba(6,8,12,.55)"); g.addColorStop(1, "rgba(6,8,12,0)");
+    x.save(); x.translate(64, 120); x.scale(.75, 1.15); x.translate(-64, -120); x.fillStyle = g; x.fillRect(0, 0, 128, 200); x.restore();
+    return blobC = c;
+  }
   let stairC = null;
   function stairStandee() {
     const own = window.PROPS && dieCut(PROPS.skin("stairs")); if (own) return own;
@@ -283,7 +290,8 @@
       const c = dieCut(it.img); if (c) list.push({ x: cx + .5, y: cy + .5, c, h: it.h || .6 }); }
     const inv = 1 / (plx * dy - dx * ply);
     for (const s of list) { const rx = s.x - px, ry = s.y - py; s.tx = inv * (dy * rx - dx * ry); s.d = inv * (-ply * rx + plx * ry); }
-    for (const s of list) s.L = lightAt(Math.floor(s.x), Math.floor(s.y));
+    for (const s of list) { const cx = Math.floor(s.x), cy = Math.floor(s.y); s.L = lightAt(cx, cy);
+      if (LV && cx >= 0 && cy >= 0 && cx < LV.W && cy < LV.H && LV.sil[cy * LV.W + cx]) { s.c = blob(); s.ring = false; s.L = Math.max(s.L, .5); } }   // ışıksız yakın görüş: şekilsiz gölge
     list.filter(s => s.d > .15 && s.d < maxD + 2 && s.L > 0).sort((a, b) => b.d - a.d).forEach(s => {
       const sx = (W / 2) * (1 + s.tx / s.d), hgt = proj * s.h / s.d, wid = hgt * s.c.width / s.c.height, bot = hor + camZ * proj / s.d, top = bot - hgt;
       const x0 = Math.max(0, Math.floor(sx - wid / 2)), x1 = Math.min(W, Math.ceil(sx + wid / 2)); if (x0 >= x1) return;
@@ -302,7 +310,7 @@
     });
     // pusula
     ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(W / 2 - 26, 6, 52, 18); ctx.fillStyle = "#fff"; ctx.font = `700 12px ${cssVar("--f-num") || "monospace"}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(["K", "D", "G", "B"][FP.dir], W / 2, 15);
+    ctx.fillText((window.LANG && LANG() === "en" ? ["N", "E", "S", "W"] : ["K", "D", "G", "B"])[FP.dir], W / 2, 15);
   }
 
   function drawMini(m) {
@@ -312,7 +320,7 @@
     x.imageSmoothingEnabled = false; x.drawImage(FP.floor.mini, ox * P, oy * P, N * P, N * P, 0, 0, c.width, c.height);
     const LV = FP.LV, seen = (cx, cy) => !LV || isDM() || (cx >= 0 && cy >= 0 && cx < LV.W && cy < LV.H && (LV.see[cy * LV.W + cx] > 0 || (LV.mem && LV.mem[cy * LV.W + cx])));
     if (LV && !isDM()) { x.fillStyle = `rgb(${FP.fogRGB.join(",")})`; for (let j = Math.floor(oy); j < oy + N + 1; j++) for (let i = Math.floor(ox); i < ox + N + 1; i++) if (!seen(i, j)) x.fillRect((i - ox) * cw, (j - oy) * cw, cw + .5, cw + .5); }
-    for (const t of toks(m)) { if (t.id === FP.tokId || (!isDM() && (tokFogged(m, t) || (t.gm && t.gmHidden) || (LV && !(LV.see[t.y * LV.W + t.x] > 0))))) continue; const sz = +t.size || 1;
+    for (const t of toks(m)) { if (t.id === FP.tokId || (!isDM() && (tokFogged(m, t) || (t.gm && t.gmHidden) || (LV && (!(LV.see[t.y * LV.W + t.x] > 0) || LV.sil[t.y * LV.W + t.x]))))) continue; const sz = +t.size || 1;
       x.fillStyle = t.color || "#555"; x.beginPath(); x.arc((t.x + sz / 2 - ox) * cw, (t.y + sz / 2 - oy) * cw, cw * .32 * sz, 0, 7); x.fill(); }
     x.save(); x.translate(c.width / 2, c.height / 2); x.rotate(FP.ang); x.fillStyle = cssVar("--gold") || "#d4a73a"; x.strokeStyle = "#000"; x.lineWidth = 1.5;
     x.beginPath(); x.moveTo(cw * .45, 0); x.lineTo(-cw * .32, cw * .3); x.lineTo(-cw * .16, 0); x.lineTo(-cw * .32, -cw * .3); x.closePath(); x.fill(); x.stroke(); x.restore();

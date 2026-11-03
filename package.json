@@ -8,13 +8,16 @@
     "start": "electron .",
     "server": "node server/cli.js",
     "test": "node --test",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "i18n": "node tools/i18n/extract.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "acorn": "^8.19.0",
+    "acorn-walk": "^8.3.5",
     "electron": "^38.0.0",
     "electron-builder": "^26.0.0"
   },
