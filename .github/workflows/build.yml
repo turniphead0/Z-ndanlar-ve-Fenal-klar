@@ -20,6 +20,8 @@ jobs:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
+      # Bir işletim sistemi düşerse diğerleri yine derlensin.
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
@@ -31,7 +33,9 @@ jobs:
         with: { node-version: 22 }
       - run: npm ci
       - run: npx electron-builder --publish never
-      - uses: actions/upload-artifact@v4
+      # Sürüm etiketinde dosyalar Sürümler sayfasına konur; Actions depolamasına yüklenmez.
+      - if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
         with:
           name: zar-masasi-${{ matrix.os }}
           path: |
