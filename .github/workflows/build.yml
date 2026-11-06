@@ -33,8 +33,14 @@ jobs:
         with: { node-version: 22 }
       - run: npm ci
       - run: npx electron-builder --publish never
-      # Sürüm etiketinde dosyalar Sürümler sayfasına konur; Actions depolamasına yüklenmez.
-      - if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+      # main dalından elle başlatılan derleme ya da v* etiketi sürüm yayınlar: dosyalar Sürümler sayfasına
+      # konur (Actions depolamasına sayılmaz, indirmek için giriş gerekmez). Diğer dallar Actions'a yükler.
+      - id: rel
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.rel.outputs.tag == ''
         uses: actions/upload-artifact@v4
         with:
           name: zar-masasi-${{ matrix.os }}
@@ -44,9 +50,12 @@ jobs:
             dist/*.AppImage
           # Eski derlemeler depolama kotasını doldurmasın.
           retention-days: 14
-      - if: startsWith(github.ref, 'refs/tags/v')
+      - if: steps.rel.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Zar Masası ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/*.exe
             dist/*.dmg
