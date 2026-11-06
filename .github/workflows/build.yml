@@ -38,6 +38,8 @@ jobs:
             dist/*.exe
             dist/*.dmg
             dist/*.AppImage
+          # Eski derlemeler depolama kotasını doldurmasın.
+          retention-days: 14
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:

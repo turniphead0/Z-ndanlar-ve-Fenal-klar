@@ -9,15 +9,16 @@ const D = JSON.parse(fs.readFileSync(path.join(ROOT, "web/i18n/en.json"), "utf8"
 function load() {
   const store = { "zm-lang": "en" };
   const ctx = {
-    location: { search: "", href: "http://x/" }, URLSearchParams, URL,
+    location: { search: "", href: "http://x/" }, URLSearchParams, URL, WeakRef, setInterval: () => 0, addEventListener() {}, history: { replaceState() {} },
     localStorage: { getItem: k => store[k], setItem: (k, v) => { store[k] = v; } },
-    document: { documentElement: {}, write() {}, addEventListener() {}, title: "", querySelectorAll: () => [], createTreeWalker: () => ({ nextNode: () => null }) },
-    MutationObserver: class { observe() {} takeRecords() {} }, NodeFilter: {},
+    document: { documentElement: {}, write() {}, addEventListener() {}, title: "", getElementById: () => null, head: { appendChild() {} }, querySelectorAll: () => [], createTreeWalker: () => ({ nextNode: () => null }) },
+    MutationObserver: class { observe() {} disconnect() {} takeRecords() { return []; } }, NodeFilter: {},
   };
   ctx.window = ctx; vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, "web/i18n.js"), "utf8"), ctx);
   ctx.I18N.ready(D);
-  return ctx.I18N.t;
+  const t = s => ctx.I18N.t(s); t.I = ctx.I18N;
+  return t;
 }
 
 test("sözlükteki yer tutucular çeviride de var", () => {
@@ -37,4 +38,11 @@ test("metinler ve kalıplar çevrilir", () => {
   assert.strictEqual(t("Gizli Şeyi Görme at"), "Roll Spot Hidden");
   // Bilinmeyen metin (oyuncu adı) olduğu gibi kalır.
   assert.strictEqual(t("Ayşe"), "Ayşe");
+});
+
+test("dil sayfa yenilenmeden değişir", () => {
+  const t = load(); const I = t.I;
+  I.set("tr"); assert.strictEqual(I.lang, "tr"); assert.strictEqual(t("Karakterler"), "Karakterler");
+  I.set("en"); assert.strictEqual(I.lang, "en"); assert.strictEqual(t("Karakterler"), "Characters");
+  I.set("tr"); I.set("en"); assert.strictEqual(t("Harita"), "Map");
 });

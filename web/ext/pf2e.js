@@ -365,11 +365,9 @@
   }
 
   /* ---------------- Zar tepsisi ---------------- */
-  let advLabels = null;
   function tray(on) {
     const host = $("#trayDnd"); if (!host) return;
-    if (!advLabels) advLabels = $$("[data-adv]", host).map(b => b.textContent);
-    $$("[data-adv]", host).forEach((b, i) => b.textContent = on ? ["Talihsizlik", "Normal", "Talih"][i] : advLabels[i]);
+    $$("[data-adv]", host).forEach((b, i) => b.textContent = on ? ["Talihsizlik", "Normal", "Talih"][i] : ["Dezavantaj", "Normal", "Avantaj"][i]);
     let el = $("#pfTray");
     if (!on) { el?.remove(); return; }
     if (!el) { el = document.createElement("div"); el.id = "pfTray"; el.className = "pf-tray"; host.insertBefore(el, $("#dice", host)); }

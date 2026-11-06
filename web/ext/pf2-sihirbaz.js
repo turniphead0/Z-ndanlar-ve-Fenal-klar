@@ -361,8 +361,8 @@
     <aside class="zw-learn"><b>Homebrew:</b> Sihirbazdaki metin kutularına kendi yeteneklerinizi yazabilir, yeterlilik rütbelerini istediğin gibi ayarlayabilirsin.</aside>`);
 
   /* ================= Kağıt rehberi ================= */
-  const panel = t => $$("#main .panel").find(p => (p.querySelector("h3")?.textContent || "").startsWith(t));
-  const vit = t => $$("#main .vit").find(v => (v.querySelector(".lbl")?.textContent || "").startsWith(t));
+  const panel = t => $$("#main .panel").find(p => rawText(p.querySelector("h3")).startsWith(t));
+  const vit = t => $$("#main .vit").find(v => rawText(v.querySelector(".lbl")).startsWith(t));
   const TOUR = [
     [() => $("#main .cname")?.closest(".panel"), "Kimlik", "Soy, miras, geçmiş, sınıf ve seviye. Seviye arttıkça eğitimli olduğun her şeyin bonusu kendiliğinden artar."],
     [() => $("#pxBar"), "Deneyim ve seviye", "1000 XP'de bir seviye atlarsın. Seviye atla sihirbazı can, artışlar, yetenekler ve büyüleri adım adım günceller."],

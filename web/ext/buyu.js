@@ -294,9 +294,9 @@
     const r = _render.apply(this, arguments);
     try {
       if (G.id && S.view === "karakterler" && sysKey() === "dnd5e" && $("#main .sheet")) {
-        const c = cur(), sp = $$("#main .panel").find(p => (p.querySelector("h3")?.textContent || "").startsWith("Büyücülük"));
+        const c = cur(), sp = $$("#main .panel").find(p => rawText(p.querySelector("h3")).startsWith("Büyücülük"));
         if (c && sp && !$("#zbBook")) sp.insertAdjacentHTML("afterend", bookHtml(c));
-        const notes = $$("#main .panel h3").find(h => h.textContent === "Büyü Listesi"); if (notes) notes.textContent = "Büyü Notları";
+        const notes = $$("#main .panel h3").find(h => rawText(h) === "Büyü Listesi"); if (notes) notes.textContent = "Büyü Notları";
       }
     } catch (err) { console.error(err); }
     return r;

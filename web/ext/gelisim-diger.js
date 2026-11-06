@@ -156,7 +156,7 @@
       const k = sysKey(), c = cur();
       if (G.id && S.view === "karakterler" && c && $("#main .sheet") && !$("#zxBar")) {
         if (k === "coc7") {
-          const sk = $$("#main .panel").find(p => (p.querySelector("h3")?.textContent || "").startsWith("Beceriler"));
+          const sk = $$("#main .panel").find(p => rawText(p.querySelector("h3")).startsWith("Beceriler"));
           const n = (c.skills || []).filter(s => s.tick && !NO_IMP.includes(s.n)).length;
           sk?.insertAdjacentHTML("beforebegin", `<div class="panel zg" id="zxBar"><span class="lbl">Gelişim</span><span class="zg-next">İşaretli beceri: <b class="num">${n}</b></span><span class="sp"></span><button type="button" class="btn sm" data-zx="guide">Nasıl gelişir?</button><button type="button" class="btn sm ${n ? "pri" : ""}" data-zx="cocstart">Gelişim aşaması</button></div>`);
         } else if (k === "yze") {

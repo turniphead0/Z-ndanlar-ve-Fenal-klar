@@ -275,8 +275,8 @@
   document.addEventListener("keydown", e => { if (e.key === "Escape" && W) close(); if (e.key === "Escape" && T != null) endTour(); });
 
   /* ---------------- Kağıt rehberi ---------------- */
-  const panel = t => $$("#main .panel").find(p => (p.querySelector("h3")?.textContent || "").startsWith(t));
-  const vit = t => $$("#main .vit").find(v => (v.querySelector(".lbl")?.textContent || "").startsWith(t));
+  const panel = t => $$("#main .panel").find(p => rawText(p.querySelector("h3")).startsWith(t));
+  const vit = t => $$("#main .vit").find(v => rawText(v.querySelector(".lbl")).startsWith(t));
   const TOUR = [
     [() => $("#main .cname")?.closest(".panel"), "Kimlik", "Karakterinin adı, sınıfı, seviyesi, ırkı ve geçmişi. Seviye arttıkça yeterlilik bonusun da otomatik artar."],
     [() => $("#main .abil"), "Yetenek puanları", "Altı temel yetenek. Sağdaki kutu puanın kendisi, soldaki büyük düğme bonusu. Düğmeye basınca d20 + bonus atılır; DM \"Güç kontrolü yap\" derse buna basarsın."],
