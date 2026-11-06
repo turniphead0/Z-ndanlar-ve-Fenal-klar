@@ -140,7 +140,7 @@
     _render.apply(this, arguments);
     if (S.view !== "harita" || !G.id) return;
     const m = curMap(), main = $("#main"); if (!m || !main) return;
-    const panels = $$(".panel", main), h3 = p => ($("h3", p)?.textContent || "").trim();
+    const panels = $$(".panel", main), h3 = p => rawText($("h3", p)).trim();
     // Işık paneli (DM)
     const sis = panels.find(p => h3(p).startsWith("Sis"));
     if (sis && isDM() && !S.ro && !$("#lightPanel", main)) {
