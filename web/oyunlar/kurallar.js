@@ -280,7 +280,89 @@
     },
   };
 
-  const OYUNLAR = { mangala: MANGALA, dama: DAMA, dokuztas: DOKUZTAS, ur: UR };
+
+  /* ------------------------------------------------------------------ Hnefatafl
+     Viking satrancı, 11×11 (Kopenhag kurallarına göre, birkaç basitleştirmeyle). Kareler: satır*11 + sütun.
+     Taş değerleri: 0 boş, 1 saldıran, 2 savunan, 3 kral. Birinci oyuncu saldıranlar (önce oynar), ikinci savunanlar. */
+  const HN = 11, TAHT = 60, KOSELER = [0, 10, 110, 120];
+  const hnYasak = i => i === TAHT || KOSELER.includes(i);
+  const hnSahip = v => (v === 0 ? -1 : v === 1 ? 0 : 1);
+  const HN_YON = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const HNEFATAFL = {
+    ad: "Hnefatafl",
+    kisa: "Viking satrancı: kral köşeye kaçmaya, saldıranlar kuşatmaya çalışır.",
+    taraflar: ["Saldıranlar", "Savunanlar"],
+    renk: [1, 0], // saldıranlar koyu, savunanlar açık taşlarla çizilir
+    tahta: HN, taht: TAHT, koseler: KOSELER,
+    kurallar: [
+      "Saldıranlar (24 koyu taş) önce oynar. Savunanlar 12 açık taş ve ortadaki kraldan oluşur.",
+      "Her taş kale gibi düz hareket eder: istediği kadar boş kare, ama başka taşın üstünden atlayamaz. Önce taşını, sonra gideceği kareyi tıkla.",
+      "Ortadaki taht ile dört köşeye yalnızca kral durabilir. Taht boşken diğer taşlar üstünden geçebilir.",
+      "Bir rakip taşı iki taşının arasına (yatay ya da dikey) sıkıştırırsan alırsın. Köşeler ve boş taht da sıkıştırmada senin taşın sayılır. Kral da almaya katılır. Kendi isteğinle iki taşın arasına girersen alınmazsın.",
+      "Kral bir köşeye ulaşırsa savunanlar kazanır. Saldıranlar kralı dört yandan (ya da üç yandan ve tahtla) çevirirse saldıranlar kazanır. Tahta kenarındaki kral alınamaz.",
+      "Hamlesi kalmayan taraf kaybeder.",
+    ],
+    yeni() {
+      const b = Array(HN * HN).fill(0), k = (r, c) => r * HN + c;
+      for (let i = 3; i <= 7; i++) { b[k(0, i)] = 1; b[k(10, i)] = 1; b[k(i, 0)] = 1; b[k(i, 10)] = 1; }
+      b[k(1, 5)] = 1; b[k(9, 5)] = 1; b[k(5, 1)] = 1; b[k(5, 9)] = 1;
+      for (const [r, c] of [[3, 5], [4, 4], [4, 5], [4, 6], [5, 3], [5, 4], [5, 6], [5, 7], [6, 4], [6, 5], [6, 6], [7, 5]]) b[k(r, c)] = 2;
+      b[TAHT] = 3;
+      return { b, sira: 0, bitti: null, son: null, n: 0 };
+    },
+    hamleler(d) {
+      if (d.bitti) return [];
+      const b = d.b, p = d.sira, out = [];
+      for (let i = 0; i < HN * HN; i++) {
+        if (hnSahip(b[i]) !== p) continue;
+        const kral = b[i] === 3, r = Math.floor(i / HN), c = i % HN;
+        for (const [dr, dc] of HN_YON) {
+          let rr = r + dr, cc = c + dc;
+          while (rr >= 0 && rr < HN && cc >= 0 && cc < HN && b[rr * HN + cc] === 0) {
+            const j = rr * HN + cc;
+            if (!hnYasak(j) || kral) out.push([i, j]);
+            else if (j !== TAHT) break; // köşe: kral olmayan duramaz, öteye de geçilemez
+            rr += dr; cc += dc;
+          }
+        }
+      }
+      return out;
+    },
+    uygula(d0, [a, z]) {
+      const d = kopya(d0), b = d.b, p = d.sira, q = 1 - p;
+      b[z] = b[a]; b[a] = 0;
+      const r = Math.floor(z / HN), c = z % HN;
+      const kare = (rr, cc) => (rr >= 0 && rr < HN && cc >= 0 && cc < HN ? rr * HN + cc : -1);
+      // Sıkıştırmada "dost" sayılan kare: kendi taşın, köşe ya da (alınan taşa göre) taht.
+      const dost = (j, alinan) => {
+        if (j < 0) return false;
+        if (hnSahip(b[j]) === p) return true;
+        if (KOSELER.includes(j)) return true;
+        if (j === TAHT) return alinan === 1 || b[TAHT] === 0; // taht saldırana her zaman, savunana boşken düşman
+        return false;
+      };
+      for (const [dr, dc] of HN_YON) {
+        const n = kare(r + dr, c + dc), f = kare(r + 2 * dr, c + 2 * dc);
+        if (n < 0 || hnSahip(b[n]) !== q || b[n] === 3) continue;
+        if (dost(f, b[n])) b[n] = 0;
+      }
+      d.son = [a, z]; d.n++; d.sira = q;
+      const kralYer = b.indexOf(3);
+      if (KOSELER.includes(kralYer)) { d.bitti = { kazanan: 1, neden: "Kral köşeye kaçtı" }; return d; }
+      if (p === 0) {
+        const kr = Math.floor(kralYer / HN), kc = kralYer % HN;
+        const kenarda = kr === 0 || kc === 0 || kr === HN - 1 || kc === HN - 1;
+        if (!kenarda && HN_YON.every(([dr, dc]) => { const j = kare(kr + dr, kc + dc); return b[j] === 1 || (j === TAHT && b[j] === 0); })) {
+          d.bitti = { kazanan: 0, neden: "Kral kuşatıldı" }; return d;
+        }
+      }
+      if (!HNEFATAFL.hamleler(d).length) d.bitti = { kazanan: p, neden: "Rakibin hamlesi kalmadı" };
+      else if (d.n >= 400) d.bitti = { kazanan: null, neden: "Hamle sınırı" };
+      return d;
+    },
+  };
+
+  const OYUNLAR = { mangala: MANGALA, dama: DAMA, dokuztas: DOKUZTAS, ur: UR, hnefatafl: HNEFATAFL };
 
   // Sunucu tarafı denetim: hamle yasal mı?
   function yasal(oyun, durum, hamle) {

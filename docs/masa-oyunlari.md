@@ -1,6 +1,6 @@
 # Masa oyunları
 
-Zar Masası'na rol yapma masasının yanında klasik tahta oyunları için bir arayüz. Aynı sunucuyu, aynı kimliği ve aynı canlı bağlantıyı (WebSocket) kullanır; ayrı bir kurulum gerekmez. Sol menüdeki **Masa oyunları** düğmesi ya da doğrudan `http://sunucu:7373/oyunlar` adresi açar.
+Zar Masası'na rol yapma masasının yanında klasik tahta oyunları için bir arayüz. Aynı sunucuyu, aynı kimliği ve aynı canlı bağlantıyı (WebSocket) kullanır; ayrı bir kurulum gerekmez. Masa ekranının (oyun listesinin) üstündeki **Masa oyunları** düğmesi ya da doğrudan `http://sunucu:7373/oyunlar` adresi açar.
 
 ## Neden bu oyunlar
 
@@ -15,7 +15,8 @@ Oyunların kuralları telif hakkıyla korunmaz; korunan şey belirli bir kitabı
 | Satranç | Kurallar serbest. Rok, geçerken alma, terfi, şah çekme denetimi gerekir. | Sonraki adım |
 | Tavla | Kurallar serbest; "tavla" ve "backgammon" genel adlardır. Zar, kırma, kapı, toplama. | Sonraki adım |
 | Go | Kurallar serbest. Ko kuralı ve puan sayımı en uğraştıran kısım. | Sonraki adım |
-| Hnefatafl (Viking satrancı), Reversi | Kurallar serbest. "Othello" bir marka olduğu için bu ad kullanılmamalı. | İleride |
+| **Hnefatafl** (Viking satrancı) | 11×11, Kopenhag kuralları. Eşit olmayan iki taraf: kral köşeye kaçar, saldıranlar kuşatır. | Var |
+| Reversi | Kurallar serbest. "Othello" bir marka olduğu için bu ad kullanılmamalı. | İleride |
 
 Uzak durulacaklar: Monopoly, Scrabble, Catan, Risk, Uno gibi şirketlerin oyunları ve adları. Kuralları benzer bir oyun yazılabilir, ama adı, kartları, tahta tasarımı ve metinleri kullanılamaz.
 
@@ -25,7 +26,7 @@ Uzak durulacaklar: Monopoly, Scrabble, Catan, Risk, Uno gibi şirketlerin oyunla
 web/oyunlar/kurallar.js  Bütün oyunların kuralları. Tarayıcıda da sunucuda da aynı dosya çalışır.
 web/oyunlar/oyunlar.js   Sayfa: lobi (yeni tahta, açık tahtalar), koltuklar, SVG tahtalar, tıklama.
 web/oyunlar/index.html   /oyunlar sayfası.  oyunlar.css: görünüm (açık/koyu tema).
-web/ext/oyunlar.js       Rol yapma masasının sol menüsüne "Masa oyunları" düğmesi.
+web/ext/oyunlar.js       Masa ekranının üst çubuğuna "Masa oyunları" düğmesi.
 server/index.js          bgNew / bgSit / bgMove / bgReset / bgDelete işlemleri.
 ```
 
@@ -43,6 +44,7 @@ Bir hamle, tıklanan **kare anahtarlarının** dizisidir:
 - Dama: `[başlangıç, iniş1, iniş2, …]` (çoklu almada her iniş ayrı)
 - Dokuz taş: `[nokta]`, `[nokta, alınacak]`, `[nereden, nereye]` ya da `[nereden, nereye, alınacak]`
 - Ur: `[nereden, nereye]` (100+oyuncu başlangıç alanı, 200+oyuncu çıkış)
+- Hnefatafl: `[nereden, nereye]`
 
 Arayüz hiçbir oyuna özel tıklama mantığı içermez: tıklananlar bir yasal hamlenin başına uyduğu sürece birikir, uyabilecek sonraki kareler vurgulanır, tam bir hamleye denk gelince sunucuya gönderilir. Yeni bir oyun eklemek için yalnızca kurallar ve bir çizim işlevi yazmak yeter.
 
@@ -63,6 +65,7 @@ Koltuklar: herkes boş bir koltuğa oturabilir; aynı kişi iki koltuğa da otur
 - Türk daması: taş son sıraya alma sırasında ulaşırsa hamlenin sonunda dama olur. 40 tur taş alınmazsa berabere.
 - Mangala: son taş kendi boş kuyuna düştüğünde karşı kuyu boşsa bir şey alınmaz.
 - Dokuz taş: 300 hamlede berabere.
+- Hnefatafl: kalkan duvarı, kenar kalesi, savunanların tamamen kuşatılması ve tekrar kuralı yok; kenardaki kral alınamaz; 400 hamlede berabere.
 
 ## Sonraki adımlar
 

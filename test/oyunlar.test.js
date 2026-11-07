@@ -78,6 +78,37 @@ test("ur: zar, rozette tekrar, rakibi başa gönderme, ortadaki rozet güvenli",
   assert.ok(!U.hamleler(d).some(h => h[0] === U.kare(0, 6)), "ortadaki rozetteki taş alınamaz");
 });
 
+test("hnefatafl: sıkıştırma, köşe ve taht kuralları, kralın kaçışı ve kuşatılması", () => {
+  const H = OYUNLAR.hnefatafl, k = (r, c) => r * 11 + c;
+  let d = H.yeni();
+  assert.equal(d.b.filter(v => v === 1).length, 24); assert.equal(d.b.filter(v => v === 2).length, 12);
+  assert.ok(H.hamleler(d).every(([a]) => d.b[a] === 1), "saldıranlar başlar");
+  // Sıkıştırıp alma
+  d.b = Array(121).fill(0); d.b[60] = 3; d.b[k(2, 2)] = 2; d.b[k(2, 4)] = 1; d.b[k(4, 3)] = 1; d.sira = 0;
+  d = H.uygula(d, [k(4, 3), k(2, 3)]);
+  assert.equal(d.b[k(2, 2)], 2, "arada iki taş yok: alınmaz");
+  d.b = Array(121).fill(0); d.b[60] = 3; d.b[k(2, 2)] = 1; d.b[k(2, 3)] = 2; d.b[k(4, 4)] = 1; d.sira = 0;
+  d = H.uygula(d, [k(4, 4), k(2, 4)]);
+  assert.equal(d.b[k(2, 3)], 0, "savunan sıkıştırıldı");
+  // Köşe düşman sayılır; köşeye yalnız kral girer
+  d.b = Array(121).fill(0); d.b[60] = 3; d.b[k(0, 1)] = 1; d.b[k(3, 2)] = 2; d.b[k(5, 9)] = 1; d.sira = 1;
+  assert.ok(!H.hamleler(d).some(([, z]) => z === 0), "köşeye yalnız kral");
+  d = H.uygula(d, [k(3, 2), k(0, 2)]);
+  assert.equal(d.b[k(0, 1)], 0, "köşeyle sıkıştırma");
+  // Kral köşeye kaçar
+  d.b = Array(121).fill(0); d.b[k(0, 5)] = 3; d.b[k(9, 9)] = 1; d.sira = 1;
+  d = H.uygula(d, [k(0, 5), 0]);
+  assert.deepEqual(d.bitti, { kazanan: 1, neden: "Kral köşeye kaçtı" });
+  // Kral dört yandan kuşatılır
+  d = H.yeni(); d.b = Array(121).fill(0); d.b[k(3, 3)] = 3; d.b[k(2, 3)] = 1; d.b[k(4, 3)] = 1; d.b[k(3, 2)] = 1; d.b[k(3, 6)] = 1; d.b[k(8, 8)] = 2; d.sira = 0;
+  d = H.uygula(d, [k(3, 6), k(3, 4)]);
+  assert.equal(d.bitti.kazanan, 0);
+  // Boş tahtın üstünden geçilir ama tahtta durulmaz
+  d = H.yeni(); d.b = Array(121).fill(0); d.b[k(0, 5)] = 3; d.b[k(5, 2)] = 1; d.b[k(9, 9)] = 2; d.sira = 0;
+  const h = H.hamleler(d).filter(([a]) => a === k(5, 2)).map(x => x[1]);
+  assert.ok(!h.includes(60) && h.includes(k(5, 8)));
+});
+
 test("rastgele oyunlar kurallardan çıkmadan biter", () => {
   for (const [ad, g] of Object.entries(OYUNLAR)) {
     for (let t = 0; t < 20; t++) {
