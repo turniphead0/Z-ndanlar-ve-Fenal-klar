@@ -15,6 +15,8 @@ Arayüz yan menüdeki, lobideki ya da masaüstü başlangıç ekranındaki düny
 
 İçerik: D&D 5e için SRD 5.1 (CC-BY-4.0), Pathfinder 2e için Player Core / ORC lisanslı kurallar. Monster of the Week desteği (2d6 hamleler, zarar, şans, deneyim, gelişim, canavar ve gizem geri sayımı) bu uygulama için özgün Türkçe metinlerle yazılmıştır; rol hamlelerinin tam metni oyuncunun kendi kitabından girilir.
 
+**Masa oyunları:** sol menüdeki **Masa oyunları** düğmesi (ya da `/oyunlar` adresi) Mangala, Türk daması, Dokuz taş ve Ur Kraliyet Oyunu için ayrı bir sayfa açar. Aynı masadaki herkes tahta açıp koltuğa oturabilir, diğerleri izler; her hamleyi sunucu kurallara göre denetler. Ayrıntılar: [docs/masa-oyunlari.md](docs/masa-oyunlari.md).
+
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
 
 ## Kurulum (oyuncular için)
@@ -88,6 +90,7 @@ web/shim.js       Köprü: uygulamanın kullandığı window.claude.use(...) ara
 web/ext/          Eklentiler: ayrı pencereler, haritada açılır savaş takipçisi, karakter sihirbazı, kağıt rehberi, büyü kitabı ve seviye atlama (5e verisi SRD 5.1, CC-BY-4.0)
 server/           Sunucu: belge deposu, canlı oda (jeton sürükleme, ping, ses efekti), dosya yükleme, Claude vekili
 electron/         Masaüstü kabuğu: bağlan / host et ekranı
+web/oyunlar/      Masa oyunları sayfası (/oyunlar) ve kuralları (kurallar.js; sunucu da hamleleri bununla denetler)
 web/i18n.js       İngilizce arayüz: ekrandaki Türkçe metinleri web/i18n/en.json sözlüğüyle çevirir
 tools/i18n/       npm run i18n: sözlükte eksik kalan metinleri tools/i18n/missing.json'a yazar
 ```

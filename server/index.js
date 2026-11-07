@@ -7,6 +7,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 const { Store, parentOf } = require("./store");
+const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
 
 const WEB = path.join(__dirname, "..", "web");
 const MAX_ASSET = 25 * 1024 * 1024;
@@ -25,6 +26,8 @@ function canAccess(uid, p) {
   if (s[0] === "data" && s[1] === "users") return s[2] === uid;
   return true;
 }
+// Masa oyunu belgeleri (boards/*) yalnızca sunucu tarafından, kurallara uygun hamlelerle yazılır.
+function canWrite(uid, p) { return canAccess(uid, p) && String(p).split("/")[0] !== "boards"; }
 
 function createServer(opts = {}) {
   const dataDir = opts.dataDir || path.join(process.cwd(), "zar-masasi-veri");
@@ -55,7 +58,7 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "mobilya", "katlar", "isik", "saldiri", "birinci-sahis", "tema"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "mobilya", "katlar", "isik", "saldiri", "birinci-sahis", "tema", "oyunlar"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
@@ -77,6 +80,13 @@ function createServer(opts = {}) {
       }
       if (req.method === "GET" && p === "/shim.js") return send(res, 200, fs.readFileSync(path.join(WEB, "shim.js")), "text/javascript; charset=utf-8");
       if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
+        const f = path.join(WEB, p);
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
+      }
+      // Masa oyunları sayfası
+      if (req.method === "GET" && (p === "/oyunlar" || p === "/oyunlar/")) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "index.html")), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/oyunlar\/[a-z0-9-]+\.(js|css)$/.test(p)) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
@@ -159,9 +169,9 @@ function createServer(opts = {}) {
         const p = m.path;
         switch (m.op) {
           case "get": if (!canAccess(c.uid, p)) return fail("permission_denied", "İzin yok"); { const d = store.get(p); return reply({ exists: d !== undefined, data: d ?? null }); }
-          case "set": if (!canAccess(c.uid, p)) return fail("permission_denied", "İzin yok"); store.set(p, m.data); return reply(true);
-          case "update": if (!canAccess(c.uid, p)) return fail("permission_denied", "İzin yok"); store.update(p, m.data); return reply(true);
-          case "delete": if (!canAccess(c.uid, p)) return fail("permission_denied", "İzin yok"); store.delete(p); return reply(true);
+          case "set": if (!canWrite(c.uid, p)) return fail("permission_denied", "İzin yok"); store.set(p, m.data); return reply(true);
+          case "update": if (!canWrite(c.uid, p)) return fail("permission_denied", "İzin yok"); store.update(p, m.data); return reply(true);
+          case "delete": if (!canWrite(c.uid, p)) return fail("permission_denied", "İzin yok"); store.delete(p); return reply(true);
           case "query": {
             if (!canAccess(c.uid, p + "/x")) return fail("permission_denied", "İzin yok");
             let docs = store.list(p).map(d => ({ id: d.id, data: d.data }));
@@ -194,6 +204,7 @@ function createServer(opts = {}) {
             store.set("_sys/users/" + c.uid, { ...u, name: String(m.name || u.name).slice(0, 40), color: String(m.color || u.color).slice(0, 20) });
             return reply(true);
           }
+          case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
           default: return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
@@ -221,6 +232,38 @@ function createServer(opts = {}) {
     c.ws.once("close", () => tokens.delete(token));
     reply({ me: { id: uid, name: nm, color }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList() });
     broadcastPeers([{ peer: c.peer, by: uid }], []);
+  }
+
+  // Masa oyunları: tahta durumu boards/<id> belgesinde. İstemciler okur ve abone olur,
+  // ama yazmayı yalnızca buradan yapar; her hamle kurallar.js ile denetlenir.
+  function boardOp(c, m, reply, fail) {
+    const me = { id: c.uid, name: (store.get("_sys/users/" + c.uid) || {}).name || "Oyuncu" };
+    if (m.op === "bgNew") {
+      const g = OYUNLAR[m.oyun]; if (!g) return fail("invalid_argument", "Bilinmeyen oyun");
+      const id = "b" + Date.now().toString(36) + rid(3);
+      store.set("boards/" + id, { oyun: m.oyun, durum: g.yeni(Math.random), koltuk: [null, null], olusturan: me.id, created: Date.now(), updated: Date.now() });
+      return reply({ id });
+    }
+    const p = "boards/" + String(m.board || ""), b = canAccess(c.uid, p) && store.get(p);
+    if (!b) return fail("not_found", "Böyle bir tahta yok");
+    const g = OYUNLAR[b.oyun];
+    if (m.op === "bgSit") {
+      const k = m.koltuk === 1 ? 1 : 0, cur = b.koltuk[k];
+      if (m.kalk) { if (cur && cur.id === me.id) b.koltuk[k] = null; else return fail("permission_denied", "Bu koltuk senin değil"); }
+      else if (cur && cur.id !== me.id) return fail("taken", "Bu koltuk dolu");
+      else b.koltuk[k] = me; // aynı kişi iki koltuğa da oturabilir (tek bilgisayarda iki kişi)
+      store.set(p, { ...b, updated: Date.now() }); return reply(true);
+    }
+    if (m.op === "bgMove") {
+      const d = b.durum, k = b.koltuk[d.sira];
+      if (!k || k.id !== me.id) return fail("not_your_turn", "Sıra sende değil");
+      if (!yasal(b.oyun, d, m.hamle)) return fail("illegal", "Bu hamle kurallara uymuyor");
+      store.set(p, { ...b, durum: g.uygula(d, m.hamle, Math.random), updated: Date.now() }); return reply(true);
+    }
+    const yetkili = b.olusturan === me.id || c.isOwner || b.koltuk.some(x => x && x.id === me.id);
+    if (!yetkili) return fail("permission_denied", "Yalnızca oyuncular ya da tahtayı açan yapabilir");
+    if (m.op === "bgReset") { store.set(p, { ...b, durum: g.yeni(Math.random), updated: Date.now() }); return reply(true); }
+    if (m.op === "bgDelete") { store.delete(p); return reply(true); }
   }
 
   // Claude: istemci metin ya da [{role,content}] gönderir; yanıt akış hâlinde iletilir.
@@ -256,4 +299,4 @@ function createServer(opts = {}) {
   };
 }
 
-module.exports = { createServer, canAccess };
+module.exports = { createServer, canAccess, canWrite };
