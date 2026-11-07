@@ -71,7 +71,7 @@
   const acikId = () => (location.hash.match(/^#(b[a-z0-9]+)$/) || [])[1];
   window.addEventListener("hashchange", () => { secim = []; hataMetni = ""; ciz(); });
 
-  const RENK = ["Açık taşlar", "Koyu taşlar"];
+  const RENK_GENEL = ["Açık taşlar", "Koyu taşlar"];
   const koltukAdi = (b, k) => (b.koltuk[k] ? b.koltuk[k].name : "boş");
   const benimKoltuklarim = b => [0, 1].filter(k => b.koltuk[k] && ME && b.koltuk[k].id === ME.id);
 
@@ -96,6 +96,7 @@
   function cizTahta(id, b) {
     if (sonId !== id) { secim = []; sonId = id; }
     const g = OYUNLAR[b.oyun], d = b.durum, benim = benimKoltuklarim(b);
+    const RENK = g.taraflar || RENK_GENEL, renk = k => (g.renk ? g.renk[k] : k);
     const oynayabilir = !d.bitti && benim.includes(d.sira);
     const yasal = oynayabilir ? g.hamleler(d) : [];
     const uyan = yasal.filter(h => ayni(h.slice(0, secim.length), secim));
@@ -107,7 +108,7 @@
       : oynayabilir ? `Sıra sende (${RENK[d.sira].toLowerCase()})` : `Sıra ${koltukAdi(b, d.sira)} oyuncusunda`;
     const koltukHtml = k => {
       const x = b.koltuk[k], mine = x && ME && x.id === ME.id;
-      return `<div class="koltuk" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${k}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
+      return `<div class="koltuk" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
         ${mine ? `<button class="btn" data-kalk="${k}">Kalk</button>` : x ? "" : `<button class="btn pri" data-otur="${k}">Otur</button>`}</div>`;
     };
     $("#ana").innerHTML = `<p><a href="#">← Bütün oyunlar</a></p>
@@ -224,6 +225,25 @@
       }
       // Eldeki taşlar
       for (const p of [0, 1]) for (let t = 0; t < d.elde[p]; t++) out.push(tas(p === 0 ? 24 + t * 24 : W - 24 - t * 24, W + 30, 10, p));
+      return out.join("") + "</svg>";
+    },
+
+    hnefatafl(d, { ipucu, secim, cevir }) {
+      const H = OYUNLAR.hnefatafl, N = H.tahta, S = 50, out = [`<svg viewBox="0 0 ${S * N} ${S * N}" role="img" aria-label="Hnefatafl tahtası">`];
+      const xy = i => { let r = Math.floor(i / N), c = i % N; if (cevir) { r = N - 1 - r; c = N - 1 - c; } return [c * S, r * S]; };
+      const sonlar = new Set(d.son || []);
+      for (let i = 0; i < N * N; i++) {
+        const [x, y] = xy(i), v = d.b[i], ozel = i === H.taht || H.koseler.includes(i);
+        out.push(`<g class="k" data-k="${i}"><rect x="${x}" y="${y}" width="${S}" height="${S}" fill="${ozel ? "var(--wood-2)" : "var(--wood)"}" stroke="var(--wood-2)" stroke-width="1.5"/>`);
+        if (ozel) out.push(`<path d="M${x + 10} ${y + 10}L${x + S - 10} ${y + S - 10}M${x + S - 10} ${y + 10}L${x + 10} ${y + S - 10}" stroke="var(--wood-ink)" stroke-width="2" opacity=".5"/>`);
+        if (sonlar.has(i)) out.push(`<rect class="son" x="${x + 2}" y="${y + 2}" width="${S - 4}" height="${S - 4}"/>`);
+        if (v === 1) out.push(tas(x + S / 2, y + S / 2, S * 0.36, 1));
+        if (v === 2) out.push(tas(x + S / 2, y + S / 2, S * 0.36, 0));
+        if (v === 3) out.push(tas(x + S / 2, y + S / 2, S * 0.42, 0) + `<path d="M${x + S / 2 - 11} ${y + S / 2 + 7}l-3-14 8 6 6-10 6 10 8-6-3 14z" fill="var(--gold)" stroke="var(--wood-ink)" stroke-width="1.2"/>`);
+        if (secim.includes(i)) out.push(`<rect class="secili" x="${x + 2}" y="${y + 2}" width="${S - 4}" height="${S - 4}"/>`);
+        if (ipucu.has(i)) out.push(v && secim.length === 0 ? `<circle class="secili" cx="${x + S / 2}" cy="${y + S / 2}" r="${S * 0.42}" opacity=".6"/>` : ipucuDaire(x + S / 2, y + S / 2, S * 0.14));
+        out.push("</g>");
+      }
       return out.join("") + "</svg>";
     },
 
