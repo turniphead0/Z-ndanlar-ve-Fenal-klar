@@ -1983,7 +1983,7 @@ async function importPdf(file){
     const totalChars=pages.join("").length;
     save("scenario",{id:"meta",title:file.name.replace(/\.pdf$/i,""),fileName:file.name,pageCount:n,pdfUrl,status:"imported",importedAt:Date.now(),textChars:totalChars});
     setBusy(null); S.scTab="guide"; render();
-    toast(totalChars<n*200?"PDF okundu ama metin çok az: taranmış bir PDF olabilir, çözümleme zayıf kalır.":`${n} sayfa okundu. Şimdi Claude ile çözümleyebilirsin.`);
+    toast(totalChars<n*200?"PDF okundu ama metin çok az: taranmış bir PDF olabilir, çözümleme zayıf kalır.":SAMPLE_FN?`${n} sayfa okundu. Şimdi Claude ile çözümleyebilirsin.`:`${n} sayfa okundu. Şimdi Çözümle'ye basabilirsin.`);
   }catch(e){ setBusy(null); toast("PDF okunamadı: "+(e.message||"hata")); render() }
 }
 
@@ -2022,10 +2022,28 @@ Yalnızca tek bir JSON nesnesi döndür:
 
 VERİ:
 ${brief}`,{signal:sig,cache:{gcTime:86400000}});
-    const m=scMeta(); Object.assign(m,{status:"analyzed",analyzedAt:Date.now(),title:fin?.title||m.title,guide:fin?.guide||{},modules:(fin?.modules||[]).map(x=>({...x,id:uid("md")})),npcs,
+    const m=scMeta(); Object.assign(m,{status:"analyzed",method:"claude",analyzedAt:Date.now(),title:fin?.title||m.title,guide:fin?.guide||{},modules:(fin?.modules||[]).map(x=>({...x,id:uid("md")})),npcs,
       handouts:acc.handouts.map(h=>({...h,id:uid("ho")})),maps:acc.maps.map(x=>({...x,id:uid("mp")})),clues:acc.clues});
     save("scenario",m); setBusy(null); S.scTab="guide"; render(); toast("Senaryo hazır: modüller, NPC'ler, el notları ve haritalar ayrıldı");
   }catch(e){ setBusy(null); if(e.code==="cancelled"){ toast("Çözümleme durduruldu"); return } toast(e.code==="not_granted"?"Claude kullanımına izin verilmedi":e.code==="rate_limited"?"Claude kullanım sınırına ulaşıldı, sonra tekrar dene":e.code==="invalid_json"?"Claude'un cevabı okunamadı, tekrar dene":"Çözümleme yarıda kaldı, tekrar dene") }
+}
+
+// Yapay zekâsız çözümleme: PDF'in yer imleri, başlık boyutları ve anahtar sözcükler (web/ext/cozumleyici.js).
+async function analyzeScenarioLocal(){
+  const KC=window.KuralCozumleyici; const meta=scMeta(); if(!KC||!meta) return;
+  scCtl?.abort(); scCtl=new AbortController(); const sig=scCtl.signal;
+  try{
+    const pages=[]; let outline=[], doc=null;
+    setBusy({msg:"PDF açılıyor",step:0,total:1}); try{ doc=await openPdf() }catch(e){}
+    if(doc){ const n=doc.numPages, OPS=window.pdfjsLib&&window.pdfjsLib.OPS; outline=await KC.pdfOutline(doc);
+      for(let i=1;i<=n;i++){ if(sig.aborted) throw Object.assign(new Error("İptal edildi"),{code:"cancelled"}); setBusy({msg:`Sayfa ${i}/${n} inceleniyor`,step:i,total:n}); pages[i]=await KC.pdfPageLines(await doc.getPage(i),OPS) } }
+    else { const st=scPages(); for(let i=1;i<st.length;i++) pages[i]={lines:KC.linesFromText(st[i]),img:false} }
+    const r=KC.analyze({title:meta.title,pages,outline});
+    const m=scMeta(); Object.assign(m,{status:"analyzed",method:"kural",analyzedAt:Date.now(),guide:r.guide,modules:r.modules.map(x=>({...x,id:uid("md")})),npcs:r.npcs.map(p=>({...p,id:uid("np")})),
+      handouts:r.handouts.map(h=>({...h,id:uid("ho")})),maps:r.maps.map(x=>({...x,id:uid("mp")})),clues:r.clues});
+    save("scenario",m); scCtl=null; setBusy(null); S.scTab="guide"; render();
+    toast(`Çözümlendi: ${m.modules.length} bölüm, ${m.npcs.length} NPC, ${m.maps.length} harita, ${m.handouts.length} el notu`,5000);
+  }catch(e){ scCtl=null; setBusy(null); if(e.code==="cancelled"){ toast("Çözümleme durduruldu"); return } console.error("Yerel çözümleme hatası",e); toast("Çözümleme yapılamadı: "+(e.message||"hata"),8000) }
 }
 
 function scTabBtn(k,n,c){ return `<button class="chip" data-sc="tab" data-t="${k}" aria-pressed="${S.scTab===k}">${n}${c!=null?`<small>${c}</small>`:""}</button>` }
@@ -2036,17 +2054,17 @@ function viewScenario(){
   const head=`<div class="vhead"><h1>Senaryo</h1><span class="dmtag">Sadece ${gmT()}</span><span class="sp"></span>${m?`<label class="btn">PDF'i değiştir<input type="file" accept="application/pdf" data-sc="file" hidden></label>`:""}</div>`;
   const prog=busy?`<div class="panel scbusy"><div class="pbar"><i style="width:${Math.round(100*(busy.step||0)/Math.max(1,busy.total||1))}%"></i></div><p style="margin:6px 0 0">${esc(busy.msg)}</p>${scCtl?`<button class="btn sm" data-sc="stop">Durdur</button>`:""}</div>`:"";
   if(!m) return head+prog+`<div class="empty sclead"><h2>Hazır bir senaryo mu oynatacaksın?</h2>
-    <p>Senaryonun PDF'ini yükle. Sayfalar senin tarayıcında okunur, metin yalnızca senin özel alanına kaydedilir. Ardından Claude onu modüllere böler, haritaları ve el notlarını ayırır, NPC'leri çıkarır ve sana bir yönetici kılavuzu hazırlar.</p>
+    <p>Senaryonun PDF'ini yükle. Sayfalar senin tarayıcında okunur, metin yalnızca senin özel alanına kaydedilir. Ardından ${SAMPLE_FN?"Claude onu modüllere böler, haritaları ve el notlarını ayırır, NPC'leri çıkarır ve sana bir yönetici kılavuzu hazırlar. Yapay zekâ kullanmadan, ücretsiz çözümleme de yapabilirsin.":"Zar Masası başlıklarına bakarak onu bölümlere ayırır, haritaları, el notlarını ve NPC'leri bulur. Bunun için yapay zekâ ya da ücretli bir hesap gerekmez."}</p>
     <label class="btn pri">PDF seç<input type="file" accept="application/pdf" data-sc="file" hidden></label>
     <p class="hint">Taranmış (metin içermeyen) PDF'lerde sonuç zayıf olur. Sadece sahip olduğun senaryoları yükle.</p></div>`;
-  const tabs=`<div class="chips sctabs">${scTabBtn("guide","Kılavuz")}${scTabBtn("modules","Modüller",(m.modules||[]).length)}${scTabBtn("npcs","NPC'ler",(m.npcs||[]).length)}${scTabBtn("handouts","El notları",(m.handouts||[]).length)}${scTabBtn("maps","Haritalar",(m.maps||[]).length)}${scTabBtn("assistant","Asistan")}${scTabBtn("pages","Sayfalar",m.pageCount)}</div>`;
+  const tabs=`<div class="chips sctabs">${scTabBtn("guide","Kılavuz")}${scTabBtn("modules","Modüller",(m.modules||[]).length)}${scTabBtn("npcs","NPC'ler",(m.npcs||[]).length)}${scTabBtn("handouts","El notları",(m.handouts||[]).length)}${scTabBtn("maps","Haritalar",(m.maps||[]).length)}${SAMPLE_FN?scTabBtn("assistant","Asistan"):""}${scTabBtn("pages","Sayfalar",m.pageCount)}</div>`;
   const top=`<div class="panel schead"><div><b class="sctitle">${esc(m.title)}</b><p class="hint" style="margin:2px 0 0">${m.pageCount} sayfa · ${esc(m.fileName||"")}${m.analyzedAt?` · çözümlendi ${ago(m.analyzedAt)}`:""}${m.pdfUrl?"":" · PDF bu oturumdan sonra sayfa görüntüsü için yeniden seçilmeli"}</p></div><span class="sp"></span>
-    ${busy?"":`<button class="btn ${m.status==="analyzed"?"":"pri"}" data-sc="analyze" ${SAMPLE_FN?"":"disabled"}>${m.status==="analyzed"?"Yeniden çözümle":"Claude ile çözümle"}</button>`}</div>`;
-  if(m.status!=="analyzed") return head+prog+top+`<div class="empty"><p>PDF okundu. ${SAMPLE_FN?"Çözümle'ye bas; Claude sayfaları parça parça okuyup yapıyı çıkarır. Uzun senaryolarda birkaç dakika sürebilir ve senin Claude kullanımından düşer.":"Claude bu görünümde kullanılamıyor; sayfaları yine de Sayfalar sekmesinden okuyabilirsin."}</p></div>`+(S.scTab==="pages"?scPagesTab(m):"");
+    ${busy?"":`${SAMPLE_FN?`<button class="btn ${m.status==="analyzed"?"":"pri"}" data-sc="analyze">${m.status==="analyzed"?"Claude ile yeniden çözümle":"Claude ile çözümle"}</button>`:""}<button class="btn ${!SAMPLE_FN&&m.status!=="analyzed"?"pri":""}" data-sc="analyzeLocal" title="Yapay zekâ kullanmaz: PDF'in yer imlerine, başlıklarına ve anahtar sözcüklerine bakar">${m.status==="analyzed"?(SAMPLE_FN?"Yapay zekâsız yeniden çözümle":"Yeniden çözümle"):(SAMPLE_FN?"Yapay zekâsız çözümle":"Çözümle")}</button>`}</div>`;
+  if(m.status!=="analyzed") return head+prog+top+`<div class="empty"><p>PDF okundu. ${SAMPLE_FN?"Claude ile çözümle'ye basarsan Claude sayfaları parça parça okuyup yapıyı çıkarır. Uzun senaryolarda birkaç dakika sürebilir ve Claude kullanımından düşer. Yapay zekâsız çözümle ücretsizdir: bölümleri PDF'in başlıklarından, NPC'leri istatistik bloklarından, harita ve el notlarını alt yazılarından bulur.":"Çözümle'ye bas. Bölümler PDF'in yer imlerinden ve başlıklarından, NPC'ler istatistik bloklarından, haritalar ve el notları alt yazılarından bulunur. Yapay zekâ kullanılmaz, ücretsizdir."}</p></div>`+(S.scTab==="pages"?scPagesTab(m):"");
   let body="";
   const t=S.scTab||"guide";
   if(t==="guide"){ const g=m.guide||{}; const L=a=>Array.isArray(a)&&a.length?`<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
-    body=`<div class="scguide"><section class="panel"><h3>Gerçekte ne oluyor</h3><p>${esc(g.premise||"")}</p><h3>Kanca</h3><p>${esc(g.hook||"")}</p><h3>Akış</h3><p>${esc(g.structure||"")}</p></section>
+    body=(m.method==="kural"?`<p class="hint">Bu kılavuz yapay zekâ olmadan, senaryonun kendi başlıklarından ve ilk cümlelerinden derlendi. Boş kalan alanlar için ilgili sayfaları aç ve kendi notlarını Notlar sekmesine yaz.</p>`:"")+`<div class="scguide"><section class="panel"><h3>Gerçekte ne oluyor</h3><p>${esc(g.premise||"")}</p><h3>Kanca</h3><p>${esc(g.hook||"")}</p><h3>Akış</h3><p>${esc(g.structure||"")}</p></section>
       <section class="panel"><h3>Saklanacak gerçekler</h3>${L(g.secrets)}<h3>Tempo ve hazırlık</h3>${L(g.pacing)}</section>
       <section class="panel"><h3>Oyuncular takılırsa</h3>${L(g.ifStuck)}<h3>Olası sonlar</h3><p>${esc(g.ending||"")}</p></section></div>`; }
   if(t==="modules") body=`<ol class="modlist">${(m.modules||[]).map((x,i)=>`<li class="panel mod ${S.scMod===x.id?"open":""}"><button class="modh" data-sc="mod" data-id="${x.id}" aria-expanded="${S.scMod===x.id}"><span class="modn num">${i+1}</span><b>${esc(x.title)}</b><span class="hint" style="margin:0">s. ${esc((x.pages||[]).join("–"))}</span></button>
@@ -2054,7 +2072,7 @@ function viewScenario(){
         ${(x.scenes||[]).length?`<h4>Sahneler</h4><ul>${x.scenes.map(s=>`<li><b>${esc(s.title)}</b> ${s.page?`<button class="linkb" data-sc="page" data-p="${s.page}">s. ${s.page}</button>`:""}${s.note?` — ${esc(s.note)}`:""}</li>`).join("")}</ul>`:""}
         ${(x.clues||[]).length?`<h4>İpuçları</h4><ul>${x.clues.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`:""}
         <p class="hint">${(x.npcs||[]).length?"NPC: "+x.npcs.map(esc).join(", "):""}${(x.maps||[]).length?" · Harita: "+x.maps.map(esc).join(", "):""}${(x.handouts||[]).length?" · El notu: "+x.handouts.map(esc).join(", "):""}</p>
-        <div class="chips"><button class="btn sm" data-sc="page" data-p="${(x.pages||[])[0]||1}">Sayfaları aç</button><button class="btn sm" data-sc="askmod" data-id="${x.id}">Bu modül için oturum hazırla</button></div></div>`:""}</li>`).join("")}</ol>`;
+        <div class="chips"><button class="btn sm" data-sc="page" data-p="${(x.pages||[])[0]||1}">Sayfaları aç</button>${SAMPLE_FN?`<button class="btn sm" data-sc="askmod" data-id="${x.id}">Bu modül için oturum hazırla</button>`:""}</div></div>`:""}</li>`).join("")}</ol>`;
   if(t==="npcs") body=`<div class="chips" style="margin-bottom:10px"><button class="btn" data-sc="allnpc">Hepsini kart yap</button><span class="hint" style="margin:0">Kartlar Savaş sekmesindeki canavar kartlarına eklenir.</span></div><div class="npcgrid">${(m.npcs||[]).map(p=>`<article class="panel npc"><div class="gtop"><h3 class="h2" style="font-size:18px">${esc(p.name)}</h3>${p.page?`<button class="linkb" data-sc="page" data-p="${p.page}">s. ${p.page}</button>`:""}</div><p class="hint" style="margin:0">${esc(p.role||"")}</p><p>${esc(p.description||"")}</p>${p.motivation?`<p><b>İster:</b> ${esc(p.motivation)}</p>`:""}${p.secret?`<p><b>Sır:</b> ${esc(p.secret)}</p>`:""}${p.stats?`<p class="num" style="font-size:12.5px">${esc(p.stats)}</p>`:""}
       <div class="chips">${p.cardId&&S.monsters[p.cardId]?`<button class="btn sm" data-act="openmon" data-id="${p.cardId}">Kartı aç</button>`:`<button class="btn sm" data-sc="npc" data-id="${p.id}">Kart yap</button>`}</div></article>`).join("")||'<p class="hint">NPC bulunamadı.</p>'}</div>`;
   if(t==="handouts") body=`<div class="npcgrid">${(m.handouts||[]).map(h=>{ const shown=S.handouts[h.id]; return `<article class="panel npc"><div class="gtop"><h3 class="h2" style="font-size:18px">${esc(h.title)}</h3>${h.page?`<button class="linkb" data-sc="page" data-p="${h.page}">s. ${h.page}</button>`:""}${shown?'<span class="rbadge pl">Gösterildi</span>':""}</div><p>${esc(h.description||"")}</p>
@@ -2102,6 +2120,7 @@ main.addEventListener("click",async e=>{
   switch(a){
     case "tab": S.scTab=b.dataset.t; render(); if(S.scTab==="pages") drawPageImg(); break;
     case "analyze": analyzeScenario(); break;
+    case "analyzeLocal": analyzeScenarioLocal(); break;
     case "stop": scCtl?.abort(); break;
     case "mod": S.scMod=S.scMod===b.dataset.id?null:b.dataset.id; render(); break;
     case "page": S.scPage=+b.dataset.p||1; S.scTab="pages"; render(); drawPageImg(); break;
