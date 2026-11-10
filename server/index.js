@@ -288,7 +288,7 @@ function createServer(opts = {}) {
       text = fin.content.filter(b => b.type === "text").map(b => b.text).join("");
       reply({ text });
     } catch (e) {
-      if (ctl.signal.aborted) fail("aborted", "İptal edildi"); else fail("ai_error", String(e.message || e));
+      if (ctl.signal.aborted) fail("aborted", "İptal edildi"); else { console.error("[ai]", e.status || "", String(e.message || e)); fail("ai_error", String(e.message || e)); }
     } finally { c.ai.delete(m.id); }
   }
 

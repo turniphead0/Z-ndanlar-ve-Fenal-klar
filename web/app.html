@@ -584,7 +584,7 @@ const mod = s => Math.floor(((+s||10)-10)/2);
 const profB = l => 2+Math.floor((Math.max(1,Math.min(20,+l||1))-1)/4);
 function getPath(o,p){return p.split(".").reduce((a,k)=>a==null?a:a[k],o)}
 function setPath(o,p,v){const ks=p.split(".");let a=o;ks.slice(0,-1).forEach(k=>{if(a[k]==null||typeof a[k]!=="object")a[k]={};a=a[k]});a[ks.at(-1)]=v}
-let toastT; function toast(m){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+let toastT; function toast(m,ms){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,ms||2200)}
 function armed(btn,fn){ if(btn.classList.contains("armed")){btn.classList.remove("armed");fn();return} const old=btn.textContent;btn.classList.add("armed");btn.textContent="Emin misin? Tekrar tıkla";setTimeout(()=>{if(btn.isConnected){btn.classList.remove("armed");btn.textContent=old}},3000)}
 function fmtTime(t){const d=new Date(t);return d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}
 function fmtDate(t){return new Date(t).toLocaleDateString("tr-TR",{day:"numeric",month:"short"})}
@@ -2025,8 +2025,16 @@ ${brief}`,{signal:sig,cache:{gcTime:86400000}});
     const m=scMeta(); Object.assign(m,{status:"analyzed",analyzedAt:Date.now(),title:fin?.title||m.title,guide:fin?.guide||{},modules:(fin?.modules||[]).map(x=>({...x,id:uid("md")})),npcs,
       handouts:acc.handouts.map(h=>({...h,id:uid("ho")})),maps:acc.maps.map(x=>({...x,id:uid("mp")})),clues:acc.clues});
     save("scenario",m); setBusy(null); S.scTab="guide"; render(); toast("Senaryo hazır: modüller, NPC'ler, el notları ve haritalar ayrıldı");
-  }catch(e){ setBusy(null); if(e.code==="cancelled"){ toast("Çözümleme durduruldu"); return } toast(e.code==="not_granted"?"Claude kullanımına izin verilmedi":e.code==="rate_limited"?"Claude kullanım sınırına ulaşıldı, sonra tekrar dene":e.code==="invalid_json"?"Claude'un cevabı okunamadı, tekrar dene":"Çözümleme yarıda kaldı, tekrar dene") }
+  }catch(e){ setBusy(null); if(e.code==="cancelled"){ toast("Çözümleme durduruldu"); return } console.error("Çözümleme hatası",e); toast(e.code==="not_granted"?"Claude kullanımına izin verilmedi":e.code==="rate_limited"?"Claude kullanım sınırına ulaşıldı, sonra tekrar dene":e.code==="invalid_json"||e.code==="bad_json"?"Claude'un cevabı okunamadı, tekrar dene":"Çözümleme yarıda kaldı: "+aiErrText(e),12000) }
 }
+// Sunucudan gelen Claude hatasını kullanıcının anlayacağı bir cümleye çevirir.
+function aiErrText(e){ const m=String(e&&e.message||e||"");
+  if(/credit balance|billing|purchase credits/i.test(m)) return "Anthropic hesabında kredi yok. console.anthropic.com > Billing'den kredi yükle.";
+  if(/authentication|invalid x-api-key|api[_ -]?key/i.test(m)) return "API anahtarı geçersiz. Sunucudaki ANTHROPIC_API_KEY'i kontrol et.";
+  if(/not_found|model/i.test(m)&&/not.?found|does not exist|invalid model/i.test(m)) return "Sunucudaki Claude modeli bulunamadı (ZM_AI_MODEL).";
+  if(/overloaded|529/i.test(m)) return "Claude şu an çok yoğun, biraz sonra tekrar dene.";
+  if(/rate.?limit|429/i.test(m)) return "Anthropic hesabının kullanım sınırına ulaşıldı, biraz bekle.";
+  return (m||"bilinmeyen hata").slice(0,200)+" Tekrar dene." }
 
 function scTabBtn(k,n,c){ return `<button class="chip" data-sc="tab" data-t="${k}" aria-pressed="${S.scTab===k}">${n}${c!=null?`<small>${c}</small>`:""}</button>` }
 function viewScenario(){
@@ -2090,7 +2098,7 @@ MASA: ${gameContext()}
 İLGİLİ SAYFALAR:${relevantPages(q+" "+(mod?mod.title:""),mod)}`;
   const turns=[{role:"user",content:rules},...S.chat.slice(-8)];
   try{ const {text}=await SAMPLE_FN(turns,{signal:chatCtl.signal,cache:false,onText:({text})=>{ S.chatLive=text; const el=$("#chatlive"); if(el) el.textContent=text }}); S.chat.push({role:"assistant",content:text}) }
-  catch(e){ if(e.code!=="cancelled") S.chat.push({role:"assistant",content:e.text?e.text+" (yarıda kaldı)":"Cevap alınamadı: "+(e.code==="rate_limited"?"kullanım sınırı":e.code==="not_granted"?"izin verilmedi":"tekrar dene")}) }
+  catch(e){ if(e.code!=="cancelled") S.chat.push({role:"assistant",content:e.text?e.text+" (yarıda kaldı)":"Cevap alınamadı: "+(e.code==="rate_limited"?"kullanım sınırı":e.code==="not_granted"?"izin verilmedi":aiErrText(e))}) }
   S.chatBusy=false; render(); const ch=$("#chat"); if(ch) ch.scrollTop=ch.scrollHeight;
 }
 function npcToCard(p){ const k=sysKey(); const mo=k==="coc7"?cocMonsterNew():k==="yze"?yzeMonsterNew():xsys(k)?xsys(k).newMonster():newMonster(); mo.name=p.name; mo.meta=p.role||"NPC";
