@@ -27,7 +27,11 @@ function canAccess(uid, p) {
   return true;
 }
 // Masa oyunu belgeleri (boards/*) yalnızca sunucu tarafından, kurallara uygun hamlelerle yazılır.
-function canWrite(uid, p) { return canAccess(uid, p) && String(p).split("/")[0] !== "boards"; }
+// Forum (forum/*) da yalnızca sunucu tarafından yazılır: yazar adı kimlikten gelir, başkasının iletisi değiştirilemez.
+const SERVER_ONLY = new Set(["boards", "forum"]);
+function canWrite(uid, p) { return canAccess(uid, p) && !SERVER_ONLY.has(String(p).split("/")[0]); }
+const FORUM_KATEGORI = ["Genel sohbet", "Oyuncu arıyorum", "Masa arıyorum", "Kurallar", "Paylaşım"];
+const metin = (v, n) => String(v == null ? "" : v).replace(/\r\n/g, "\n").trim().slice(0, n);
 
 function createServer(opts = {}) {
   const dataDir = opts.dataDir || path.join(process.cwd(), "zar-masasi-veri");
@@ -58,7 +62,7 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "forum"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
@@ -91,7 +95,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1 });
+      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI });
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);
       if (req.method === "DELETE" && p.startsWith("/api/assets/")) {
@@ -205,6 +209,7 @@ function createServer(opts = {}) {
             return reply(true);
           }
           case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
+          case "forumTopic": case "forumReply": case "forumDelete": case "forumPin": return forumOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
           default: return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
@@ -266,6 +271,50 @@ function createServer(opts = {}) {
     if (m.op === "bgDelete") { store.delete(p); return reply(true); }
   }
 
+  // Forum: başlıklar forum/<id>, yanıtlar forum/<id>/yanitlar/<id>. Herkes okur; yazmayı yalnızca sunucu yapar.
+  const sonForum = new Map(); // kişi -> son ileti zamanı (art arda gönderimi yavaşlatmak için)
+  function forumOp(c, m, reply, fail) {
+    const u = store.get("_sys/users/" + c.uid) || {};
+    const yazar = { id: c.uid, name: u.name || "Oyuncu", color: u.color || "#2f8f86" };
+    if (m.op === "forumTopic" || m.op === "forumReply") {
+      const now = Date.now();
+      if (now - (sonForum.get(c.uid) || 0) < 1000) return fail("too_fast", "Biraz bekle, sonra tekrar gönder");
+      const govde = metin(m.body, 4000);
+      if (m.op === "forumTopic") {
+        const baslik = metin(m.title, 120).replace(/\s+/g, " ");
+        if (!baslik) return fail("invalid_argument", "Başlık boş olamaz");
+        const kategori = FORUM_KATEGORI.includes(m.kategori) ? m.kategori : "Genel sohbet";
+        const sistem = /^[a-z0-9]{1,20}$/.test(m.sistem || "") ? m.sistem : null;
+        const id = "t" + now.toString(36) + rid(3);
+        store.set("forum/" + id, { baslik, govde, kategori, sistem, yazar, created: now, updated: now, yanit: 0, sonYazan: null, sabit: false });
+        sonForum.set(c.uid, now); return reply({ id });
+      }
+      const tp = "forum/" + metin(m.topic, 40), t = /^forum\/t[0-9a-z]+$/.test(tp) && store.get(tp);
+      if (!t) return fail("not_found", "Böyle bir başlık yok");
+      if (!govde) return fail("invalid_argument", "Yanıt boş olamaz");
+      const id = "p" + now.toString(36) + rid(3);
+      store.set(tp + "/yanitlar/" + id, { govde, yazar, created: now });
+      store.set(tp, { ...t, yanit: (t.yanit || 0) + 1, updated: now, sonYazan: yazar.name });
+      sonForum.set(c.uid, now); return reply({ id });
+    }
+    const tp = "forum/" + metin(m.topic, 40), t = /^forum\/t[0-9a-z]+$/.test(tp) && store.get(tp);
+    if (!t) return fail("not_found", "Böyle bir başlık yok");
+    if (m.op === "forumPin") {
+      if (!c.isOwner) return fail("permission_denied", "Yalnızca sunucu sahibi sabitleyebilir");
+      store.set(tp, { ...t, sabit: !!m.sabit }); return reply(true);
+    }
+    // forumDelete: yanıt (m.post) ya da bütün başlık. Yazarı ya da sunucu sahibi silebilir.
+    if (m.post) {
+      const pp = tp + "/yanitlar/" + metin(m.post, 40), p = /^p[0-9a-z]+$/.test(String(m.post)) && store.get(pp);
+      if (!p) return fail("not_found", "Böyle bir yanıt yok");
+      if (p.yazar.id !== c.uid && !c.isOwner) return fail("permission_denied", "Yalnızca yazarı silebilir");
+      store.delete(pp); store.set(tp, { ...t, yanit: Math.max(0, (t.yanit || 1) - 1) }); return reply(true);
+    }
+    if (t.yazar.id !== c.uid && !c.isOwner) return fail("permission_denied", "Yalnızca yazarı silebilir");
+    for (const d of store.list(tp + "/yanitlar")) store.delete(d.path);
+    store.delete(tp); return reply(true);
+  }
+
   // Claude: istemci metin ya da [{role,content}] gönderir; yanıt akış hâlinde iletilir.
   async function runAi(c, m, reply, fail) {
     if (!anthropic) return fail("unavailable", "Bu sunucuda yapay zekâ kapalı (ANTHROPIC_API_KEY yok)");
@@ -299,4 +348,4 @@ function createServer(opts = {}) {
   };
 }
 
-module.exports = { createServer, canAccess, canWrite };
+module.exports = { createServer, canAccess, canWrite, FORUM_KATEGORI };

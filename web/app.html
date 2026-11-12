@@ -829,7 +829,7 @@ function gameCard(g){
   const players=Object.entries(g.players||{}).filter(([,v])=>v).length;
   const badge=`<span class="rbadge sys">${SYSINFO[g.system]?.short||"D&D 5e"}</span>`+(r==="dm"?`<span class="rbadge dm">${gmT(g.system)}</span>`:"")+(r==="dm"?"":r==="player"?'<span class="rbadge pl">Oyuncu</span>':r==="pending"?'<span class="rbadge pe">İstek gönderildi</span>':"");
   const act=r==="dm"?`<button class="btn pri" data-lobby="enter" data-id="${g.id}">${gmT(g.system)} olarak gir</button>`:r==="player"?`<button class="btn pri" data-lobby="enter" data-id="${g.id}">Oyuna gir</button>`:r==="pending"?`<button class="btn" data-lobby="cancel" data-id="${g.id}">İsteği geri çek</button>`:S.ro?"":g.open!==false?`<button class="btn" data-lobby="join" data-id="${g.id}">Katıl</button>`:`<button class="btn" data-lobby="request" data-id="${g.id}">Katılma isteği gönder</button>`;
-  return `<article class="gcard ${r==="dm"||r==="player"?"mine":""}">${emblem(g)}
+  return `<article class="gcard ${r==="dm"||r==="player"?"mine":""}" data-gid="${esc(g.id)}">${emblem(g)}
     <div class="gbody"><div class="gtop"><h3>${esc(g.name||"Adsız oyun")}</h3>${badge}</div>
       <p class="gdesc">${esc(g.desc||"Açıklama yok.")}</p>
       <p class="gmeta">${gmT(g.system)}: ${dms.length?dms.map(id=>esc(nameOf(id))).join(", "):"—"} · ${players} oyuncu · ${g.open===false?"Onaylı katılım":"Açık katılım"}${online?` · <b class="onl">${online} kişi masada</b>`:""}</p>

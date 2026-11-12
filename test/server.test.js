@@ -133,3 +133,49 @@ test("mobilya simgeleri: katalogdaki her simge sunulur", async () => {
   assert.equal((await fetch(`http://127.0.0.1:${port}/ext/mobilya/..%2fmobilya.js`)).status, 404);
   await srv.close();
 });
+
+test("forum: başlık, yanıt, silme ve izinler", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir });
+  const port = await srv.listen(0, "127.0.0.1");
+  const a = client(port), b = client(port), o = client(port); await a.opened; await b.opened; await o.opened;
+  const ha = await a.call("hello", { name: "Ayşe", color: "#c0392b" });
+  const hb = await b.call("hello", { name: "Bora" });
+  await o.call("hello", { name: "Sahip", ownerKey: srv.ownerKey });
+
+  // istemci forum belgelerini doğrudan yazamaz
+  await assert.rejects(a.call("set", { path: "forum/tsahte", data: { baslik: "x", yazar: { id: hb.me.id, name: "Bora" } } }), { code: "permission_denied" });
+  await assert.rejects(a.call("forumTopic", { title: "   " }), { code: "invalid_argument" });
+
+  const { id } = await a.call("forumTopic", { title: "  Cuma   CoC oyunu ", body: "2 oyuncu arıyoruz", kategori: "Oyuncu arıyorum", sistem: "coc7", yazar: { id: hb.me.id } });
+  let t = srv.store.get("forum/" + id);
+  assert.equal(t.baslik, "Cuma CoC oyunu");
+  assert.equal(t.kategori, "Oyuncu arıyorum");
+  assert.equal(t.sistem, "coc7");
+  assert.equal(t.yazar.id, ha.me.id); // yazar kimlikten gelir, istemcinin gönderdiğinden değil
+  assert.equal(t.yazar.name, "Ayşe");
+
+  // çok hızlı ikinci ileti reddedilir
+  await assert.rejects(a.call("forumReply", { topic: id, body: "hemen" }), { code: "too_fast" });
+  const r = await b.call("forumReply", { topic: id, body: "Ben varım" });
+  t = srv.store.get("forum/" + id);
+  assert.equal(t.yanit, 1); assert.equal(t.sonYazan, "Bora");
+  assert.equal(srv.store.list("forum/" + id + "/yanitlar").length, 1);
+
+  // başkasının iletisi silinemez, sabitlemeyi yalnızca sahip yapar
+  await assert.rejects(a.call("forumDelete", { topic: id, post: r.id }), { code: "permission_denied" });
+  await assert.rejects(b.call("forumDelete", { topic: id }), { code: "permission_denied" });
+  await assert.rejects(a.call("forumPin", { topic: id, sabit: true }), { code: "permission_denied" });
+  await o.call("forumPin", { topic: id, sabit: true });
+  assert.equal(srv.store.get("forum/" + id).sabit, true);
+
+  await b.call("forumDelete", { topic: id, post: r.id });
+  assert.equal(srv.store.get("forum/" + id).yanit, 0);
+  await a.call("forumDelete", { topic: id });
+  assert.equal(srv.store.get("forum/" + id), undefined);
+  await assert.rejects(o.call("forumReply", { topic: "../_sys/x", body: "x" }), { code: "not_found" });
+
+  for (const c of [a, b, o]) c.ws.close();
+  await srv.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+});
