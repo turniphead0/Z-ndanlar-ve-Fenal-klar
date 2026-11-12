@@ -212,6 +212,12 @@
     presence: p => call("presence", { data: p }),
   };
 
+  /* ---------------- chat (masa sohbeti) ---------------- */
+  const chat = {
+    send: (game, d) => call("chatSend", { game, text: d.text || "", gif: d.gif || "", to: d.to || null }),
+    clear: game => call("chatClear", { game }),
+  };
+
   /* ---------------- sample (Claude) ---------------- */
   function ai(input, o, json) {
     o = o || {};
@@ -243,6 +249,7 @@
         case "assets": return assets;
         case "user": return user;
         case "room": return room;
+        case "chat": return chat;
         case "sample": if (!AI) throw err("unavailable", "Yapay zekâ bu sunucuda kapalı"); return sample;
         default: throw err("unknown_capability", name);
       }
