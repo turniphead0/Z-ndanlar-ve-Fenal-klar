@@ -3987,5 +3987,20 @@
  "Senaryoda": "Found",
  "ipucu cümlesi bulundu; takılınca Modüller sekmesindeki ipuçlarından henüz verilmemiş olanı sun.": "clue sentences; when players are stuck, offer one from the Modules tab they haven't got yet.",
  "Bir NPC'yi oyuncuların yanına gönder ve bildiği bir şeyi söylet.": "Send an NPC to the players and have them share something they know.",
- "Kaçırdıkları bir ipucunu başka bir yerde yeniden karşılarına çıkar.": "Put a clue they missed in front of them again somewhere else."
+ "Kaçırdıkları bir ipucunu başka bir yerde yeniden karşılarına çıkar.": "Put a clue they missed in front of them again somewhere else.",
+ "Birinci şahısta tavan ya da gökyüzü olacak alanları boya. Kahverengi kareler tavanlı, mavi kareler açık.": "Paint the areas that have a ceiling or open sky in first person. Brown squares have a ceiling, blue squares are open.",
+ "Tavan / gök": "Ceiling / sky",
+ "Birinci şahısta tavanlı ve üstü açık alanlar": "Roofed and open-sky areas in first person",
+ "Kendiliğinden": "Automatic",
+ "Her yer tavanlı": "Ceiling everywhere",
+ "Her yer açık": "Open sky everywhere",
+ "Işığa göre": "Follow lighting",
+ "Gündüz": "Day",
+ "Gece": "Night",
+ "Tavan": "Ceiling",
+ "Gökyüzü": "Sky",
+ "Fırçayla boyanan bütün tavan ve gök alanlarını sil": "Clear all painted ceiling and sky areas",
+ "Boyananları sil": "Clear painted",
+ "Fırçayla boyanmış alan yok": "No painted areas",
+ "Boyanan tavan ve gök alanları silindi": "Painted ceiling and sky areas cleared"
 }

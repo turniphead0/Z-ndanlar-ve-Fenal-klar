@@ -1141,7 +1141,7 @@ function tokHp(t){
 }
 const tb=(k,n,title="")=>`<button class="tool" data-tool="${k}" aria-pressed="${S.tool===k}"${title?` title="${title}"`:""}>${n}</button>`;
 const HINTS={move:"Jetonları sürükleyerek taşı. Etiketleri de sürükleyebilirsin.",pan:"Haritayı parmağınla ya da tekerlekle kaydır.",measure:"Mesafe ölçmek için sürükle. Her kare 5 ft (1,5 m).",ping:"Bir kareye tıkla, herkesin ekranında işaret belirsin.",
-  paint:"Seçili araziyi boya. Dikdörtgen ve oda çerçevesi için sürükle.",erase:"Araziyi sil.",props:"Seçili mobilyayı karelere yerleştir. Kaldırmak için Kaldır'ı seç.",label:"Etiket koymak için bir kareye tıkla.",fogshow:"Oyunculara açmak istediğin alanı boya.",foghide:"Tekrar sisle örtmek istediğin alanı boya."};
+  paint:"Seçili araziyi boya. Dikdörtgen ve oda çerçevesi için sürükle.",erase:"Araziyi sil.",props:"Seçili mobilyayı karelere yerleştir. Kaldırmak için Kaldır'ı seç.",roof:"Birinci şahısta tavan ya da gökyüzü olacak alanları boya. Kahverengi kareler tavanlı, mavi kareler açık.",label:"Etiket koymak için bir kareye tıkla.",fogshow:"Oyunculara açmak istediğin alanı boya.",foghide:"Tekrar sisle örtmek istediğin alanı boya."};
 function viewMap(){
   const l=loadingOr("maps"); if(l) return l;
   const dm=isDM(), ro=S.ro; const list=Object.values(S.maps).filter(x=>dm||!x.hidden); const m=curMap();
@@ -1151,17 +1151,17 @@ function viewMap(){
   if(!dm&&!["move","pan","measure","ping"].includes(S.tool)) S.tool="move";
   if(!dm&&TERRAIN.find(x=>x[0]===S.terrain)?.[3]) S.terrain="wall";
   const terr=TERRAIN.filter(t=>dm||!t[3]);
-  const shaping=!ro&&["paint","props","erase","fogshow","foghide"].includes(S.tool);
+  const shaping=!ro&&["paint","props","roof","erase","fogshow","foghide"].includes(S.tool);
   const t=visToks(m).find(x=>x.id===S.selTok);
   const lb=visLabs(m).find(x=>x.id===S.selLab);
   const mon=t&&t.monsterId&&S.monsters[t.monsterId];
   return head+`<div class="maplay"><div style="min-width:0">
     <div class="tools" role="toolbar" aria-label="Harita araçları">${tb("move","Taşı / Seç")}${tb("pan","Kaydır")}${tb("measure","Ölç")}${tb("ping","İşaret et")}
-      ${ro||!dm?"":`<span class="tsep"></span>${tb("paint","Boya")}${tb("props","Mobilya")}${tb("erase","Silgi")}${tb("label","Etiket")}${dm?tb("fogshow","Sis aç")+tb("foghide","Sis kapat"):""}`}
+      ${ro||!dm?"":`<span class="tsep"></span>${tb("paint","Boya")}${tb("props","Mobilya")}${window.ROOF?tb("roof","Tavan / gök","Birinci şahısta tavanlı ve üstü açık alanlar"):""}${tb("erase","Silgi")}${tb("label","Etiket")}${dm?tb("fogshow","Sis aç")+tb("foghide","Sis kapat"):""}`}
       <span style="flex:1"></span>
       ${ro||!dm?"":`<button class="tool" data-act="undo" title="Geri al (Ctrl+Z)">Geri al</button><button class="tool" data-act="redo" title="Yinele (Ctrl+Y)">Yinele</button>`}
       <button class="tool" data-act="zoom" data-z="-1" aria-label="Uzaklaş">−</button><button class="tool" data-act="zoom" data-z="1" aria-label="Yakınlaş">+</button></div>
-    ${shaping?`<div class="tools sub">${S.tool==="paint"?`<span class="lbl">Arazi</span>${terr.map(x=>`<button class="tool" data-terr="${x[0]}" aria-pressed="${S.terrain===x[0]}"><i style="background:var(${x[2]})"></i>${x[1]}</button>`).join("")}${window.PROPS?PROPS.skinBtn(S.terrain):""}<span class="tsep"></span>`:""}${S.tool==="props"&&window.PROPS?PROPS.bar():""}<span class="lbl">Şekil</span>${[["brush","Fırça"],["rect","Dikdörtgen"],["room","Oda çerçevesi"]].map(([k,n])=>`<button class="tool" data-shape="${k}" aria-pressed="${S.shape===k}">${n}</button>`).join("")}</div>`:""}
+    ${shaping?`<div class="tools sub">${S.tool==="paint"?`<span class="lbl">Arazi</span>${terr.map(x=>`<button class="tool" data-terr="${x[0]}" aria-pressed="${S.terrain===x[0]}"><i style="background:var(${x[2]})"></i>${x[1]}</button>`).join("")}${window.PROPS?PROPS.skinBtn(S.terrain):""}<span class="tsep"></span>`:""}${S.tool==="props"&&window.PROPS?PROPS.bar():""}${S.tool==="roof"&&window.ROOF?ROOF.bar(m):""}<span class="lbl">Şekil</span>${[["brush","Fırça"],["rect","Dikdörtgen"],["room","Oda çerçevesi"]].map(([k,n])=>`<button class="tool" data-shape="${k}" aria-pressed="${S.shape===k}">${n}</button>`).join("")}</div>`:""}
     <div class="mapwrap" id="mapwrap"><canvas id="mapc" class="${S.tool==="pan"?"pan":""}"></canvas></div>
     <div class="measure" id="measure">${HINTS[S.tool]||""}${m.fogOn&&dm?" · Sis açık: koyu kareleri oyuncular göremez.":""}</div>
   </div>
@@ -1260,6 +1260,7 @@ function drawMap(){
   if(m.fogOn){ ctx.fillStyle=cssVar("--fog"); ctx.globalAlpha=dm?.5:1;
     for(let y=0;y<m.rows;y++)for(let x=0;x<m.cols;x++) if(fogged(m,x,y)) ctx.fillRect(x*s,y*s,s+.5,s+.5);
     ctx.globalAlpha=1 }
+  if(S.tool==="roof"&&dm&&window.ROOF) ROOF.overlay(ctx,m,s);
   // jetonlar
   const act=activeTokenIds();
   if(window.LIGHT) LIGHT.draw2D(ctx,m,s); // dinamik ışık: görülmeyen yerler karanlık
@@ -1313,7 +1314,7 @@ function applyOp(m,op,dir){ const paths=[];
 function undo(dir){ const m=curMap(); if(!m||S.ro) return; const h=hist(m); const op=(dir<0?h.u:h.r).pop(); if(!op){ toast(dir<0?"Geri alınacak değişiklik yok":"Yinelenecek değişiklik yok"); return } applyOp(m,op,dir); (dir<0?h.r:h.u).push(op); render() }
 function commitOp(m){ const op=MV.op; MV.op=null; if(!op) return; const paths=[]; for(const [f,kv] of Object.entries(op)) for(const k of Object.keys(kv)) paths.push(f+"."+k); if(paths.length){ pushHist(m,op); save("maps",m,paths) } }
 function applyCell(m,x,y){ if(x<0||y<0||x>=m.cols||y>=m.rows) return; const k=x+","+y; let f,v;
-  if(S.tool==="paint"){f="cells";v=S.terrain} else if(S.tool==="props"){f="props";v=S.prop||""} else if(S.tool==="erase"){f="cells";v=""} else if(S.tool==="fogshow"){f="fog";v=1} else if(S.tool==="foghide"){f="fog";v=0} else return;
+  if(S.tool==="paint"){f="cells";v=S.terrain} else if(S.tool==="props"){f="props";v=S.prop||""} else if(S.tool==="roof"){f="roof";v=S.roofKind||""} else if(S.tool==="erase"){f="cells";v=""} else if(S.tool==="fogshow"){f="fog";v=1} else if(S.tool==="foghide"){f="fog";v=0} else return;
   m[f]=m[f]||{}; const old=m[f][k]??(f==="fog"?0:""); if(old===v) return;
   MV.op=MV.op||{}; MV.op[f]=MV.op[f]||{}; if(!(k in MV.op[f])) MV.op[f][k]=[old,v]; else MV.op[f][k][1]=v; m[f][k]=v }
 function bulkOp(m,f,fn){ MV.op={}; MV.op[f]={}; m[f]=m[f]||{}; for(let y=0;y<m.rows;y++)for(let x=0;x<m.cols;x++){ const k=x+","+y; const old=m[f][k]??(f==="fog"?0:""), v=fn(old); if(v!==old){ MV.op[f][k]=[old,v]; m[f][k]=v } } commitOp(m) }
