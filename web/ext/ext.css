@@ -300,3 +300,55 @@
 .tv-bar .tool i.tv-auto{background:linear-gradient(135deg,#a87a4c 50%,#78afe6 50%)}
 .tv-lab{display:inline-flex;align-items:center;gap:6px}
 .tv-sel{width:auto;padding:3px 6px;min-height:0}
+
+/* ---------- Masa sohbeti (sohbet.js) ---------- */
+#zmChat{--zc-right:336px;--zc-bottom:16px}
+#zmChat[hidden]{display:none}
+.zc-fab{position:fixed;right:var(--zc-right);bottom:var(--zc-bottom);z-index:31;border-radius:999px;padding:9px 15px;box-shadow:0 6px 18px rgba(0,0,0,.2);font-weight:700;gap:6px;display:inline-flex;align-items:center}
+.zc-fab[hidden]{display:none}
+.zc-badge{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:1px 6px;font-family:var(--f-num)}
+.zc-panel{position:fixed;right:var(--zc-right);bottom:var(--zc-bottom);z-index:36;width:min(370px,calc(100vw - 16px));height:min(540px,calc(100vh - 32px));display:flex;flex-direction:column;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:var(--r);box-shadow:0 14px 40px rgba(0,0,0,.28);overflow:hidden}
+.zc-h{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.zc-h b{font-family:var(--f-display);font-size:17px}
+.zc-h .sp{flex:1}
+.zc-dice{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.zc-feed{flex:1;overflow:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.zc-empty{color:var(--muted);font-size:13px;margin:6px 0}
+.zc-m,.zc-r{border-radius:8px;padding:5px 8px;background:var(--surface-2);max-width:100%;overflow-wrap:anywhere}
+.zc-me{background:var(--accent-soft)}
+.zc-w{background:color-mix(in srgb,#8e44ad 14%,var(--surface));border:1px dashed color-mix(in srgb,#8e44ad 55%,transparent)}
+.zc-r{background:none;border:1px solid var(--line)}
+.zc-sec{border-style:dashed}
+.zc-by{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px;font-size:12.5px}
+.zc-by time{margin-left:auto;color:var(--muted);font-size:11px;font-family:var(--f-num)}
+.zc-arrow{color:#8e44ad;font-style:italic;font-size:12px}
+.zc-reply{border:0;background:none;color:var(--accent);font-size:11px;padding:0 2px;cursor:pointer;text-decoration:underline}
+.zc-t{white-space:pre-wrap;font-size:14px;margin-top:2px}
+.zc-gif{display:block;max-width:100%;max-height:220px;border-radius:6px;margin-top:4px}
+.zc-bad{color:var(--muted);font-style:italic}
+.zc-rr{display:flex;align-items:baseline;gap:8px}
+.zc-tot{font-weight:800;font-size:18px;color:var(--accent)}
+.zc-tot.n20{color:var(--good)} .zc-tot.n1{color:var(--bad)}
+.zc-rr small{color:var(--muted);font-family:var(--f-num);font-size:11.5px}
+.zc-pop{border-top:1px solid var(--line);max-height:220px;overflow:auto;padding:8px 10px;display:grid;gap:6px;background:var(--surface-2)}
+.zc-pop[hidden]{display:none}
+.zc-egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:2px}
+.zc-egrid button{border:0;background:none;font-size:20px;line-height:1;padding:4px 0;border-radius:6px;cursor:pointer}
+.zc-egrid button:hover{background:var(--accent-soft)}
+.zc-gifform{display:flex;gap:6px}
+.zc-gifform .f{flex:1;min-width:0}
+.zc-hint{margin:0;font-size:12px;color:var(--muted)}
+.zc-recent{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.zc-recent button{border:1px solid var(--line);background:var(--surface);padding:0;border-radius:6px;overflow:hidden;cursor:pointer;aspect-ratio:1}
+.zc-recent img{width:100%;height:100%;object-fit:cover;display:block}
+.zc-form{border-top:1px solid var(--line);padding:8px;display:grid;gap:6px}
+.zc-form.zc-whisper{background:color-mix(in srgb,#8e44ad 10%,var(--surface))}
+.zc-tolab{display:flex;align-items:center;gap:6px}
+.zc-tolab .f{flex:1;min-width:0;padding-block:3px}
+.zc-row{display:flex;gap:6px;align-items:flex-end}
+#zmChat textarea.zc-in{flex:1;min-width:0;resize:none;min-height:36px;height:36px;max-height:120px;font:inherit;font-size:14px;line-height:1.35;padding:7px 8px}
+.zc-ic{min-width:34px;justify-content:center}
+.zc-ic[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+@media (max-width:1000px){ #zmChat{--zc-right:calc(16px + env(safe-area-inset-right,0px));--zc-bottom:calc(70px + env(safe-area-inset-bottom,0px))} }
+@media (max-width:720px){ #zmChat{--zc-right:8px;--zc-bottom:calc(132px + env(safe-area-inset-bottom,0px))} .zc-panel{left:8px;width:auto;height:min(70vh,calc(100vh - 160px))} }
