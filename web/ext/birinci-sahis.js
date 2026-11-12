@@ -2,7 +2,7 @@
    Oyuncu kendi jetonunun gözünden bakar: duvarlar ve kapılar üç boyutlu bloklar, jetonlar ve ağaçlar karton figürler
    olarak görünür. Ok tuşlarıyla kare kare yürür ve 90 derece döner; her adım jetonu haritada da taşır.
    Sisli kareler oyuncuya karanlık görünür ve içine girilemez. DM "Oyuncular için aç" ile haritayı herkese bu
-   görünümde açtırabilir. */
+   görünümde açtırabilir. Duvarla çevrili yerlerde ahşap tavan, üstü açık yerlerde gökyüzü görünür (web/ext/tavan.js). */
 (function () {
   "use strict";
 
@@ -70,7 +70,7 @@
   }
 
   /* ---------- zemin dokusu (harita resmi, araziler, ızgara, sis) ---------- */
-  function sig(m) { return [m.id, JSON.stringify((S.games[G.id] || {}).skins || {}), JSON.stringify(m.props || {}), window.PROPS ? Object.values(m.props || {}).filter(v => v && getImg(PROPS.get(v)?.img)).length : 0, m.bg, m.fogOn, m.cols, m.rows, JSON.stringify(m.cells), m.fogOn ? JSON.stringify(m.fog) : "", isDM(), document.documentElement.dataset.sys || "", !!getImg(m.bg)].join("§"); }
+  function sig(m) { return [m.id, JSON.stringify((S.games[G.id] || {}).skins || {}), JSON.stringify(m.props || {}), window.PROPS ? Object.values(m.props || {}).filter(v => v && getImg(PROPS.get(v)?.img)).length : 0, m.bg, m.fogOn, m.cols, m.rows, JSON.stringify(m.cells), m.fogOn ? JSON.stringify(m.fog) : "", isDM(), document.documentElement.dataset.sys || "", !!getImg(m.bg), JSON.stringify(m.roof || {}), m.roofMode, m.sky, m.light?.on, m.light?.amb].join("§"); }
   function buildFloor(m) {
     const dm = isDM(), w = m.cols * P, h = m.rows * P, col = { floor: cssVar("--map-floor"), ink: cssVar("--ink") };
     TERRAIN.forEach(t => col[t[0]] = cssVar(t[2]));
@@ -92,6 +92,12 @@
     const own = k => { const im = window.PROPS && getImg(PROPS.skin(k)); if (!im) return null; const c = canvas(TEX, TEX); c.getContext("2d").drawImage(im, 0, 0, TEX, TEX); return c; };
     FP.tex = { wall: own("wall") || wallTex(col.wall), door: own("door") || doorTex(col.door, col.wall) };
     FP.treeCol = col.tree; FP.fogRGB = rgb(cssVar("--fog")); FP.ceilRGB = rgb(cssVar("--t-wall")).map(v => v * .45);
+    // tavan ve gökyüzü: hangi karenin üstü kapalı, sisli kareler, dokular
+    const n = m.cols * m.rows, dk = new Uint8Array(n); for (let j = 0; j < m.rows; j++) for (let i = 0; i < m.cols; i++) if (darkAt(m, i, j)) dk[j * m.cols + i] = 1;
+    FP.dark = dk;
+    if (window.ROOF) { FP.roof = ROOF.grid(m); FP.edgeRoof = m.roofMode === "ceil" ? 1 : 0; FP.sky = ROOF.skyTex(ROOF.skyKind(m));
+      FP.ceil = ROOF.ceilTex(`rgb(${rgb(cssVar("--t-door") || "#8A5A2B").map(v => v * .62 | 0).join(",")})`); }
+    else { FP.roof = new Uint8Array(n).fill(1); FP.edgeRoof = 1; FP.sky = null; FP.ceil = null; }
   }
 
   /* ---------- kamera ve hareket ---------- */
@@ -231,9 +237,13 @@
     const img = FP.buf && FP.buf.width === W && FP.buf.height === H ? FP.buf : (FP.buf = ctx.createImageData(W, H));
     const out = new Uint32Array(img.data.buffer), F = FP.floor, fd = F.data;
     const r0x = dx - plx, r0y = dy - ply, r1x = dx + plx, r1y = dy + ply;
+    const RF = FP.roof, DK = FP.dark, SK = FP.sky, CT = FP.ceil, MW = m.cols, MH = m.rows, fogC = 0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0];
+    const su = FP.su && FP.su.length === W ? FP.su : (FP.su = new Int32Array(W));
+    if (SK) for (let x = 0; x < W; x++) { let a = (ang + Math.atan((2 * x / W - 1) * PLANE)) / (2 * Math.PI); a -= Math.floor(a); su[x] = Math.min(SK.w - 1, a * SK.w | 0); }
     for (let y = 0; y < H; y++) {
       const floor = y > hor, p = floor ? y - hor : hor - y; if (p < 1) { out.fill(0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0], y * W, y * W + W); continue; }
       const rd = (floor ? camZ : 1 - camZ) * proj / p, sh = Math.max(0, 1 - rd / maxD), sh2 = sh * sh;
+      if (!floor && CT) { ceilRow(y); continue; }
       if (!floor && !LV) { const r = CEIL[0] * sh2 + FOG[0] * (1 - sh2), g = CEIL[1] * sh2 + FOG[1] * (1 - sh2), b = CEIL[2] * sh2 + FOG[2] * (1 - sh2);
         out.fill(0xff000000 | (b | 0) << 16 | (g | 0) << 8 | (r | 0), y * W, y * W + W); continue; }
       let fx = px + rd * r0x, fy = py + rd * r0y; const sx = rd * (r1x - r0x) / W, sy = rd * (r1y - r0y) / W;
@@ -243,6 +253,20 @@
         if (!floor) c = ceilC; else if (fd && fx >= 0 && fy >= 0 && tx < F.w && ty < F.h) c = fd[ty * F.w + tx]; else c = 0xff000000 | FOG[2] << 16 | FOG[1] << 8 | FOG[0];
         let k = sh2, r = c & 255, g = c >> 8 & 255, b = c >> 16 & 255;
         if (LV) { const cx = Math.floor(fx), cy = Math.floor(fy); k *= lightAt(cx, cy); if (grayAt(cx, cy)) { const l = r * .3 + g * .59 + b * .11; r = g = l * .9; b = l; } }
+        out[o] = 0xff000000 | ((b * k + FOG[2] * (1 - k)) | 0) << 16 | ((g * k + FOG[1] * (1 - k)) | 0) << 8 | ((r * k + FOG[0] * (1 - k)) | 0);
+      }
+    }
+    // tavan satırı: üstü kapalı karelerde ahşap tavan, açık karelerde gökyüzü (gök uzaklıkla kararmaz)
+    function ceilRow(y) {
+      const rd = (1 - camZ) * proj / (hor - y), sh = Math.max(0, 1 - rd / maxD), sh2 = sh * sh, skyRow = SK ? Math.min(SK.h - 1, (y / hor) * SK.h | 0) * SK.w : 0;
+      let fx = px + rd * r0x, fy = py + rd * r0y; const sx = rd * (r1x - r0x) / W, sy = rd * (r1y - r0y) / W;
+      for (let x = 0, o = y * W; x < W; x++, o++, fx += sx, fy += sy) {
+        const cx = Math.floor(fx), cy = Math.floor(fy), inside = cx >= 0 && cy >= 0 && cx < MW && cy < MH, i = cy * MW + cx;
+        if (!(inside ? RF[i] : FP.edgeRoof)) { out[o] = SK ? SK.data[skyRow + su[x]] : fogC; continue; }
+        if (inside && DK[i]) { out[o] = fogC; continue; }
+        const c = CT.data[(((fy - cy) * CT.h) | 0) * CT.w + (((fx - cx) * CT.w) | 0)];
+        let k = sh2, r = c & 255, g = c >> 8 & 255, b = c >> 16 & 255;
+        if (LV) { k *= lightAt(cx, cy); if (grayAt(cx, cy)) { const l = r * .3 + g * .59 + b * .11; r = g = l * .9; b = l; } }
         out[o] = 0xff000000 | ((b * k + FOG[2] * (1 - k)) | 0) << 16 | ((g * k + FOG[1] * (1 - k)) | 0) << 8 | ((r * k + FOG[0] * (1 - k)) | 0);
       }
     }

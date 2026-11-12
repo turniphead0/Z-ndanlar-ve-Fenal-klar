@@ -294,3 +294,9 @@
 .atk-tok{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .atk-tok .lbl{width:100%}
 .atk-tm{display:inline-flex;gap:3px;align-items:center}.atk-tm>span{font-size:13px;margin-right:2px}
+/* tavan ve gökyüzü fırçası */
+.tv-bar .tool i.tv-ceil{background:repeating-linear-gradient(135deg,#7a5230 0 3px,#a87a4c 3px 6px)}
+.tv-bar .tool i.tv-sky{background:linear-gradient(#2f6fc9,#d6ebf7)}
+.tv-bar .tool i.tv-auto{background:linear-gradient(135deg,#a87a4c 50%,#78afe6 50%)}
+.tv-lab{display:inline-flex;align-items:center;gap:6px}
+.tv-sel{width:auto;padding:3px 6px;min-height:0}
