@@ -352,3 +352,47 @@
 .zc-ic[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 @media (max-width:1000px){ #zmChat{--zc-right:calc(16px + env(safe-area-inset-right,0px));--zc-bottom:calc(70px + env(safe-area-inset-bottom,0px))} }
 @media (max-width:720px){ #zmChat{--zc-right:8px;--zc-bottom:calc(132px + env(safe-area-inset-bottom,0px))} .zc-panel{left:8px;width:auto;height:min(70vh,calc(100vh - 160px))} }
+
+/* ---------- Ana ekran: arama, süzgeçler ve forum ---------- */
+.zf-bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.zf-ara{position:relative;flex:1 1 280px;min-width:0;display:block}
+.zf-ara svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.zf-ara input.f{padding:8px 10px 8px 34px;font-size:15px}
+.zf-seg{flex:0 0 auto}
+.zf-sel{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.zf-sel select.f{width:auto;max-width:100%}
+.zf-forum{display:grid;gap:10px}
+.zf-forum[hidden]{display:none}
+.zf-fh{display:flex;align-items:center;gap:8px}
+.zf-fh .lsec{margin:0}
+.zf-fh .lsec small{font-family:var(--f-body);font-size:13px;color:var(--muted);letter-spacing:0;margin-left:6px}
+.zf-fh .sp,.zf-dh .sp,.zf-ib .sp{flex:1}
+.zf-liste{display:grid;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.zf-konu{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:10px 12px;color:var(--ink);cursor:pointer;font:inherit}
+.zf-konu:first-child{border-top:0}
+.zf-konu:hover{background:var(--accent-soft)}
+.zf-konu.sabit{background:var(--gold-soft)}
+.zf-konu .pdot{width:28px;height:28px}
+.zf-kb{display:grid;gap:2px;min-width:0}
+.zf-kt{display:flex;gap:6px;align-items:center;min-width:0}
+.zf-kt b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zf-km{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);margin:0}
+.zf-kat{border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:11.5px;color:var(--ink)}
+.zf-pin{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gold)}
+.zf-ks{display:grid;justify-items:end;font-size:13px;color:var(--muted);white-space:nowrap}
+.zf-ks b{color:var(--ink)}
+.zf-ks small{font-size:11.5px}
+.zf-yeni{display:grid;gap:10px;max-width:720px}
+.zf-yeni label,.zf-yanit label{display:grid;gap:3px}
+.zf-iki{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.zf-detay{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.zf-dh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.zf-dbaslik{font-family:var(--f-display);font-size:22px;margin:0;text-wrap:balance}
+.zf-ileti{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.zf-ileti .pdot{width:28px;height:28px}
+.zf-ib{display:flex;gap:8px;align-items:baseline}
+.zf-ib small{color:var(--muted);font-size:12px}
+.zf-metin{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.zf-yanit{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.zf-yanit textarea.f{min-height:80px}
+@media (max-width:640px){ .zf-konu{grid-template-columns:28px minmax(0,1fr)} .zf-ks{grid-column:2;justify-items:start;display:flex;gap:6px} .zf-iki{grid-template-columns:1fr} }

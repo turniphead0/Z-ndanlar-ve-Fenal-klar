@@ -240,6 +240,18 @@
   }
   const sample = Object.assign((input, o) => ai(input, o, false), { json: async (input, o) => parseJson((await ai(input, o, true)).text) });
 
+  /* ---------------- forum ---------------- */
+  // Forum iletileri sunucu işlemleriyle yazılır (yazar kimlikten gelir); okuma db aboneliğiyle yapılır.
+  window.zmForum = {
+    ready,
+    isOwner: () => IS_OWNER,
+    me: () => ME,
+    topic: a => ready.then(() => call("forumTopic", a)),
+    reply: a => ready.then(() => call("forumReply", a)),
+    remove: a => ready.then(() => call("forumDelete", a)),
+    pin: a => ready.then(() => call("forumPin", a)),
+  };
+
   /* ---------------- window.claude ---------------- */
   window.claude = {
     async use(name) {
