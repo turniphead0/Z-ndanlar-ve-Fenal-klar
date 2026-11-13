@@ -14,7 +14,9 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:15px/1
 .brand{display:flex;align-items:center;gap:12px;color:var(--accent)}
 .brand h1{font-family:var(--f-display);font-size:34px;margin:0;color:var(--ink);line-height:1}
 .brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.hsum{font-family:var(--f-display);font-size:19px;color:var(--accent);cursor:pointer}
+#hostForm{display:grid;gap:12px;margin-top:12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:12px;align-content:start}
 .card h2{font-family:var(--f-display);font-size:21px;margin:0;color:var(--accent)}
 .card p{margin:0;color:var(--muted);font-size:14px}
@@ -28,7 +30,7 @@ button.pri{background:var(--accent);border-color:var(--accent);color:var(--accen
 button:disabled{opacity:.6;cursor:default}
 .recent{display:flex;gap:6px;flex-wrap:wrap}
 .recent button{font-family:var(--f-num);font-size:12.5px;font-weight:500;padding:3px 9px;border-radius:999px}
-.err{color:var(--bad);font-weight:600;font-size:14px}
+.err,.card p.err{color:var(--bad);font-weight:600;font-size:14px}
 .addr{font-family:var(--f-num);background:var(--surface-2);border:1px dashed var(--line);border-radius:var(--r);padding:8px 10px;display:grid;gap:3px;font-size:14px;user-select:all}
 details{font-size:13.5px;color:var(--muted)} summary{cursor:pointer}
 [hidden]{display:none!important}
@@ -52,15 +54,17 @@ details{font-size:13.5px;color:var(--muted)} summary{cursor:pointer}
   <div class="cards" id="choose">
     <form class="card" id="joinForm">
       <h2>Sunucuya bağlan</h2>
-      <p>Bir arkadaşının masasına ya da ortak sunucuya katıl.</p>
+      <p>Zar Masası sunucusuna bağlan, hesabınla giriş yap. Uygulama her açılışta en son bağlandığın sunucuya kendiliğinden bağlanır.</p>
       <label><span class="lbl">Sunucu adresi</span><input id="addr" placeholder="örn. 192.168.1.20 veya masa.ornek.com:7373" required></label>
       <div class="recent" id="recent"></div>
       <p class="err" id="joinErr" hidden></p>
-      <div><button class="pri">Bağlan</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pri">Bağlan</button><button type="button" id="varsayilan" hidden>Zar Masası sunucusu</button></div>
     </form>
 
-    <form class="card" id="hostForm">
-      <h2>Bu bilgisayarda host et</h2>
+    <details class="card" id="hostDet">
+    <summary class="hsum">Bu bilgisayarda host et (isteğe bağlı)</summary>
+
+    <form id="hostForm">
       <p>Masa senin bilgisayarında çalışır, veriler burada saklanır. Uygulama açık kaldığı sürece diğerleri bağlanabilir.</p>
       <div class="row">
         <label><span class="lbl">Masa adı</span><input id="hName" placeholder="Cuma akşamı grubu"></label>
@@ -74,6 +78,7 @@ details{font-size:13.5px;color:var(--muted)} summary{cursor:pointer}
       <p class="err" id="hostErr" hidden></p>
       <div><button class="pri">Masayı başlat</button></div>
     </form>
+    </details>
   </div>
 </div>
 <script src="launcher.js"></script>

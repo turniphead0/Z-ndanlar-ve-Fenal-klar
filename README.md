@@ -29,9 +29,11 @@ Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini t
 - macOS: `ZarMasasi-…-mac-….dmg`
 - Linux: `ZarMasasi-…-linux-x86_64.AppImage`
 
+Uygulama açılınca doğrudan Zar Masası sunucusuna bağlanır (adres `package.json` içindeki `zarMasasi.sunucu`; başka bir sunucuya bağlandıysan her açılışta en son bağlandığın sunucu). Hesabınla girersin. Başka bir sunucuya geçmek ya da kendi masanı host etmek için menüden **Masa > Başlangıç ekranı** (Ctrl+L).
+
 ### Host etmek
 
-"Bu bilgisayarda host et" bölümünde masaya bir ad ver ve istersen bir şifre koy. Başlatınca masaya ilk sen oturursun ve masanın sahibi olursun.
+Başlangıç ekranındaki "Bu bilgisayarda host et (isteğe bağlı)" bölümünü aç, masaya bir ad ver ve istersen bir şifre koy. Host ettiğin sürece uygulama açılışta sunucuya değil başlangıç ekranına gelir. Başlatınca masaya bir ad ver ve istersen bir şifre koy. masaya ilk sen oturursun ve masanın sahibi olursun.
 
 - **Aynı ağdaysanız** (aynı ev, aynı modem), başlangıç ekranındaki yerel adresi (örneğin `192.168.1.20:7373`) arkadaşlarına ver.
 - **İnternet üzerinden** bağlanacaklar için modeminde 7373 portunu (TCP) bilgisayarına yönlendirmen ve dış IP adresini paylaşman gerekir. Windows ilk açılışta güvenlik duvarı izni sorarsa izin ver.
