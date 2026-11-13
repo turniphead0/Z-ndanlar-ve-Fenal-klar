@@ -33,7 +33,7 @@ Uygulama açılınca doğrudan Zar Masası sunucusuna bağlanır (adres `package
 
 ### Host etmek
 
-Başlangıç ekranındaki "Bu bilgisayarda host et (isteğe bağlı)" bölümünü aç, masaya bir ad ver ve istersen bir şifre koy. Host ettiğin sürece uygulama açılışta sunucuya değil başlangıç ekranına gelir. Başlatınca masaya bir ad ver ve istersen bir şifre koy. masaya ilk sen oturursun ve masanın sahibi olursun.
+Başlangıç ekranındaki "Bu bilgisayarda host et (isteğe bağlı)" bölümünü aç, masaya bir ad ver ve istersen bir şifre koy. Başlatınca masaya ilk sen oturursun ve masanın sahibi olursun. Host ettiğin sürece uygulama açılışta sunucuya değil başlangıç ekranına gelir.
 
 - **Aynı ağdaysanız** (aynı ev, aynı modem), başlangıç ekranındaki yerel adresi (örneğin `192.168.1.20:7373`) arkadaşlarına ver.
 - **İnternet üzerinden** bağlanacaklar için modeminde 7373 portunu (TCP) bilgisayarına yönlendirmen ve dış IP adresini paylaşman gerekir. Windows ilk açılışta güvenlik duvarı izni sorarsa izin ver.
