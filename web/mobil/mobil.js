@@ -373,7 +373,7 @@
         <input class="f" type="password" name="yeni" placeholder="Yeni şifre (en az 6 karakter)" minlength="6" autocomplete="new-password" required aria-label="Yeni şifre">
         <input class="f" type="password" name="yeni2" placeholder="Yeni şifre (tekrar)" autocomplete="new-password" required aria-label="Yeni şifre tekrar"><button class="btn">Şifreyi değiştir</button></form>
       <h2 class="bolum">Hesap</h2>
-      <div class="form">${GOMULU ? "" : `<a class="btn" href="/">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn kotu" data-a="cikis">Çıkış yap</button></div>`);
+      <div class="form">${GOMULU ? "" : `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn kotu" data-a="cikis">Çıkış yap</button></div>`);
     Z.call("kisi", { kisi: ME.id }).then(p => { const f = $("#hakf"); if (f) f.h.value = p.hakkinda || ""; }).catch(() => {});
     $("#hakf").addEventListener("submit", async e => { e.preventDefault(); try { await cagir("profilYaz", { hakkinda: e.target.h.value }); tost("Kaydedildi"); } catch (x) {} });
     $("#sifref").addEventListener("submit", async e => {
@@ -508,6 +508,7 @@
     document.body.appendChild(sunucuLink);
   }
 
+  if (!GOMULU) try { localStorage.removeItem("zm-gorunum"); } catch (e) {} // mobil görünüm seçildi
   async function basla() {
     await Z.ready;
     if (sunucuLink) sunucuLink.remove();

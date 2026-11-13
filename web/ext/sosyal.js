@@ -47,7 +47,8 @@
         lme.classList.add("zm-slme");
         lme.innerHTML = `<button class="btn zm-sbtn" data-zm-sosyal="mesajlar" title="Özel mesajlar ve sohbet grupları">${IKON.mesajlar}<span>Mesajlar</span><i data-r="mesaj"></i></button>`
           + `<button class="btn zm-sbtn" data-zm-sosyal="arkadaslar" title="Arkadaşlar ve arkadaşlık istekleri">${IKON.arkadaslar}<span>Arkadaşlar</span><i data-r="istek"></i></button>`
-          + `<button class="btn zm-sbtn" data-zm-sosyal="profil" title="Profilin">${avatar()}<span data-noi18n>${esc(me.kullanici || me.name || "")}</span></button>`;
+          + `<button class="btn zm-sbtn" data-zm-sosyal="profil" title="Profilin">${avatar()}<span data-noi18n>${esc(me.kullanici || me.name || "")}</span></button>`
+          + (/Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) ? `<a class="btn zm-sbtn" href="/mobil">📱 <span>Mobil görünüm</span></a>` : "");
       }
       for (const i of lme.querySelectorAll("i[data-r]")) i.innerHTML = Z.hesapli() ? rozet(sayi[i.dataset.r]) : "";
       const a = lme.querySelector(".zm-sav"); if (a) a.outerHTML = avatar();
