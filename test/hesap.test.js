@@ -15,7 +15,7 @@ const post = async (port, p, body) => { const r = await fetch(`http://127.0.0.1:
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 test("sosyal yollar istemciye kapalı", () => {
-  for (const k of ["arkadas", "konusma", "dm", "chat"]) assert.ok(!canWrite("u-1", `data/users/u-1/${k}/u-2`), k);
+  for (const k of ["arkadas", "konusma", "dm", "chat", "grup"]) assert.ok(!canWrite("u-1", `data/users/u-1/${k}/u-2`), k);
   assert.ok(canWrite("u-1", "data/users/u-1/g-g1/monsters/m"));
 });
 
@@ -107,6 +107,54 @@ test("profil, arkadaşlık ve özel mesaj", async () => {
   const pr = await a.call("profiles", { ids: [b.me.id] });
   assert.equal(pr[b.me.id].kullanici, "berk"); assert.equal(pr[b.me.id].cevrimici, true);
   for (const c of [a, b, z]) c.ws.close();
+  await srv.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("sohbet grupları", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir, hesap: "zorunlu" });
+  const port = await srv.listen(0, "127.0.0.1");
+  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "sifre123" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.body.userId, secret: r.body.secret })).me; return c; };
+  const a = await gir("ali"), b = await gir("berk"), z = await gir("zeyno"), y = await gir("yabanci");
+  const dost = async (x, w) => { await x.call("arkadasIstek", { kisi: w.me.id }); await w.call("arkadasKabul", { kisi: x.me.id }); };
+  await dost(a, b); await dost(a, z); await dost(b, y);
+
+  await assert.rejects(a.call("grupKur", { ad: "Masa", uyeler: [y.me.id] }), { code: "invalid_argument" }, "arkadaş olmayan eklenmez");
+  const { id: gid } = await a.call("grupKur", { ad: "  Cuma   Masası ", uyeler: [b.me.id, y.me.id] });
+  assert.match(gid, /^gr-/);
+  let bilgi = await b.call("grupBilgi", { grup: gid });
+  assert.equal(bilgi.ad, "Cuma Masası"); assert.equal(bilgi.sahip, a.me.id);
+  assert.deepEqual(bilgi.uyeler.map(u => u.kullanici), ["ali", "berk"]);
+  await assert.rejects(z.call("grupBilgi", { grup: gid }), { code: "not_found" });
+  await assert.rejects(z.call("query", { path: `data/users/${b.me.id}/grup/${gid}` }), { code: "permission_denied" });
+
+  await b.call("grupMesaj", { grup: gid, text: "Selam grup" });
+  const ka = srv.store.get(`data/users/${a.me.id}/konusma/${gid}`);
+  assert.equal(ka.grup, true); assert.equal(ka.son, "berk: Selam grup"); assert.equal(ka.okunmamis, 1);
+  assert.equal(srv.store.get(`data/users/${b.me.id}/konusma/${gid}`).okunmamis, 0);
+  // Üye kendi arkadaşını ekleyebilir; yeni üye eski iletileri görmez, katıldığı andan sonrasını görür.
+  await b.call("grupEkle", { grup: gid, kisi: y.me.id });
+  await y.call("grupMesaj", { grup: gid, text: "Ben de geldim" });
+  assert.equal(srv.store.list(`data/users/${a.me.id}/grup/${gid}`).filter(d => !d.data.sistem).length, 2);
+  assert.equal(srv.store.list(`data/users/${y.me.id}/grup/${gid}`).filter(d => !d.data.sistem).length, 1);
+  await assert.rejects(b.call("grupCikar", { grup: gid, kisi: y.me.id }), { code: "permission_denied" });
+  await a.call("grupAdi", { grup: gid, ad: "Pazar Masası" });
+  assert.equal(srv.store.get(`data/users/${y.me.id}/konusma/${gid}`).ad, "Pazar Masası");
+  await a.call("dmOkundu", { kisi: gid });
+  assert.equal(srv.store.get(`data/users/${a.me.id}/konusma/${gid}`).okunmamis, 0);
+
+  // Kuran ayrılınca grup en eski üyeye geçer; çıkan kişinin kutusu temizlenir.
+  await a.call("grupCik", { grup: gid });
+  assert.equal(srv.store.get(`data/users/${a.me.id}/konusma/${gid}`), undefined);
+  assert.equal(srv.store.list(`data/users/${a.me.id}/grup/${gid}`).length, 0);
+  bilgi = await b.call("grupBilgi", { grup: gid });
+  assert.equal(bilgi.sahip, b.me.id); assert.equal(bilgi.uyeler.length, 2);
+  await b.call("grupCikar", { grup: gid, kisi: y.me.id });
+  await assert.rejects(y.call("grupMesaj", { grup: gid, text: "?" }), { code: "not_found" });
+  await b.call("grupCik", { grup: gid });
+  assert.equal(srv.store.get("_sys/grup/" + gid), undefined, "son üye ayrılınca grup silinir");
+  for (const c of [a, b, z, y]) c.ws.close();
   await srv.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });

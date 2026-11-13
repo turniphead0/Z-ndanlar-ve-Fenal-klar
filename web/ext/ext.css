@@ -418,3 +418,7 @@
 .zm-mobil .zm-snav,.zm-mobil .rail [data-help]{display:none!important}
 @media (max-width:720px){ .zm-mobil .rail .brand .gname,.zm-mobil .rail .brand svg{display:none!important} }
 .zm-mobil .zm-popbtn{display:none!important}
+.zm-slme{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.zm-sbtn i{font-style:normal;display:contents}
+@media (max-width:720px){ .zm-slme .zm-sbtn[data-zm-sosyal="mesajlar"] span,.zm-slme .zm-sbtn[data-zm-sosyal="arkadaslar"] span{display:none} }
+.zm-slme .zm-sbtn{color:var(--ink)}

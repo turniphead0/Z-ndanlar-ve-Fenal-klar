@@ -1,5 +1,5 @@
-/* Oyun dışı sosyal özellikler (profil, arkadaşlar, özel mesajlar) masaüstü/web uygulamasında:
-   ana ekranın başlığındaki adın yerine profil düğmesi, oyunun sol rayında "Mesajlar" düğmesi.
+/* Oyun dışı sosyal özellikler (profil, arkadaşlar, özel mesajlar, sohbet grupları) masaüstü/web uygulamasında:
+   ana ekranın başlığında "Mesajlar", "Arkadaşlar" ve profil düğmeleri, oyunun sol rayında "Mesajlar" düğmesi.
    İkisi de mobil uygulamanın aynı ekranlarını (/mobil?gomulu=1) bir pencerede açar. */
 (function () {
   "use strict";
@@ -8,7 +8,11 @@
   const sayi = { mesaj: 0, istek: 0 };
   let pano = null;
 
-  const rozet = () => { const n = sayi.mesaj + sayi.istek; return n ? `<b class="zm-srozet">${n > 99 ? "99+" : n}</b>` : ""; };
+  const rozet = (n = sayi.mesaj + sayi.istek) => n ? `<b class="zm-srozet">${n > 99 ? "99+" : n}</b>` : "";
+  const IKON = {
+    mesajlar: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>`,
+    arkadaslar: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14c2.3.2 4 1.7 4.5 4"/></svg>`
+  };
   const harf = () => { const me = Z.me() || {}; return esc(String(me.kullanici || me.name || "?").charAt(0).toLocaleUpperCase("tr")); };
   function avatar() {
     const me = Z.me() || {};
@@ -37,10 +41,17 @@
   if (typeof _renderLobby === "function") window.renderLobby = function () { const r = _renderLobby.apply(this, arguments); ciz(); return r; };
   function ciz() {
     const lme = document.querySelector("#lobby .lme");
-    if (lme && !lme.querySelector("[data-zm-sosyal]")) {
+    if (lme) {
       const me = Z.me() || {};
-      lme.innerHTML = `<button class="btn zm-sbtn" data-zm-sosyal="profil" title="Profil, arkadaşlar ve mesajlar">${avatar()}<span data-noi18n>${esc(me.kullanici || me.name || "")}</span>${rozet()}</button>`;
-    } else if (lme) { const b = lme.querySelector("[data-zm-sosyal]"); const r = b.querySelector(".zm-srozet"); if (r) r.remove(); b.insertAdjacentHTML("beforeend", rozet()); const a = b.querySelector(".zm-sav"); if (a) a.outerHTML = avatar(); }
+      if (!lme.querySelector("[data-zm-sosyal]")) {
+        lme.classList.add("zm-slme");
+        lme.innerHTML = `<button class="btn zm-sbtn" data-zm-sosyal="mesajlar" title="Özel mesajlar ve sohbet grupları">${IKON.mesajlar}<span>Mesajlar</span><i data-r="mesaj"></i></button>`
+          + `<button class="btn zm-sbtn" data-zm-sosyal="arkadaslar" title="Arkadaşlar ve arkadaşlık istekleri">${IKON.arkadaslar}<span>Arkadaşlar</span><i data-r="istek"></i></button>`
+          + `<button class="btn zm-sbtn" data-zm-sosyal="profil" title="Profilin">${avatar()}<span data-noi18n>${esc(me.kullanici || me.name || "")}</span></button>`;
+      }
+      for (const i of lme.querySelectorAll("i[data-r]")) i.innerHTML = Z.hesapli() ? rozet(sayi[i.dataset.r]) : "";
+      const a = lme.querySelector(".zm-sav"); if (a) a.outerHTML = avatar();
+    }
     const rail = document.querySelector("#app .rail");
     if (rail && !window.ZM_MOBIL) {
       let b = rail.querySelector("[data-zm-sosyal]");

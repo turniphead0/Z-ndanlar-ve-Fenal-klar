@@ -8,6 +8,9 @@
 //   data/users/<kişi>/arkadas/<öteki>   { durum: "gelen" | "giden" | "arkadas", t }
 //   data/users/<kişi>/konusma/<öteki>   { son, t, benden, okunmamis }      konuşma listesi
 //   data/users/<kişi>/dm/<öteki>/<ileti> { id, t, by, text, resim? }        iletiler (iki tarafa da yazılır)
+//   _sys/grup/<grup>                    { ad, sahip, uyeler: {kişi: zaman}, created }   sohbet grubu
+//   data/users/<kişi>/grup/<grup>/<ileti> { id, t, by, text, resim?, sistem? }  grup iletileri (her üyeye yazılır)
+//   data/users/<kişi>/konusma/<grup>    { grup: true, ad, son, t, benden, okunmamis, uye }  konuşma listesinde grup
 const crypto = require("crypto");
 
 const rid = (n = 12) => crypto.randomBytes(n).toString("hex");
@@ -16,6 +19,8 @@ const ADI = /^[\p{L}\p{N}_.-]{3,20}$/u;
 // Büyük/küçük harf ve ı/i farkı gözetilmez: "ALİ", "Ali", "alı" aynı addır (birbirini taklit edemez).
 const anahtar = ad => String(ad || "").normalize("NFC").trim().replace(/[İI]/g, "i").toLowerCase().replace(/ı/g, "i").replace(/\u0307/g, "");
 const DM_KEEP = 500;
+const GRUP_ID = /^gr-[0-9a-f]{12}$/, KISI_ID = /^u-[0-9a-f]{8,}$/;
+const GRUP_UYE = 50;
 const RESIM = /^\/assets\/[a-z0-9]+\.(gif|webp|png|jpg)$/;
 
 function scrypt(sifre, salt) { return crypto.scryptSync(String(sifre), salt, 32).toString("hex"); }
@@ -92,9 +97,51 @@ function kurHesap({ store, conns, password, same }) {
   }
 
   /* ---------------- WebSocket işlemleri ---------------- */
-  const OPS = new Set(["cikis", "sifreDegistir", "kisiAra", "kisi", "profilYaz", "arkadasIstek", "arkadasKabul", "arkadasSil", "dmGonder", "dmOkundu", "dmSil"]);
+  const OPS = new Set(["cikis", "sifreDegistir", "kisiAra", "kisi", "profilYaz", "arkadasIstek", "arkadasKabul", "arkadasSil", "dmGonder", "dmOkundu", "dmSil",
+    "grupKur", "grupBilgi", "grupMesaj", "grupEkle", "grupCikar", "grupCik", "grupAdi"]);
   const arkadasYol = (a, b) => `data/users/${a}/arkadas/${b}`;
   const durum = (a, b) => (store.get(arkadasYol(a, b)) || {}).durum || null;
+
+  /* ---- Sohbet grupları ---- */
+  const adOf = uid => { const u = kisi(uid); return (u && (u.username || u.name)) || "Biri"; };
+  function grupAl(c, gid) {
+    gid = String(gid || "");
+    const g = GRUP_ID.test(gid) && store.get("_sys/grup/" + gid);
+    if (!g || !g.uyeler[c.uid]) throw hata("not_found", "Böyle bir grup yok ya da üyesi değilsin");
+    return [gid, g];
+  }
+  function trimCol(col) {
+    const all = store.list(col); if (all.length <= DM_KEEP) return;
+    all.sort((x, y) => (x.data.t || 0) - (y.data.t || 0)); for (const d of all.slice(0, all.length - DM_KEEP)) store.delete(d.path);
+  }
+  // İletiyi her üyenin kutusuna yaz, konuşma listelerini güncelle.
+  function grupYaz(gid, g, msg) {
+    const son = (msg.sistem ? "" : adOf(msg.by) + ": ") + (msg.text ? msg.text.slice(0, 120) : "📷 Fotoğraf");
+    const uye = Object.keys(g.uyeler).length;
+    for (const u of Object.keys(g.uyeler)) {
+      const col = `data/users/${u}/grup/${gid}`;
+      store.set(col + "/" + msg.id, msg); trimCol(col);
+      const k = store.get(`data/users/${u}/konusma/${gid}`) || {};
+      const ben = u === msg.by;
+      store.set(`data/users/${u}/konusma/${gid}`, { grup: true, ad: g.ad, son, t: msg.t, benden: ben, okunmamis: ben || msg.sistem ? (k.okunmamis || 0) : (k.okunmamis || 0) + 1, uye });
+    }
+  }
+  const yeniIleti = (by, text, ek) => { const t = Date.now(); return { id: "m" + t.toString(36) + rid(3), t, by, text, ...(ek || {}) }; };
+  const sistem = (gid, g, text) => grupYaz(gid, g, yeniIleti(null, text, { sistem: true }));
+  function grupBirak(gid, g, uid) { // üyeyi çıkar, kutusunu boşalt
+    delete g.uyeler[uid];
+    for (const d of store.list(`data/users/${uid}/grup/${gid}`)) store.delete(d.path);
+    store.delete(`data/users/${uid}/konusma/${gid}`);
+    if (!Object.keys(g.uyeler).length) { store.delete("_sys/grup/" + gid); return; }
+    if (g.sahip === uid) g.sahip = Object.keys(g.uyeler).sort((a, b) => g.uyeler[a] - g.uyeler[b])[0];
+    store.set("_sys/grup/" + gid, g);
+  }
+  const grupAdi = v => String(v || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  function sinirla(c) {
+    const now = Date.now(); c.dmT = (c.dmT || []).filter(t => now - t < 5000);
+    if (c.dmT.length >= 8) throw hata("rate_limited", "Biraz yavaş: çok hızlı yazıyorsun");
+    c.dmT.push(now);
+  }
 
   function op(c, m) {
     const me = kisi(c.uid);
@@ -191,7 +238,7 @@ function kurHesap({ store, conns, password, same }) {
         return { id, t: now };
       }
       case "dmOkundu": {
-        const p = `data/users/${c.uid}/konusma/${String(m.kisi || "")}`, k = /^u-[0-9a-f]{8,}$/.test(String(m.kisi || "")) && store.get(p);
+        const p = `data/users/${c.uid}/konusma/${String(m.kisi || "")}`, k = (KISI_ID.test(String(m.kisi || "")) || GRUP_ID.test(String(m.kisi || ""))) && store.get(p);
         if (k && k.okunmamis) store.set(p, { ...k, okunmamis: 0 });
         return true;
       }
@@ -200,6 +247,61 @@ function kurHesap({ store, conns, password, same }) {
         if (!/^u-[0-9a-f]{8,}$/.test(uid)) throw hata("invalid_argument", "Geçersiz kişi");
         for (const d of store.list(`data/users/${c.uid}/dm/${uid}`)) store.delete(d.path);
         store.delete(`data/users/${c.uid}/konusma/${uid}`);
+        return true;
+      }
+      case "grupKur": {
+        const ad = grupAdi(m.ad); if (!ad) throw hata("invalid_argument", "Gruba bir ad ver");
+        const uyeler = [...new Set((Array.isArray(m.uyeler) ? m.uyeler : []).map(String))].filter(u => u !== c.uid && durum(c.uid, u) === "arkadas").slice(0, GRUP_UYE - 1);
+        if (!uyeler.length) throw hata("invalid_argument", "Gruba en az bir arkadaşını ekle");
+        const gid = "gr-" + rid(6), t = Date.now();
+        const g = { ad, sahip: c.uid, uyeler: { [c.uid]: t, ...Object.fromEntries(uyeler.map(u => [u, t])) }, created: t };
+        store.set("_sys/grup/" + gid, g);
+        sistem(gid, g, `${adOf(c.uid)} "${ad}" grubunu kurdu`);
+        return { id: gid };
+      }
+      case "grupBilgi": {
+        const [gid, g] = grupAl(c, m.grup);
+        const uyeler = Object.keys(g.uyeler).sort((a, b) => g.uyeler[a] - g.uyeler[b]).map(u => { const k = kisi(u); return k ? { ...herkeseAcik(u, k), arkadas: u === c.uid ? "ben" : durum(c.uid, u) } : null; }).filter(Boolean);
+        return { id: gid, ad: g.ad, sahip: g.sahip, created: g.created, uyeler };
+      }
+      case "grupMesaj": {
+        const [gid, g] = grupAl(c, m.grup);
+        const text = String(m.text || "").replace(/\r\n?/g, "\n").trim().slice(0, 2000);
+        const resim = m.resim && RESIM.test(String(m.resim)) ? String(m.resim) : null;
+        if (!text && !resim) throw hata("invalid_argument", "Boş mesaj");
+        sinirla(c);
+        const msg = yeniIleti(c.uid, text, resim ? { resim } : null);
+        grupYaz(gid, g, msg);
+        return { id: msg.id, t: msg.t };
+      }
+      case "grupEkle": {
+        const [gid, g] = grupAl(c, m.grup), u = String(m.kisi || "");
+        if (g.uyeler[u]) return true;
+        if (durum(c.uid, u) !== "arkadas") throw hata("permission_denied", "Gruba yalnızca arkadaşlarını ekleyebilirsin");
+        if (Object.keys(g.uyeler).length >= GRUP_UYE) throw hata("invalid_argument", `Bir grupta en çok ${GRUP_UYE} kişi olabilir`);
+        g.uyeler[u] = Date.now(); store.set("_sys/grup/" + gid, g);
+        sistem(gid, g, `${adOf(c.uid)}, ${adOf(u)} kişisini gruba ekledi`);
+        return true;
+      }
+      case "grupCikar": {
+        const [gid, g] = grupAl(c, m.grup), u = String(m.kisi || "");
+        if (g.sahip !== c.uid) throw hata("permission_denied", "Yalnızca grubu kuran kişi üye çıkarabilir");
+        if (!g.uyeler[u] || u === c.uid) throw hata("invalid_argument", "Bu kişi grupta değil");
+        grupBirak(gid, g, u);
+        sistem(gid, g, `${adOf(u)} gruptan çıkarıldı`);
+        return true;
+      }
+      case "grupCik": {
+        const [gid, g] = grupAl(c, m.grup);
+        grupBirak(gid, g, c.uid);
+        if (Object.keys(g.uyeler).length) sistem(gid, g, `${adOf(c.uid)} gruptan ayrıldı`);
+        return true;
+      }
+      case "grupAdi": {
+        const [gid, g] = grupAl(c, m.grup), ad = grupAdi(m.ad);
+        if (!ad) throw hata("invalid_argument", "Gruba bir ad ver");
+        g.ad = ad; store.set("_sys/grup/" + gid, g);
+        sistem(gid, g, `${adOf(c.uid)} grubun adını "${ad}" yaptı`);
         return true;
       }
     }

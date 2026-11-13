@@ -1,6 +1,6 @@
 {
   "name": "zar-masasi",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Zar Masası: ücretsiz, açık kaynak sanal masa (VTT) — masaüstü uygulaması ve sunucusu",
   "main": "electron/main.js",
   "zarMasasi": {
