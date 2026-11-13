@@ -26,10 +26,25 @@ function canAccess(uid, p) {
   if (s[0] === "data" && s[1] === "users") return s[2] === uid;
   return true;
 }
-// Masa oyunu belgeleri (boards/*) yalnızca sunucu tarafından, kurallara uygun hamlelerle yazılır.
-// Forum (forum/*) da yalnızca sunucu tarafından yazılır: yazar adı kimlikten gelir, başkasının iletisi değiştirilemez.
-const SERVER_ONLY = new Set(["boards", "forum"]);
-function canWrite(uid, p) { return canAccess(uid, p) && !SERVER_ONLY.has(String(p).split("/")[0]); }
+// Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*) ve forum (forum/*)
+// yalnızca sunucu tarafından yazılır: tahtada kurallara uygun hamleler, sohbette ve forumda gönderen damgalı iletiler.
+function canWrite(uid, p) {
+  const s = String(p).split("/");
+  return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && !(s[0] === "data" && s[1] === "users" && s[3] === "chat");
+}
+
+// Sohbet: masadaki ortak mesajlar chat/<oyun>/<mesaj>, fısıltılar iki tarafın da
+// data/users/<kişi>/chat/<oyun>/<mesaj> yolunda (sunucu başkasına göstermez).
+const CHAT_KEEP = 200;
+const GAME_ID = /^[A-Za-z0-9_-]{1,80}$/;
+// GIF: https adresi ya da bu sunucuya yüklenmiş bir resim.
+function chatGif(u) {
+  u = String(u || "").trim();
+  if (!u) return "";
+  if (/^\/assets\/[a-z0-9]+\.(gif|webp|png|jpg)$/.test(u)) return u;
+  if (u.length <= 600 && /^https:\/\/[^\s"'<>]+$/.test(u)) { try { new URL(u); return u; } catch (e) {} }
+  return null;
+}
 const FORUM_KATEGORI = ["Genel sohbet", "Oyuncu arıyorum", "Masa arıyorum", "Kurallar", "Paylaşım"];
 const metin = (v, n) => String(v == null ? "" : v).replace(/\r\n/g, "\n").trim().slice(0, n);
 
@@ -62,7 +77,7 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "forum"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
@@ -208,6 +223,7 @@ function createServer(opts = {}) {
             store.set("_sys/users/" + c.uid, { ...u, name: String(m.name || u.name).slice(0, 40), color: String(m.color || u.color).slice(0, 20) });
             return reply(true);
           }
+          case "chatSend": case "chatClear": return chatOp(c, m, reply, fail);
           case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
           case "forumTopic": case "forumReply": case "forumDelete": case "forumPin": return forumOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
@@ -237,6 +253,34 @@ function createServer(opts = {}) {
     c.ws.once("close", () => tokens.delete(token));
     reply({ me: { id: uid, name: nm, color }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList() });
     broadcastPeers([{ peer: c.peer, by: uid }], []);
+  }
+
+  function chatOp(c, m, reply, fail) {
+    const gid = String(m.game || "");
+    const g = GAME_ID.test(gid) && store.get("games/" + gid);
+    if (!g) return fail("not_found", "Böyle bir oyun yok");
+    const isMember = id => !!((g.dms && g.dms[id]) || (g.players && g.players[id]));
+    if (!isMember(c.uid)) return fail("permission_denied", "Bu oyunun üyesi değilsin");
+    const trim = col => { const all = store.list(col); if (all.length <= CHAT_KEEP) return; all.sort((a, b) => (a.data?.t || 0) - (b.data?.t || 0)); for (const d of all.slice(0, all.length - CHAT_KEEP)) store.delete(col + "/" + d.id); };
+    if (m.op === "chatClear") {
+      if (!(g.dms && g.dms[c.uid])) return fail("permission_denied", "Sohbeti yalnızca DM temizleyebilir");
+      for (const d of store.list("chat/" + gid)) store.delete("chat/" + gid + "/" + d.id);
+      return reply(true);
+    }
+    // Basit sel koruması: 5 saniyede en çok 8 mesaj.
+    const now = Date.now(); c.chatT = (c.chatT || []).filter(t => now - t < 5000);
+    if (c.chatT.length >= 8) return fail("rate_limited", "Biraz yavaş: çok hızlı yazıyorsun");
+    const text = String(m.text || "").replace(/\r\n?/g, "\n").trim().slice(0, 1000), gif = chatGif(m.gif);
+    if (gif === null) return fail("invalid_argument", "GIF adresi https:// ile başlamalı");
+    if (!text && !gif) return fail("invalid_argument", "Boş mesaj");
+    const to = m.to ? String(m.to) : null;
+    if (to && (to === c.uid || !isMember(to))) return fail("invalid_argument", "Fısıldanacak kişi bu oyunda değil");
+    c.chatT.push(now);
+    const id = "m" + now.toString(36) + rid(3);
+    const msg = { id, t: now, by: c.uid, text, ...(gif ? { gif } : {}), ...(to ? { to } : {}) };
+    if (to) for (const u of [c.uid, to]) { const col = `data/users/${u}/chat/${gid}`; store.set(col + "/" + id, msg); trim(col); }
+    else { store.set(`chat/${gid}/${id}`, msg); trim("chat/" + gid); }
+    return reply({ id, t: now });
   }
 
   // Masa oyunları: tahta durumu boards/<id> belgesinde. İstemciler okur ve abone olur,

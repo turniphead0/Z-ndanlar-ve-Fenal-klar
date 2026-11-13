@@ -134,6 +134,40 @@ test("mobilya simgeleri: katalogdaki her simge sunulur", async () => {
   await srv.close();
 });
 
+test("sohbet: ortak mesaj, fısıltı ve izinler", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir });
+  const port = await srv.listen(0, "127.0.0.1");
+  const a = client(port), b = client(port), c = client(port); await a.opened; await b.opened; await c.opened;
+  const ha = await a.call("hello", { name: "DM" }), hb = await b.call("hello", { name: "Oyuncu" }), hc = await c.call("hello", { name: "Yabancı" });
+  await a.call("set", { path: "games/g-1", data: { name: "Oyun", dms: { [ha.me.id]: true }, players: { [hb.me.id]: { joined: 1 } } } });
+
+  await b.call("sub", { kind: "col", path: "chat/g-1", sid: "pub" });
+  await a.call("chatSend", { game: "g-1", text: "Merhaba 🎲", gif: "https://media.giphy.com/media/x/giphy.gif" });
+  await assert.rejects(c.call("chatSend", { game: "g-1", text: "selam" }), { code: "permission_denied" });
+  await assert.rejects(a.call("chatSend", { game: "g-1", text: "", gif: "javascript:alert(1)" }), { code: "invalid_argument" });
+  await assert.rejects(a.call("chatSend", { game: "g-1", text: "x", to: hc.me.id }), { code: "invalid_argument" });
+  // istemci sohbet belgelerini kendisi yazamaz (gönderen sahte olmasın)
+  await assert.rejects(b.call("set", { path: "chat/g-1/m1", data: { by: ha.me.id, text: "sahte" } }), { code: "permission_denied" });
+  await assert.rejects(b.call("set", { path: `data/users/${hb.me.id}/chat/g-1/m1`, data: { by: ha.me.id, text: "sahte" } }), { code: "permission_denied" });
+
+  await b.call("chatSend", { game: "g-1", text: "psst", to: ha.me.id });
+  await new Promise(r => setTimeout(r, 50));
+  const pub = b.events.filter(e => e.sid === "pub").flatMap(e => e.changes).map(x => x.data);
+  assert.deepEqual(pub.map(x => [x.by, x.text]), [[ha.me.id, "Merhaba 🎲"]]);
+  const forA = await a.call("query", { path: `data/users/${ha.me.id}/chat/g-1` });
+  assert.equal(forA[0].data.text, "psst"); assert.equal(forA[0].data.by, hb.me.id); assert.equal(forA[0].data.to, ha.me.id);
+  assert.equal((await b.call("query", { path: `data/users/${hb.me.id}/chat/g-1` })).length, 1);
+  await assert.rejects(c.call("query", { path: `data/users/${ha.me.id}/chat/g-1` }), { code: "permission_denied" });
+
+  await assert.rejects(b.call("chatClear", { game: "g-1" }), { code: "permission_denied" });
+  await a.call("chatClear", { game: "g-1" });
+  assert.equal((await a.call("query", { path: "chat/g-1" })).length, 0);
+
+  for (const x of [a, b, c]) x.ws.close();
+  await srv.close(); fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test("forum: başlık, yanıt, silme ve izinler", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
   const srv = createServer({ dataDir: dir });

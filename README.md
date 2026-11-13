@@ -17,6 +17,8 @@ Arayüz yan menüdeki, lobideki ya da masaüstü başlangıç ekranındaki düny
 
 **Masa oyunları:** masa ekranının üstündeki **Masa oyunları** düğmesi (ya da `/oyunlar` adresi) Mangala, Türk daması, Dokuz taş, Ur Kraliyet Oyunu ve Hnefatafl için ayrı bir sayfa açar. Aynı masadaki herkes tahta açıp koltuğa oturabilir, diğerleri izler; her hamleyi sunucu kurallara göre denetler. Ayrıntılar: [docs/masa-oyunlari.md](docs/masa-oyunlari.md).
 
+**Sohbet:** oyun masasının sağ altındaki **Sohbet** düğmesi masadakilerin yazıştığı kutuyu açar. Zar atışları da sohbete düşer (**Zarlar** kutusuyla gizlenebilir; `/r 1d20+5` yazmak da zar atar). **Kime** listesinden bir oyuncu seçilirse (ya da `/w Ad mesaj`) mesaj fısıltı olur: yalnızca gönderen ve alan görür, DM bile göremez. 😀 düğmesi emoji seçer, **GIF** düğmesiyle bir GIF adresi yapıştırılır (Giphy ya da Tenor'da GIF'e sağ tık > Resim adresini kopyala) ya da bilgisayardan GIF yüklenir; hiçbir API anahtarı gerekmez. DM **Temizle** ile ortak sohbeti silebilir.
+
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
 
 ## Kurulum (oyuncular için)
@@ -105,7 +107,7 @@ Uygulama, Claude artifact'larının çalışma ortamındaki beş arayüzü kulla
 | `assets` | Harita görselleri, el notları, müzik | `assets/` klasörü |
 | `sample` | Claude çağrıları | Anthropic API (isteğe bağlı) |
 
-Her DM'in gizli verisi (`data/users/<kişi>/…`: canavarlar, DM notları, senaryo çözümlemesi) sunucu tarafından yalnızca o kişiye gösterilir.
+Her DM'in gizli verisi (`data/users/<kişi>/…`: canavarlar, DM notları, senaryo çözümlemesi) sunucu tarafından yalnızca o kişiye gösterilir. Sohbet mesajlarını yalnızca sunucu yazar (`chatSend`, gönderen damgalı): ortak mesajlar `chat/<oyun>/…`, fısıltılar iki tarafın `data/users/<kişi>/chat/<oyun>/…` yolunda durur; her sohbette son 200 mesaj saklanır.
 
 ## Lisans
 
