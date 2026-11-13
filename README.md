@@ -79,6 +79,8 @@ Sunucuda herkes yalnızca bir **kullanıcı adı ve şifre** belirleyerek hesap 
 
 ### Mobil uygulama
 
+Sunucunun adresi bir telefon tarayıcısında açılınca mobil görünüm kendiliğinden gelir (uygulama indirmeye gerek yok); profil ekranındaki "Bilgisayar görünümünü aç" ile tam sürüme geçilebilir, bu tercih o tarayıcıda hatırlanır.
+
 Telefon için iki yol var, ikisi de ücretsiz ve aynı ekranları açar (forum, mesajlar, arkadaşlar, profil, masalar, zar; masa açılınca karakter kağıtları, notlar, savaş sırası, zar tepsisi ve masa sohbeti; harita ve harita düzenleyici yok):
 
 - **Android uygulaması:** [Sürümler](../../releases) sayfasındaki `ZarMasasi-…-android.apk` dosyasını telefona indirip kur (bilinmeyen kaynaklardan yüklemeye izin vermek gerekir). İlk açılışta sunucu adresini sorar.

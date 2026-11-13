@@ -7,6 +7,18 @@
   const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
   const err = (code, message) => Object.assign(new Error(message || code), { code });
 
+  // Telefondan girenler mobil görünüme gider (uygulamayı indirmeden tarayıcıda kullanılsın).
+  // "Bilgisayar görünümü" seçilirse (?masaustu=1) bu tarayıcıda hatırlanır; /mobil açılınca tercih silinir.
+  try {
+    const u = new URL(location.href), q = u.searchParams;
+    if (q.get("masaustu") === "1") { LS.set("zm-gorunum", "masaustu"); q.delete("masaustu"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
+    const telefon = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && Math.min(screen.width, screen.height) < 600);
+    if (location.pathname === "/" && telefon && !/Electron/.test(navigator.userAgent) && !q.has("pop") && !q.has("mobil") && LS.get("zm-gorunum") !== "masaustu") {
+      location.replace(location.hash.length > 1 ? "/?mobil=1" + location.hash : "/mobil");
+      return;
+    }
+  } catch (e) {}
+
   // ?pop=harita gibi: bu pencere tek bir bölümü gösteren ayrı penceredir.
   try { const v = new URL(location.href).searchParams.get("pop"); if (/^[a-z]+$/.test(v || "")) window.ZM_POP = v; } catch (e) {}
 
