@@ -8,7 +8,8 @@ const EN = {
   "Masan açık": "Your table is open",
   "Arkadaşların uygulamada \"Sunucuya bağlan\" kısmına bu adreslerden birini yazsın. Aynı ağdaysanız (aynı modem) yerel adres yeterli. İnternetten bağlanacaklar için modeminde bu portu bilgisayarına yönlendirmen ve dış IP adresini paylaşman gerekir.": "Your friends type one of these addresses under \"Connect to a server\" in the app. On the same network (same router) the local address is enough. For people joining over the internet, forward this port to your computer on your router and share your public IP address.",
   "Masaya dön": "Back to the table", "Masayı kapat": "Close the table",
-  "Sunucuya bağlan": "Connect to a server", "Bir arkadaşının masasına ya da ortak sunucuya katıl.": "Join a friend's table or a shared server.",
+  "Sunucuya bağlan": "Connect to a server", "Zar Masası sunucusuna bağlan, hesabınla giriş yap. Uygulama her açılışta en son bağlandığın sunucuya kendiliğinden bağlanır.": "Connect to a Zar Masası server and sign in with your account. The app reconnects to the last server you used every time it opens.",
+  "Zar Masası sunucusu": "Zar Masası server", "Bu bilgisayarda host et (isteğe bağlı)": "Host on this computer (optional)",
   "Sunucu adresi": "Server address", "örn. 192.168.1.20 veya masa.ornek.com:7373": "e.g. 192.168.1.20 or table.example.com:7373", "Bağlan": "Connect",
   "Bu bilgisayarda host et": "Host on this computer",
   "Masa senin bilgisayarında çalışır, veriler burada saklanır. Uygulama açık kaldığı sürece diğerleri bağlanabilir.": "The table runs on your computer and the data is stored here. Others can connect as long as the app stays open.",
@@ -36,6 +37,10 @@ async function load() {
   if (c.host) { $("#hName").value = c.host.name || ""; $("#hPort").value = c.host.port || 7373; $("#hPass").value = c.host.password || ""; $("#hKey").value = c.host.apiKey || ""; }
   $("#recent").innerHTML = "";
   for (const r of c.recent || []) { const b = document.createElement("button"); b.type = "button"; b.textContent = r.replace(/^https?:\/\//, ""); b.onclick = () => { $("#addr").value = r; $("#joinForm").requestSubmit(); }; $("#recent").appendChild(b); }
+  $("#addr").value = $("#addr").value || (c.recent || [])[0] || c.varsayilan || "";
+  if (c.varsayilan) { $("#varsayilan").hidden = false; $("#varsayilan").onclick = () => { $("#addr").value = c.varsayilan; $("#joinForm").requestSubmit(); }; }
+  if (c.son === "host" || c.hosting) $("#hostDet").open = true;
+  const hata = new URLSearchParams(location.search).get("hata"); if (hata) showErr($("#joinErr"), hata);
   $("#running").hidden = !c.hosting;
   if (c.hosting) {
     const p = c.hosting.port;
