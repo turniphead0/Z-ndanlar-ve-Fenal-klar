@@ -81,9 +81,11 @@ jobs:
       - run: npx cap add android
       # Sunucu çoğu zaman yalnızca http:// (HTTPS'siz) olduğu için düz bağlantıya izin ver.
       - run: sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+      # Uygulama simgesi (mobil-uygulama/simgeler, web/mobil/ikon.svg'den üretildi).
       - name: Simgeler
-        continue-on-error: true
-        run: npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#1F6F6B' --iconBackgroundColorDark '#1F6F6B' --splashBackgroundColor '#111518' --splashBackgroundColorDark '#111518'
+        run: |
+          cp -r simgeler/. android/app/src/main/res/
+          sed -i 's/#FFFFFF/#1F6F6B/I' android/app/src/main/res/values/ic_launcher_background.xml
       - run: npx cap sync android
       - run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
         working-directory: mobil-uygulama/android
