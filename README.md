@@ -75,6 +75,8 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 
 Sunucuda herkes yalnızca bir **kullanıcı adı ve şifre** belirleyerek hesap açar (e-posta ya da başka bilgi istenmez; bu yüzden unutulan şifre sıfırlanamaz). Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
 
+**Sohbet grupları:** Mesajlar ekranındaki "+ Yeni grup" ile bir ad verip arkadaşlarını seçerek grup kurulur (en çok 50 kişi). Her üye kendi arkadaşlarını gruba ekleyebilir, grubun adını değiştirebilir ya da gruptan ayrılabilir; üye çıkarmayı yalnızca grubu kuran yapar (kuran ayrılırsa grup en eski üyeye geçer). Masaüstü ve web uygulamasında ana ekranın üstündeki **Mesajlar**, **Arkadaşlar** ve profil düğmeleri, oyun içinde de sol raydaki **Mesajlar** düğmesi aynı ekranları açar.
+
 ### Mobil uygulama
 
 Telefon için iki yol var, ikisi de ücretsiz ve aynı ekranları açar (forum, mesajlar, arkadaşlar, profil, masalar, zar; masa açılınca karakter kağıtları, notlar, savaş sırası, zar tepsisi ve masa sohbeti; harita ve harita düzenleyici yok):

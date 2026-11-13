@@ -30,7 +30,7 @@ function canAccess(uid, p) {
 // Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*), forum (forum/*),
 // arkadaşlıklar ve özel mesajlar (data/users/<kişi>/{arkadas,konusma,dm}/*) yalnızca sunucu tarafından yazılır:
 // tahtada kurallara uygun hamleler, sohbette, forumda ve mesajlarda gönderen damgalı iletiler.
-const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm"]);
+const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup"]);
 function canWrite(uid, p) {
   const s = String(p).split("/");
   return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
@@ -244,10 +244,10 @@ function createServer(opts = {}) {
           case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
           case "forumTopic": case "forumReply": case "forumDelete": case "forumPin": return forumOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
-          case "cikis": case "sifreDegistir": case "kisiAra": case "kisi": case "profilYaz": case "arkadasIstek": case "arkadasKabul": case "arkadasSil": case "dmGonder": case "dmOkundu": case "dmSil":
-            return reply(hesap.op(c, m));
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
-          default: return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
+          default:
+            if (hesap.OPS.has(m.op)) return reply(hesap.op(c, m)); // hesap, arkadaşlar, mesajlar, gruplar (server/hesap.js)
+            return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }
     });

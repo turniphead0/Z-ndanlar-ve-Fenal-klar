@@ -1,7 +1,7 @@
 /* Zar Masası mobil uygulaması: forum, özel mesajlar, arkadaşlar, profil, masalar ve zar.
    Sunucuya /shim.js üzerinden bağlanır (giriş ekranı, yeniden bağlanma, db aboneliği oradadır).
    Karakter kağıtları ve masa sohbeti için oyun, haritasız mobil görünümde açılır (/?mobil=1#<oyun>).
-   ?gomulu=1 ile masaüstü uygulamasının içinde yalnızca mesajlar, arkadaşlar ve profil gösterilir. */
+   ?gomulu=1 ile masaüstü uygulamasının içinde yalnızca mesajlar, gruplar, arkadaşlar ve profil gösterilir. */
 (function () {
   "use strict";
   const $ = (s, r = document) => r.querySelector(s);
@@ -88,7 +88,7 @@
   const SEKMELER = GOMULU ? ["mesajlar", "arkadaslar"] : ["forum", "mesajlar", "arkadaslar", "masalar", "zar"];
   const ANA = GOMULU ? "mesajlar" : "forum";
   function rota() { const h = decodeURIComponent(location.hash.slice(1)); const [ad, ...rest] = h.split("/"); return { ad: ad || ANA, arg: rest.join("/") }; }
-  const ALT = { "forum-konu": "forum", "forum-yeni": "forum", mesaj: "mesajlar", kisi: null, profil: null };
+  const ALT = { "forum-konu": "forum", "forum-yeni": "forum", mesaj: "mesajlar", grup: "mesajlar", "grup-yeni": "mesajlar", "grup-bilgi": "mesajlar", kisi: null, profil: null };
   let sonRota = "";
   function git(force) {
     const r = rota(), key = r.ad + "/" + r.arg;
@@ -99,7 +99,7 @@
     const sek = SEKMELER.includes(r.ad) ? r.ad : ALT[r.ad];
     document.querySelectorAll("#alt [data-sek]").forEach(a => a.setAttribute("aria-current", a.dataset.sek === sek ? "page" : "false"));
     $("#geri").hidden = SEKMELER.includes(r.ad) || r.ad === ANA;
-    $("#ekran").classList.toggle("sohbetekran", r.ad === "mesaj");
+    $("#ekran").classList.toggle("sohbetekran", r.ad === "mesaj" || r.ad === "grup");
     $("#ekran").scrollTop = 0;
     (EKRAN[r.ad] || EKRAN[ANA])(r.arg, true);
   }
@@ -195,48 +195,118 @@
   EKRAN.mesajlar = () => {
     baslik("Mesajlar");
     const l = [...st.konusma.entries()].map(([id, k]) => ({ id, ...k })).sort((a, b) => b.t - a.t);
-    ekran(l.length ? `<ul class="liste">${l.map(k => { const p = prof(k.id); return `<li><a class="satir ${k.okunmamis ? "yeni" : ""}" href="#mesaj/${esc(k.id)}">${av(k.id)}<span class="ic"><b>${esc(p.ad)}</b><small>${k.benden ? "Sen: " : ""}${esc(k.son)}</small></span><span style="display:grid;justify-items:end;gap:4px"><span class="zaman">${zaman(k.t)}</span>${k.okunmamis ? `<b class="rozet" style="position:static">${k.okunmamis}</b>` : ""}</span></a></li>`; }).join("")}</ul>
-      <p class="ipucu">Yeni bir konuşma başlatmak için <a href="#arkadaslar">Arkadaşlar</a> sekmesinden birini seç.</p>`
-      : `<div class="bos"><h2>Henüz mesaj yok</h2><p>Arkadaşlarına buradan oyun dışında yazabilirsin.</p><a class="btn pri" href="#arkadaslar">Arkadaşlara git</a></div>`);
+    const ust = `<div class="dugmeler" style="margin-bottom:12px"><a class="btn pri" href="#grup-yeni">+ Yeni grup</a><a class="btn" href="#arkadaslar">Arkadaşlar</a></div>`;
+    ekran(ust + (l.length ? `<ul class="liste">${l.map(k => { const g = k.grup, p = g ? null : prof(k.id); return `<li><a class="satir ${k.okunmamis ? "yeni" : ""}" href="#${g ? "grup" : "mesaj"}/${esc(k.id)}">${g ? grupAv(k.ad) : av(k.id)}<span class="ic"><b>${esc(g ? k.ad : p.ad)}</b><small>${g ? esc(k.uye || "") + " kişi · " : k.benden ? "Sen: " : ""}${esc(k.son)}</small></span><span style="display:grid;justify-items:end;gap:4px"><span class="zaman">${zaman(k.t)}</span>${k.okunmamis ? `<b class="rozet" style="position:static">${k.okunmamis}</b>` : ""}</span></a></li>`; }).join("")}</ul>
+      <p class="ipucu">Yeni bir konuşma başlatmak için <a href="#arkadaslar">Arkadaşlar</a> sekmesinden birini seç ya da birkaç arkadaşınla grup kur.</p>`
+      : `<div class="bos"><h2>Henüz mesaj yok</h2><p>Arkadaşlarına buradan oyun dışında yazabilir, birkaç arkadaşınla sohbet grubu kurabilirsin.</p></div>`));
   };
+  function grupAv(ad, boy) {
+    const ilk = esc(String(ad || "?").trim().charAt(0).toLocaleUpperCase("tr"));
+    return `<span class="av grupav ${boy || ""}" aria-hidden="true">${ilk}</span>`;
+  }
+
+  // Ortak sohbet ekranı (özel mesaj ve grup): yazma kutusu, ileti akışı, fotoğraf.
+  function sohbetKur(col, gonder) {
+    ekran(`<a class="satir" style="min-height:0;margin-bottom:8px" id="mkisi"></a><div class="akis" id="akis"></div>
+        <form class="yaz" id="yazf"><button type="button" class="yuvarlak" data-a="dmfoto" aria-label="Fotoğraf gönder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg></button>
+        <textarea class="f" name="m" rows="1" maxlength="2000" placeholder="Mesaj yaz" aria-label="Mesaj"></textarea>
+        <button class="yuvarlak pri" aria-label="Gönder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l16-8-6 16-3-6z"/></svg></button></form>`);
+    const msj = new Map(); sohbetKur.msj = msj; sohbetKur.gonder = gonder; akisCiz.ilk = false;
+    ekranKapat.push(DB.collection(col).onSnapshot(s => {
+      for (const c of s.docChanges()) c.type === "removed" ? msj.delete(c.doc.id) : msj.set(c.doc.id, c.doc.data());
+      akisCiz();
+    }, () => {}));
+    const f = $("#yazf"), ta = f.m;
+    ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; });
+    ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && matchMedia("(pointer:fine)").matches) { e.preventDefault(); f.requestSubmit(); } });
+    f.addEventListener("submit", async e => {
+      e.preventDefault(); const text = ta.value.trim(); if (!text) return;
+      ta.value = ""; ta.style.height = "auto";
+      try { await gonder({ text }); } catch (x) { ta.value = text; }
+    });
+  }
 
   EKRAN.mesaj = (uid, ilk) => {
     const p = prof(uid), ark = (st.arkadas.get(uid) || {}).durum === "arkadas";
     baslik(p.ad);
-    if (ilk) {
-      ekran(`<a href="#kisi/${esc(uid)}" class="satir" style="min-height:0;margin-bottom:8px" id="mkisi"></a><div class="akis" id="akis"></div>
-        <form class="yaz" id="yazf"><button type="button" class="yuvarlak" data-a="dmfoto" aria-label="Fotoğraf gönder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg></button>
-        <textarea class="f" name="m" rows="1" maxlength="2000" placeholder="Mesaj yaz" aria-label="Mesaj"></textarea>
-        <button class="yuvarlak pri" aria-label="Gönder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l16-8-6 16-3-6z"/></svg></button></form>`);
-      const msj = new Map(); EKRAN.mesaj.msj = msj;
-      ekranKapat.push(DB.collection(`data/users/${ME.id}/dm/${uid}`).onSnapshot(s => {
-        for (const c of s.docChanges()) c.type === "removed" ? msj.delete(c.doc.id) : msj.set(c.doc.id, c.doc.data());
-        akisCiz(uid);
-      }, () => {}));
-      const f = $("#yazf"), ta = f.m;
-      ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; });
-      ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && matchMedia("(pointer:fine)").matches) { e.preventDefault(); f.requestSubmit(); } });
-      f.addEventListener("submit", async e => {
-        e.preventDefault(); const text = ta.value.trim(); if (!text) return;
-        ta.value = ""; ta.style.height = "auto";
-        try { await cagir("dmGonder", { to: uid, text }); } catch (x) { ta.value = text; }
-      });
-    }
-    $("#mkisi").innerHTML = `${av(uid, "k")}<span class="ic"><b>${esc(p.ad)}</b><small>${p.cevrimici ? "Çevrimiçi" : "Profili gör"}</small></span>`;
+    if (ilk) sohbetKur(`data/users/${ME.id}/dm/${uid}`, a => cagir("dmGonder", { to: uid, ...a }));
+    const mk = $("#mkisi"); mk.href = "#kisi/" + uid;
+    mk.innerHTML = `${av(uid, "k")}<span class="ic"><b>${esc(p.ad)}</b><small>${p.cevrimici ? "Çevrimiçi" : "Profili gör"}</small></span>`;
     const f = $("#yazf");
     if (f) { f.querySelectorAll("textarea,button").forEach(x => (x.disabled = !ark)); f.m.placeholder = ark ? "Mesaj yaz" : "Mesaj için arkadaş olmalısınız"; }
-    const k = st.konusma.get(uid); if (k && k.okunmamis) Z.call("dmOkundu", { kisi: uid }).catch(() => {});
+    okundu();
   };
-  function akisCiz(uid) {
-    const el = $("#akis"), msj = EKRAN.mesaj.msj; if (!el || !msj) return;
+  function okundu() {
+    const id = rota().arg, k = st.konusma.get(id);
+    if (k && k.okunmamis && !document.hidden) Z.call("dmOkundu", { kisi: id }).catch(() => {});
+  }
+  function akisCiz() {
+    const el = $("#akis"), msj = sohbetKur.msj; if (!el || !msj) return;
+    const grup = rota().ad === "grup";
     const sc = $("#ekran"), altta = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
-    const l = [...msj.values()].sort((a, b) => a.t - b.t); let gun = "";
-    el.innerHTML = l.length ? l.map(m => { const g = gunAdi(m.t), ust = g !== gun ? `<div class="gun">${esc(g)}</div>` : ""; gun = g;
-      return ust + `<div class="balon ${m.by === ME.id ? "ben" : ""}">${resimMi(m.resim) ? `<a href="${esc(m.resim)}" target="_blank" rel="noopener"><img src="${esc(m.resim)}" alt="Fotoğraf" loading="lazy"></a>` : ""}${esc(m.text)}<small>${saat(m.t)}</small></div>`; }).join("")
+    const l = [...msj.values()].sort((a, b) => a.t - b.t); let gun = "", onceki = null;
+    el.innerHTML = l.length ? l.map(m => { const g = gunAdi(m.t), ust = g !== gun ? `<div class="gun">${esc(g)}</div>` : ""; if (ust) onceki = null; gun = g;
+      if (m.sistem) { onceki = null; return ust + `<div class="gun sis">${esc(m.text)}</div>`; }
+      const ben = m.by === ME.id, ad = grup && !ben && onceki !== m.by ? `<b class="kimden" style="color:${esc(prof(m.by).renk)}">${esc(prof(m.by).ad)}</b>` : "";
+      onceki = m.by;
+      return ust + `<div class="balon ${ben ? "ben" : ""}">${ad}${resimMi(m.resim) ? `<a href="${esc(m.resim)}" target="_blank" rel="noopener"><img src="${esc(m.resim)}" alt="Fotoğraf" loading="lazy"></a>` : ""}${esc(m.text)}<small>${saat(m.t)}</small></div>`; }).join("")
       : `<div class="bos"><p>İlk mesajı sen yaz.</p></div>`;
     if (altta || !akisCiz.ilk) { sc.scrollTop = sc.scrollHeight; akisCiz.ilk = true; }
-    const k = st.konusma.get(uid); if (k && k.okunmamis) Z.call("dmOkundu", { kisi: uid }).catch(() => {});
+    okundu();
   }
+
+  // ---- Sohbet grupları ----
+  EKRAN.grup = (gid, ilk) => {
+    const k = st.konusma.get(gid);
+    baslik(k ? k.ad : "Grup");
+    if (ilk) sohbetKur(`data/users/${ME.id}/grup/${gid}`, a => cagir("grupMesaj", { grup: gid, ...a }));
+    const mk = $("#mkisi"); mk.href = "#grup-bilgi/" + gid;
+    mk.innerHTML = `${grupAv(k && k.ad, "k")}<span class="ic"><b>${esc(k ? k.ad : "Grup")}</b><small>${k ? esc(k.uye || "") + " kişi · " : ""}Üyeler ve ayarlar</small></span>`;
+    const f = $("#yazf");
+    if (f && st.yuklendi) { const var_ = !!k; f.querySelectorAll("textarea,button").forEach(x => (x.disabled = !var_)); f.m.placeholder = var_ ? "Gruba yaz" : "Bu grupta değilsin"; }
+    okundu();
+  };
+
+  EKRAN["grup-yeni"] = (arg, ilk) => {
+    baslik("Yeni grup");
+    if (!ilk) return;
+    const ark = [...st.arkadas.entries()].filter(([, a]) => a.durum === "arkadas").map(([id]) => id).sort((a, b) => prof(a).ad.localeCompare(prof(b).ad, "tr"));
+    if (!ark.length) return ekran(`<div class="bos"><h2>Önce arkadaş ekle</h2><p>Gruba yalnızca arkadaşlarını ekleyebilirsin.</p><a class="btn pri" href="#arkadaslar">Arkadaşlara git</a></div>`);
+    ekran(`<form class="form" id="gyeni">
+      <label><span class="lbl">Grubun adı</span><input class="f" name="ad" maxlength="60" required placeholder="Örneğin: Cuma masası"></label>
+      <span class="lbl">Kimler olsun?</span>
+      <ul class="liste">${ark.map(id => `<li><label class="satir secim">${av(id)}<span class="ic"><b>${esc(prof(id).ad)}</b></span><input type="checkbox" name="u" value="${esc(id)}"></label></li>`).join("")}</ul>
+      <button class="btn pri tam">Grubu kur</button></form>`);
+    $("#gyeni").addEventListener("submit", async e => {
+      e.preventDefault(); const f = e.target, b = f.querySelector("button.pri");
+      const uyeler = [...f.querySelectorAll("input[name=u]:checked")].map(x => x.value);
+      if (!uyeler.length) return tost("En az bir arkadaşını seç");
+      b.disabled = true;
+      try { const r = await cagir("grupKur", { ad: f.ad.value, uyeler }); location.replace("#grup/" + r.id); } catch (x) { b.disabled = false; }
+    });
+  };
+
+  EKRAN["grup-bilgi"] = async (gid, ilk) => {
+    if (!ilk && document.activeElement && document.activeElement.closest("#gad")) return; // ad yazılırken bozma
+    const k = st.konusma.get(gid);
+    baslik(k ? k.ad : "Grup");
+    if (ilk) ekran(`<div id="gbilgi"><div class="bos">Yükleniyor…</div></div>`);
+    let g; try { g = await Z.call("grupBilgi", { grup: gid }); } catch (e) { if ($("#gbilgi")) $("#gbilgi").innerHTML = `<div class="bos"><h2>Bu grupta değilsin</h2><a class="btn" href="#mesajlar">Mesajlara dön</a></div>`; return; }
+    const el = $("#gbilgi"); if (!el || rota().arg !== gid) return;
+    for (const u of g.uyeler) st.prof[u.id] = { ...(st.prof[u.id] || {}), ad: u.kullanici || u.ad, renk: u.renk, foto: u.foto, kullanici: u.kullanici };
+    const sahip = g.sahip === ME.id, uyeIds = new Set(g.uyeler.map(u => u.id));
+    const eklenebilir = [...st.arkadas.entries()].filter(([id, a]) => a.durum === "arkadas" && !uyeIds.has(id)).map(([id]) => id);
+    const acik = el.querySelector("details[open]") ? true : false;
+    el.innerHTML = `<div class="profil">${grupAv(g.ad, "b")}<h2>${esc(g.ad)}</h2><p class="ipucu">${g.uyeler.length} kişi · ${new Date(g.created).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}</p>
+      <div class="dugmeler" style="justify-content:center"><a class="btn pri" href="#grup/${esc(gid)}">Sohbete dön</a></div></div>
+      <form class="form" id="gad"><label><span class="lbl">Grubun adı</span><span style="display:flex;gap:8px"><input class="f" name="ad" maxlength="60" value="${esc(g.ad)}" required><button class="btn">Kaydet</button></span></label></form>
+      <h2 class="bolum">Üyeler</h2>
+      <ul class="liste">${g.uyeler.map(u => `<li><div class="satir"><a href="#kisi/${esc(u.id)}" style="display:contents;color:inherit;text-decoration:none">${av(u.id)}<span class="ic"><b>${esc(u.kullanici || u.ad)}${u.id === ME.id ? " (sen)" : ""}</b><small>${u.id === g.sahip ? "Grubu kuran" : ""}</small></span></a>${sahip && u.id !== ME.id ? `<button class="btn sm" data-a="gcikar" data-g="${esc(gid)}" data-k="${esc(u.id)}">Çıkar</button>` : u.arkadas && u.arkadas !== "ben" && u.arkadas !== "arkadas" ? arkDugme(u.id, u.arkadas) : ""}</div></li>`).join("")}</ul>
+      <details class="ekle"${acik ? " open" : ""}><summary class="btn tam">+ Arkadaşını ekle</summary>
+        ${eklenebilir.length ? `<ul class="liste" style="margin-top:8px">${eklenebilir.map(id => `<li><div class="satir">${av(id)}<span class="ic"><b>${esc(prof(id).ad)}</b></span><button class="btn sm pri" data-a="gekle" data-g="${esc(gid)}" data-k="${esc(id)}">Ekle</button></div></li>`).join("")}</ul>` : `<p class="ipucu">Eklenecek arkadaşın kalmadı.</p>`}</details>
+      <div class="form" style="margin-top:18px"><button class="btn kotu tam" data-a="gcik" data-g="${esc(gid)}">Gruptan ayrıl</button></div>`;
+    $("#gad").addEventListener("submit", async e => { e.preventDefault(); await cagir("grupAdi", { grup: gid, ad: e.target.ad.value }); tost("Grubun adı değişti"); EKRAN["grup-bilgi"](gid, false); });
+  };
 
   // ---- Arkadaşlar ----
   EKRAN.arkadaslar = (arg, ilk) => {
@@ -400,11 +470,14 @@
         case "kabul": b.disabled = true; await cagir("arkadasKabul", { kisi: k }); tost("Artık arkadaşsınız"); return;
         case "reddet": b.disabled = true; await cagir("arkadasSil", { kisi: k }); return;
         case "cikar": return onayli(b, () => cagir("arkadasSil", { kisi: k }));
+        case "gekle": b.disabled = true; await cagir("grupEkle", { grup: b.dataset.g, kisi: k }); tost(prof(k).ad + " gruba eklendi"); EKRAN["grup-bilgi"](b.dataset.g, false); return;
+        case "gcikar": return onayli(b, async () => { await cagir("grupCikar", { grup: b.dataset.g, kisi: k }); EKRAN["grup-bilgi"](b.dataset.g, false); });
+        case "gcik": return onayli(b, async () => { await cagir("grupCik", { grup: b.dataset.g }); tost("Gruptan ayrıldın"); location.replace("#mesajlar"); });
         case "dmfoto": {
           const f = await dosyaSec(); if (!f) return;
           tost("Fotoğraf gönderiliyor…");
           const up = await Z.upload(await kucult(f, 1280, false));
-          await cagir("dmGonder", { to: rota().arg, resim: up.url }); return;
+          await sohbetKur.gonder({ resim: up.url }); return;
         }
         case "foto": {
           const f = await dosyaSec(); if (!f) return;
@@ -451,7 +524,7 @@
       return;
     }
     DB = Z.db();
-    DB.collection(`data/users/${ME.id}/konusma`).onSnapshot(s => { for (const c of s.docChanges()) c.type === "removed" ? st.konusma.delete(c.doc.id) : st.konusma.set(c.doc.id, c.doc.data()); yenile(); }, () => {});
+    DB.collection(`data/users/${ME.id}/konusma`).onSnapshot(s => { for (const c of s.docChanges()) c.type === "removed" ? st.konusma.delete(c.doc.id) : st.konusma.set(c.doc.id, c.doc.data()); st.yuklendi = true; yenile(); }, () => {});
     DB.collection(`data/users/${ME.id}/arkadas`).onSnapshot(s => { for (const c of s.docChanges()) c.type === "removed" ? st.arkadas.delete(c.doc.id) : st.arkadas.set(c.doc.id, c.doc.data()); yenile(); }, () => {});
     if (!GOMULU) {
       DB.collection("forum").onSnapshot(s => { for (const c of s.docChanges()) c.type === "removed" ? st.forum.delete(c.doc.id) : st.forum.set(c.doc.id, c.doc.data()); const r = rota().ad; if (r === "forum" || r === "forum-konu") yenile(); }, () => {});
