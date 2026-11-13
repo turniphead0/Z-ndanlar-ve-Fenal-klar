@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 const { Store, parentOf } = require("./store");
 const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
+const { kurHesap } = require("./hesap");
 
 const WEB = path.join(__dirname, "..", "web");
 const MAX_ASSET = 25 * 1024 * 1024;
@@ -26,11 +27,13 @@ function canAccess(uid, p) {
   if (s[0] === "data" && s[1] === "users") return s[2] === uid;
   return true;
 }
-// Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*) ve forum (forum/*)
-// yalnızca sunucu tarafından yazılır: tahtada kurallara uygun hamleler, sohbette ve forumda gönderen damgalı iletiler.
+// Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*), forum (forum/*),
+// arkadaşlıklar ve özel mesajlar (data/users/<kişi>/{arkadas,konusma,dm}/*) yalnızca sunucu tarafından yazılır:
+// tahtada kurallara uygun hamleler, sohbette, forumda ve mesajlarda gönderen damgalı iletiler.
+const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm"]);
 function canWrite(uid, p) {
   const s = String(p).split("/");
-  return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && !(s[0] === "data" && s[1] === "users" && s[3] === "chat");
+  return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
 }
 
 // Sohbet: masadaki ortak mesajlar chat/<oyun>/<mesaj>, fısıltılar iki tarafın da
@@ -55,6 +58,9 @@ function createServer(opts = {}) {
   const store = new Store(path.join(dataDir, "db.json"));
   const password = opts.password || "";
   const name = opts.name || "Zar Masası";
+  // Hesap: "zorunlu" ise herkes kullanıcı adı + şifreyle girer; "istege-bagli" ise hesapsız da oynanabilir
+  // (masaüstünden host edilen masalar). Profil, arkadaşlar ve özel mesajlar hesap ister.
+  const hesapModu = opts.hesap === "zorunlu" ? "zorunlu" : "istege-bagli";
 
   // Sahip anahtarı: masanın sahibi bu anahtarla bağlanır (host eden kişi otomatik olarak).
   let ownerKey = opts.ownerKey || (store.get("_sys/config/owner") || {}).key;
@@ -66,6 +72,7 @@ function createServer(opts = {}) {
 
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
+  const hesap = kurHesap({ store, conns, password, same });
 
   /* ---------------- HTTP ---------------- */
   const appHtml = () => {
@@ -77,8 +84,9 @@ function createServer(opts = {}) {
     return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum", "sosyal", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
+  const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
     res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
@@ -110,7 +118,15 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI });
+      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu });
+      if (hesap.http(req, res, p, send)) return;
+      // Mobil uygulama (telefon tarayıcısı ya da Android uygulaması): /mobil
+      if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return send(res, 200, fs.readFileSync(path.join(WEB, "mobil", "index.html")), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/mobil\/[a-z0-9-]+\.(js|css|json|svg|png|webmanifest)$/.test(p)) {
+        const f = path.join(WEB, p);
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return send(res, 200, fs.readFileSync(f), MOBIL_TYPES[path.extname(f)] || EXT_TYPES[path.extname(f)]);
+      }
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);
       if (req.method === "DELETE" && p.startsWith("/api/assets/")) {
@@ -209,7 +225,8 @@ function createServer(opts = {}) {
           case "unsub": c.subs.delete(m.sid); return reply(true);
           case "profiles": {
             const out = {};
-            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color }; }
+            const on = new Set([...conns].map(x => x.uid));
+            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: on.has(id) }; }
             return reply(out);
           }
           case "presence": c.presence = { ...c.presence, ...(m.data || {}) }; broadcastPeers([], []); return reply(true);
@@ -218,15 +235,17 @@ function createServer(opts = {}) {
             for (const o of conns) if (o !== c && o.uid) o.send(msg);
             return reply(true);
           }
-          case "profile": { // ad / renk değişikliği
+          case "profile": { // ad / renk değişikliği (hesabı olanın adı kullanıcı adıdır)
             const u = store.get("_sys/users/" + c.uid) || {};
-            store.set("_sys/users/" + c.uid, { ...u, name: String(m.name || u.name).slice(0, 40), color: String(m.color || u.color).slice(0, 20) });
+            store.set("_sys/users/" + c.uid, { ...u, name: u.username || String(m.name || u.name).slice(0, 40), color: String(m.color || u.color).slice(0, 20) });
             return reply(true);
           }
           case "chatSend": case "chatClear": return chatOp(c, m, reply, fail);
           case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
           case "forumTopic": case "forumReply": case "forumDelete": case "forumPin": return forumOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
+          case "cikis": case "sifreDegistir": case "kisiAra": case "kisi": case "profilYaz": case "arkadasIstek": case "arkadasKabul": case "arkadasSil": case "dmGonder": case "dmOkundu": case "dmSil":
+            return reply(hesap.op(c, m));
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
           default: return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
@@ -241,17 +260,20 @@ function createServer(opts = {}) {
 
   function hello(c, m, reply, fail) {
     const isOwner = !!m.ownerKey && same(m.ownerKey, ownerKey);
-    if (password && !isOwner && !(m.password && same(m.password, password))) return fail("bad_password", "Masa şifresi yanlış");
-    const nm = String(m.name || "").trim().slice(0, 40) || "Oyuncu", color = String(m.color || "#2f8f86").slice(0, 20);
     let uid = m.userId, secret = m.secret;
-    const known = uid && /^u-[0-9a-f]{8,}$/.test(uid) ? store.get("_sys/users/" + uid) : null;
-    if (!known || !secret || sha(secret) !== known.secretHash) { uid = "u-" + rid(8); secret = rid(16); }
+    const valid = hesap.gecerli(uid, secret), known = valid ? store.get("_sys/users/" + uid) : null;
+    const hesapli = !!(known && known.username);
+    // Hesabıyla giren kişi sunucu şifresini kayıt olurken zaten vermiştir.
+    if (password && !isOwner && !hesapli && !(m.password && same(m.password, password))) return fail("bad_password", "Masa şifresi yanlış");
+    if (hesapModu === "zorunlu" && !hesapli) return fail("login_required", "Kullanıcı adın ve şifrenle giriş yap");
+    if (!valid) { uid = "u-" + rid(8); secret = rid(16); }
     const prev = store.get("_sys/users/" + uid) || { created: Date.now() };
-    store.set("_sys/users/" + uid, { ...prev, name: nm, color, secretHash: sha(secret), owner: prev.owner || isOwner, seen: Date.now() });
-    c.uid = uid; c.isOwner = isOwner || !!prev.owner;
+    const nm = prev.username || String(m.name || "").trim().slice(0, 40) || "Oyuncu", color = String(m.color || prev.color || "#2f8f86").slice(0, 20);
+    store.set("_sys/users/" + uid, { ...prev, name: nm, color, secretHash: valid ? prev.secretHash : sha(secret), owner: prev.owner || isOwner, seen: Date.now() });
+    c.uid = uid; c.secret = secret; c.isOwner = isOwner || !!prev.owner;
     const token = rid(16); tokens.set(token, uid); c.token = token;
     c.ws.once("close", () => tokens.delete(token));
-    reply({ me: { id: uid, name: nm, color }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList() });
+    reply({ me: { id: uid, name: nm, color, kullanici: prev.username || null, foto: prev.foto || null }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList(), hesap: hesapModu });
     broadcastPeers([{ peer: c.peer, by: uid }], []);
   }
 

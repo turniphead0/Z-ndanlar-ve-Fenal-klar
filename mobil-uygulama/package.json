@@ -1,0 +1,15 @@
+{
+  "name": "zar-masasi-mobil",
+  "private": true,
+  "version": "0.5.0",
+  "description": "Zar Masası Android uygulaması: sunucunun /mobil sayfasını açan küçük kabuk (Capacitor)",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "7.6.10",
+    "@capacitor/app": "7.1.2",
+    "@capacitor/core": "7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.10"
+  }
+}

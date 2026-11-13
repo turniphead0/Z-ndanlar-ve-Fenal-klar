@@ -1,0 +1,16 @@
+{
+  "name": "Zar Masası",
+  "short_name": "Zar Masası",
+  "description": "Forum, mesajlar, arkadaşlar, karakter kağıtları ve zar",
+  "start_url": "/mobil",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111518",
+  "theme_color": "#1F6F6B",
+  "lang": "tr",
+  "icons": [
+    { "src": "/mobil/ikon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/mobil/ikon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/mobil/ikon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

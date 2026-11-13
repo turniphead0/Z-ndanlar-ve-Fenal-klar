@@ -396,3 +396,25 @@
 .zf-yanit{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 .zf-yanit textarea.f{min-height:80px}
 @media (max-width:640px){ .zf-konu{grid-template-columns:28px minmax(0,1fr)} .zf-ks{grid-column:2;justify-items:start;display:flex;gap:6px} .zf-iki{grid-template-columns:1fr} }
+
+/* Hesap: giriş / kayıt sekmeleri (web/shim.js) */
+.zm-gsek{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.zm-gsek button{background:transparent;border:0;padding:9px 6px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}
+.zm-gsek button[aria-selected="true"]{background:var(--accent);color:#fff}
+
+/* Mobil uygulamadan açılan oyun (web/ext/mobil-mod.js): harita yok */
+.zm-mobil [data-nav="harita"]{display:none!important}
+
+/* Profil, arkadaşlar ve mesajlar (web/ext/sosyal.js) */
+.zm-sbtn{display:inline-flex;align-items:center;gap:8px;position:relative}
+.zm-sav{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:700;font-size:12px;overflow:hidden;flex:none}
+.zm-sav img{width:100%;height:100%;object-fit:cover}
+.zm-srozet{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px;text-align:center}
+.zm-snav{position:relative;margin-top:auto}
+.zm-snav .zm-srozet{position:absolute;top:2px;right:8px}
+.zm-spano{position:fixed;inset:0;z-index:90;background:rgba(10,14,16,.45);display:flex;justify-content:flex-end}
+.zm-spano iframe{width:min(440px,100%);height:100%;border:0;background:var(--bg);box-shadow:-10px 0 30px rgba(0,0,0,.25)}
+@media (max-width:720px){ .zm-snav{margin-top:0} }
+.zm-mobil .zm-snav,.zm-mobil .rail [data-help]{display:none!important}
+@media (max-width:720px){ .zm-mobil .rail .brand .gname,.zm-mobil .rail .brand svg{display:none!important} }
+.zm-mobil .zm-popbtn{display:none!important}

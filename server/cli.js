@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Bağımsız sunucu: node server/cli.js [--port 7373] [--data ./veri] [--password şifre] [--name "Masa adı"]
-// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_PASSWORD, ZM_NAME, ANTHROPIC_API_KEY, ZM_AI_MODEL
+// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_PASSWORD, ZM_NAME, ZM_HESAP, ANTHROPIC_API_KEY, ZM_AI_MODEL
+// Hesap: bağımsız sunucuda herkes kullanıcı adı + şifreyle girer (--hesap istege-bagli ile hesapsız giriş de açılır).
 const os = require("os");
 const { createServer } = require("./index");
 
@@ -8,7 +9,7 @@ const args = process.argv.slice(2);
 const arg = (k, env, d) => { const i = args.indexOf("--" + k); return i >= 0 ? args[i + 1] : process.env[env] ?? d; };
 
 (async () => {
-  const srv = createServer({ dataDir: arg("data", "ZM_DATA", "./zar-masasi-veri"), password: arg("password", "ZM_PASSWORD", ""), name: arg("name", "ZM_NAME", "Zar Masası") });
+  const srv = createServer({ dataDir: arg("data", "ZM_DATA", "./zar-masasi-veri"), password: arg("password", "ZM_PASSWORD", ""), name: arg("name", "ZM_NAME", "Zar Masası"), hesap: arg("hesap", "ZM_HESAP", "zorunlu") });
   const port = await srv.listen(+arg("port", "ZM_PORT", 7373));
   const ips = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === "IPv4" && !i.internal).map(i => i.address);
   console.log(`Zar Masası sunucusu çalışıyor: port ${port}`);
