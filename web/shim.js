@@ -17,7 +17,7 @@
   } catch (e) {}
 
   /* ---------------- Bağlantı ---------------- */
-  let ws = null, open = false, seq = 0, ME = null, TOKEN = null, IS_OWNER = false, AI = false, MY_PEER = null;
+  let ws = null, open = false, seq = 0, ME = null, TOKEN = null, IS_OWNER = false, AI = false, MY_PEER = null, HESAP = "istege-bagli";
   const waiting = new Map(); // istek no -> {res, rej, onText}
   const outbox = [];
   const subs = new Map(); // sid -> {msg, apply(m)}
@@ -42,7 +42,7 @@
       const id = ++seq;
       waiting.set(id, {
         res: r => {
-          ME = r.me; TOKEN = r.token; IS_OWNER = r.isOwner; AI = r.ai; MY_PEER = r.peer; peers = r.peers || [];
+          ME = r.me; TOKEN = r.token; IS_OWNER = r.isOwner; AI = r.ai; MY_PEER = r.peer; peers = r.peers || []; HESAP = r.hesap || HESAP;
           LS.set("zm-uid", r.me.id); LS.set("zm-secret", r.secret); LS.set("zm-name", r.me.name); LS.set("zm-color", r.me.color);
           if (form.password) LS.set("zm-pass", form.password);
           open = true; setBanner(null);
@@ -51,7 +51,12 @@
           emitPeers([], []);
           if (onFirst) { const f = onFirst; onFirst = null; f(null); }
         },
-        rej: e => { if (onFirst) { const f = onFirst; onFirst = null; f(e); } ws.onclose = null; ws.close(); },
+        rej: e => {
+          if (onFirst) { const f = onFirst; onFirst = null; f(e); }
+          // Yeniden bağlanırken oturum geçersiz kaldıysa (şifre başka cihazda değişti) giriş ekranına dön.
+          else if (e.code === "login_required") location.reload();
+          ws.onclose = null; ws.close();
+        },
       });
       ws.send(JSON.stringify({ id, ...helloMsg(form) }));
     };
@@ -84,12 +89,79 @@
     let info = { name: "Zar Masası", needsPassword: false };
     try { info = await (await fetch("/api/info")).json(); } catch (e) {}
     const saved = { name: LS.get("zm-name"), color: LS.get("zm-color") };
-    if (saved.name && (!info.needsPassword || LS.get("zm-pass") || LS.get("zm-owner"))) {
+    if (info.hesap === "zorunlu") {
+      // Hesaplı sunucu: kayıtlı oturumla bağlan, olmazsa kullanıcı adı + şifre sor.
+      if (LS.get("zm-uid") && LS.get("zm-secret")) {
+        const e = await new Promise(r => connect(saved, r));
+        if (!e) return readyRes();
+        if (e.code === "network") return showGiris(info, { hata: e.message });
+      }
+      return showGiris(info);
+    }
+    if (saved.name && (!info.needsPassword || LS.get("zm-pass") || LS.get("zm-owner") || LS.get("zm-hesap"))) {
       const e = await new Promise(r => connect(saved, r));
       if (!e) return readyRes();
       if (e.code === "bad_password") LS.set("zm-pass", "");
     }
     showJoin(info);
+  }
+
+  /* ---------------- Hesap: giriş ve kayıt ekranı ---------------- */
+  // Üyelik için yalnızca kullanıcı adı ve şifre istenir. Bu cihazda daha önce hesapsız oynandıysa
+  // o kimlik (masalar, karakterler) yeni hesaba bağlanır.
+  async function hesapIstek(tur, body) {
+    const r = await fetch("/api/hesap/" + tur, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw err(j.code || "failed", j.message || "Olmadı, tekrar dene");
+    return j;
+  }
+  function showGiris(info, o) {
+    o = o || {};
+    const desk = window.zmDesktop;
+    let kayit = !!o.kayit;
+    const ov = document.createElement("div"); ov.className = "joinov zm-giris";
+    const ciz = () => {
+      ov.innerHTML = `<form class="joincard" autocomplete="on"><h2></h2>
+        <div class="zm-gsek" role="tablist"><button type="button" role="tab" data-gmod="0" aria-selected="${!kayit}">Giriş yap</button><button type="button" role="tab" data-gmod="1" aria-selected="${kayit}">Hesap oluştur</button></div>
+        <p>${kayit ? "Bir kullanıcı adı ve şifre belirle. Başka bilgi gerekmez." : "Kullanıcı adın ve şifrenle gir."}</p>
+        <label><span class="lbl">Kullanıcı adı</span><input class="f" name="kullanici" maxlength="20" required autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+        <label><span class="lbl">Şifre</span><input class="f" name="sifre" type="password" required minlength="${kayit ? 6 : 1}" autocomplete="${kayit ? "new-password" : "current-password"}"></label>
+        ${kayit ? `<label><span class="lbl">Şifre (tekrar)</span><input class="f" name="sifre2" type="password" required autocomplete="new-password"></label>` : ""}
+        ${kayit && info.needsPassword ? `<label><span class="lbl">Sunucu şifresi</span><input class="f" name="masa" type="password" required></label>` : ""}
+        ${kayit ? `<p class="hint" style="font-size:12px">Kullanıcı adı 3-20 karakter: harf, rakam, _ . - kullanılabilir. Şifre en az 6 karakter. Şifreni unutma: e-posta olmadığı için sıfırlanamaz.</p>` : ""}
+        <p class="jerr" hidden></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}${o.istege ? `<button type="button" class="btn" data-hesapsiz>Hesapsız devam et</button>` : ""}<button class="btn pri">${kayit ? "Hesabı oluştur" : "Giriş yap"}</button></div></form>`;
+      ov.querySelector("h2").textContent = info.name || "Zar Masası";
+      const f = ov.querySelector("form"), er = ov.querySelector(".jerr");
+      if (o.hata) { er.textContent = o.hata; er.hidden = false; o.hata = null; }
+      f.kullanici.value = LS.get("zm-hesap") || "";
+      f.addEventListener("submit", async e => {
+        e.preventDefault(); er.hidden = true;
+        const btn = f.querySelector(".btn.pri"); btn.disabled = true;
+        try {
+          if (kayit && f.sifre.value !== f.sifre2.value) throw err("invalid_argument", "Şifreler aynı değil");
+          const body = { kullanici: f.kullanici.value.trim(), sifre: f.sifre.value };
+          if (kayit) Object.assign(body, { masaSifresi: f.masa ? f.masa.value : "", userId: LS.get("zm-uid"), secret: LS.get("zm-secret") });
+          const r = await hesapIstek(kayit ? "kayit" : "giris", body);
+          LS.set("zm-uid", r.userId); LS.set("zm-secret", r.secret); LS.set("zm-name", r.kullanici); LS.set("zm-hesap", r.kullanici);
+          if (!LS.get("zm-color")) LS.set("zm-color", COLORS[Math.floor(Math.random() * COLORS.length)]);
+          if (ME) { location.reload(); return; } // hesapsız bağlıyken giriş yapıldı: yeni kimlikle baştan aç
+          const x = await new Promise(res => connect({ name: r.kullanici, color: LS.get("zm-color") }, res));
+          if (x) throw x;
+          ov.remove(); readyRes();
+        } catch (x) { er.textContent = x.message || "Olmadı"; er.hidden = false; btn.disabled = false; }
+      });
+      const odak = () => (f.kullanici.value ? f.sifre : f.kullanici).focus();
+      if (ov.isConnected) odak(); else setTimeout(odak, 0);
+    };
+    ov.addEventListener("click", e => {
+      const m = e.target.closest("[data-gmod]"); if (m) { kayit = m.dataset.gmod === "1"; ciz(); return; }
+      if (e.target.closest("[data-back]")) desk.backToLauncher();
+      if (e.target.closest("[data-hesapsiz]")) { ov.remove(); showJoin(info); }
+    });
+    ciz();
+    const mount = () => document.body.appendChild(ov);
+    document.body ? mount() : document.addEventListener("DOMContentLoaded", mount);
   }
 
   function showJoin(info, errorText) {
@@ -101,13 +173,17 @@
       <div><span class="lbl">Rengin</span><div class="jcolors">${COLORS.map(c => `<button type="button" class="jc" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join("")}</div></div>
       ${info.needsPassword && !LS.get("zm-owner") ? `<label><span class="lbl">Masa şifresi</span><input class="f" name="password" type="password" required></label>` : ""}
       <p class="jerr" hidden></p>
-      <div style="display:flex;gap:8px;justify-content:flex-end">${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}<button class="btn pri">Masaya otur</button></div></form>`;
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}<button type="button" class="btn" data-hesapla>Hesabımla gir</button><button class="btn pri">Masaya otur</button></div></form>`;
     ov.querySelector("h2").textContent = info.name || "Zar Masası";
     const f = ov.querySelector("form"), er = ov.querySelector(".jerr");
     f.name.value = LS.get("zm-name") || "";
     const paint = () => ov.querySelectorAll(".jc").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === color)));
     paint();
-    ov.addEventListener("click", e => { const b = e.target.closest(".jc"); if (b) { color = b.dataset.c; paint(); } if (e.target.closest("[data-back]")) desk.backToLauncher(); });
+    ov.addEventListener("click", e => {
+      const b = e.target.closest(".jc"); if (b) { color = b.dataset.c; paint(); }
+      if (e.target.closest("[data-back]")) desk.backToLauncher();
+      if (e.target.closest("[data-hesapla]")) { ov.remove(); showGiris(info, { istege: true }); }
+    });
     if (errorText) { er.textContent = errorText; er.hidden = false; }
     f.addEventListener("submit", async e => {
       e.preventDefault(); er.hidden = true;
@@ -250,6 +326,25 @@
     reply: a => ready.then(() => call("forumReply", a)),
     remove: a => ready.then(() => call("forumDelete", a)),
     pin: a => ready.then(() => call("forumPin", a)),
+  };
+
+  /* ---------------- Hesap ve sosyal işlemler (profil, arkadaşlar, özel mesajlar) ---------------- */
+  window.zmSunucu = {
+    ready,
+    call: (op, a) => ready.then(() => call(op, a || {})),
+    me: () => ME,
+    hesapli: () => !!(ME && ME.kullanici),
+    hesapModu: () => HESAP,
+    isOwner: () => IS_OWNER,
+    db: () => db,
+    upload: (file, o) => ready.then(() => assets.upload(file, o)),
+    girisEkrani: (o) => fetch("/api/info").then(r => r.json()).catch(() => ({})).then(info => showGiris(info, Object.assign({ istege: HESAP !== "zorunlu" }, o))),
+    async cikis() {
+      try { await call("cikis", {}); } catch (e) {}
+      for (const k of ["zm-uid", "zm-secret", "zm-name"]) LS.set(k, "");
+      try { localStorage.removeItem("zm-uid"); localStorage.removeItem("zm-secret"); } catch (e) {}
+      location.reload();
+    },
   };
 
   /* ---------------- window.claude ---------------- */

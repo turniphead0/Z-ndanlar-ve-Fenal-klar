@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Zar Masası</title>
+<style>
+:root{--bg:#E7EBE7;--surface:#F7F9F6;--ink:#1B2226;--muted:#5A666A;--line:#C8D0CB;--accent:#1F6F6B;--accent-ink:#fff;--bad:#B3261E;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#111518;--surface:#192025;--ink:#E3E8E4;--muted:#93A0A3;--line:#2C363C;--accent:#55B5AB;--accent-ink:#0D1A19;--bad:#F1766B;color-scheme:dark}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Roboto,sans-serif;display:grid;place-items:center;padding:16px}
+form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(400px,100%);display:grid;gap:14px}
+h1{margin:0;font:700 26px Georgia,serif;text-align:center}p{margin:0;color:var(--muted)}
+input{font:inherit;color:inherit;width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;min-height:46px}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;min-height:46px;background:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.6}.err{color:var(--bad);font-weight:700}[hidden]{display:none!important}
+label{display:grid;gap:4px}.lbl{font-size:13px;font-weight:700;color:var(--muted)}
+</style>
+</head>
+<body>
+<form id="f">
+  <h1>Zar Masası</h1>
+  <p>Bağlanacağın Zar Masası sunucusunun adresini yaz. Bunu bir kez yapman yeter.</p>
+  <label><span class="lbl">Sunucu adresi</span><input id="a" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="ör. 51.21.224.126" required></label>
+  <p class="err" id="e" hidden></p>
+  <button id="b">Bağlan</button>
+</form>
+<script>
+(function () {
+  "use strict";
+  const KEY = "zm-sunucu";
+  const get = () => { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } };
+  const set = v => { try { localStorage.setItem(KEY, v); } catch (e) {} };
+  const f = document.getElementById("f"), a = document.getElementById("a"), e = document.getElementById("e"), b = document.getElementById("b");
+  function duzelt(v) {
+    v = String(v || "").trim().replace(/\/+$/, "").replace(/\/mobil$/, "");
+    if (!v) return "";
+    if (!/^https?:\/\//i.test(v)) v = "http://" + v;
+    try { const u = new URL(v); return u.origin; } catch (x) { return ""; }
+  }
+  // Sunucu açık mı? (Yanıt okunamaz ama ulaşılıp ulaşılamadığı anlaşılır.)
+  async function ulasir(o) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
+    try { await fetch(o + "/api/info", { mode: "no-cors", cache: "no-store", signal: c.signal }); return true; } catch (x) { return false; } finally { clearTimeout(t); }
+  }
+  async function baglan(o) {
+    b.disabled = true; e.hidden = true; b.textContent = "Bağlanılıyor…";
+    if (await ulasir(o)) { set(o); location.replace(o + "/mobil"); return; }
+    b.disabled = false; b.textContent = "Bağlan";
+    e.textContent = "Sunucuya ulaşılamadı. Adresi ve internet bağlantını kontrol et."; e.hidden = false;
+  }
+  f.addEventListener("submit", ev => { ev.preventDefault(); const o = duzelt(a.value); if (!o) { e.textContent = "Adres anlaşılamadı"; e.hidden = false; return; } baglan(o); });
+  const kayitli = get(), degistir = /[?&]degistir=1/.test(location.search);
+  a.value = kayitli.replace(/^http:\/\//, "");
+  if (kayitli && !degistir) baglan(kayitli);
+})();
+</script>
+</body>
+</html>

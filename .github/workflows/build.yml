@@ -60,3 +60,50 @@ jobs:
             dist/*.exe
             dist/*.dmg
             dist/*.AppImage
+
+  # Android uygulaması (APK). Çekme isteklerinde denemek için Actions'a, sürüm yayınında Sürümler sayfasına konur.
+  android:
+    needs: [test, paket]
+    if: ${{ !cancelled() && needs.test.result == 'success' && needs.paket.result != 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: mobil-uygulama
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm ci
+      - run: npx cap add android
+      # Sunucu çoğu zaman yalnızca http:// (HTTPS'siz) olduğu için düz bağlantıya izin ver.
+      - run: sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+      - name: Simgeler
+        continue-on-error: true
+        run: npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#1F6F6B' --iconBackgroundColorDark '#1F6F6B' --splashBackgroundColor '#111518' --splashBackgroundColorDark '#111518'
+      - run: npx cap sync android
+      - run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        working-directory: mobil-uygulama/android
+      - id: rel
+        shell: bash
+        run: |
+          V=$(node -p "require('../package.json').version")
+          cp android/app/build/outputs/apk/debug/app-debug.apk "ZarMasasi-$V-android.apk"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then echo "tag=v$V" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.rel.outputs.tag == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: zar-masasi-android
+          path: mobil-uygulama/ZarMasasi-*-android.apk
+          retention-days: 7
+      - if: steps.rel.outputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: Zar Masası ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: mobil-uygulama/ZarMasasi-*-android.apk

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F6F6B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zar Masası">
+<link rel="manifest" href="/mobil/manifest.webmanifest">
+<link rel="icon" href="/mobil/ikon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/mobil/ikon-192.png">
+<title>Zar Masası</title>
+<link rel="stylesheet" href="/mobil/mobil.css">
+</head>
+<body>
+<script src="/shim.js"></script>
+<div id="uyg" hidden>
+  <header class="ust">
+    <button class="geri" id="geri" aria-label="Geri" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h1 id="baslik">Zar Masası</h1>
+    <span class="sp"></span>
+    <button class="ustbtn" id="kapat" aria-label="Kapat" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <a class="benbtn" id="benbtn" href="#profil" aria-label="Profilim"></a>
+  </header>
+  <main id="ekran" tabindex="-1"></main>
+  <nav class="alt" id="alt" aria-label="Bölümler">
+    <a href="#forum" data-sek="forum"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg><span>Forum</span></a>
+    <a href="#mesajlar" data-sek="mesajlar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/></svg><span>Mesajlar</span><b class="rozet" id="rMesaj" hidden></b></a>
+    <a href="#arkadaslar" data-sek="arkadaslar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.2 5 2.5 5 5.8"/></svg><span>Arkadaşlar</span><b class="rozet" id="rArk" hidden></b></a>
+    <a href="#masalar" data-sek="masalar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span>Masalar</span></a>
+    <a href="#zar" data-sek="zar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M12 2 7 12h10zM7 12l5 10 5-10"/></svg><span>Zar</span></a>
+  </nav>
+</div>
+<div class="tost" id="tost" role="status" aria-live="polite" hidden></div>
+<script src="/mobil/mobil.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "appId": "org.zarmasasi.mobil",
+  "appName": "Zar Masası",
+  "webDir": "www",
+  "appendUserAgent": "ZarMasasiApp",
+  "backgroundColor": "#111518",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  }
+}

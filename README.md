@@ -63,10 +63,24 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | Veri klasörü | `--data` | `ZM_DATA` | `./zar-masasi-veri` |
 | Masa şifresi | `--password` | `ZM_PASSWORD` | yok |
 | Masa adı | `--name` | `ZM_NAME` | `Zar Masası` |
+| Hesap | `--hesap` | `ZM_HESAP` | `zorunlu` (herkes kullanıcı adı + şifreyle girer); `istege-bagli` hesapsız girişe de izin verir |
 | Claude API anahtarı | | `ANTHROPIC_API_KEY` | yok (yapay zekâ kapalı) |
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
 
 İnternete açık bir sunucuda HTTPS için önüne bir ters vekil (Caddy, nginx) koyman önerilir. WebSocket yolu `/ws`'dir. Kullanıcılar uygulamada `https://masa.ornek.com` gibi tam adresi yazabilir.
+
+### Hesaplar, profil, arkadaşlar ve mesajlar
+
+Sunucuda herkes yalnızca bir **kullanıcı adı ve şifre** belirleyerek hesap açar (e-posta ya da başka bilgi istenmez; bu yüzden unutulan şifre sıfırlanamaz). Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
+
+### Mobil uygulama
+
+Telefon için iki yol var, ikisi de ücretsiz ve aynı ekranları açar (forum, mesajlar, arkadaşlar, profil, masalar, zar; masa açılınca karakter kağıtları, notlar, savaş sırası, zar tepsisi ve masa sohbeti; harita ve harita düzenleyici yok):
+
+- **Android uygulaması:** [Sürümler](../../releases) sayfasındaki `ZarMasasi-…-android.apk` dosyasını telefona indirip kur (bilinmeyen kaynaklardan yüklemeye izin vermek gerekir). İlk açılışta sunucu adresini sorar.
+- **Tarayıcı (Android ve iPhone):** telefonda `http://SUNUCU-ADRESİ/mobil` aç, tarayıcı menüsünden "Ana ekrana ekle" de.
+
+Uygulamanın ekranları sunucudan gelir (`web/mobil/`); sunucu güncellenince telefondaki uygulama da güncellenir. APK kaynağı `mobil-uygulama/` klasöründedir.
 
 ### Yapay zekâ
 
