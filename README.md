@@ -17,6 +17,8 @@ Arayüz yan menüdeki, lobideki ya da masaüstü başlangıç ekranındaki düny
 
 **Masa oyunları:** masa ekranının üstündeki **Masa oyunları** düğmesi (ya da `/oyunlar` adresi) Mangala, Türk daması, Dokuz taş, Ur Kraliyet Oyunu ve Hnefatafl için ayrı bir sayfa açar. Aynı masadaki herkes tahta açıp koltuğa oturabilir, diğerleri izler; her hamleyi sunucu kurallara göre denetler. Ayrıntılar: [docs/masa-oyunlari.md](docs/masa-oyunlari.md).
 
+**Kart ve taş oyunları:** Aynı sayfada desteli, taşlı, gizli elli oyunlar için bir kart masası var. Oyuncular kartları sürükler, desteden çeker, kapalı kartlara gizlice bakar, can gibi sayaçları değiştirir. Eller ve kapalı kartlar yalnızca görmesi gerekenlere gönderilir ve her hareket günlüğe yazılır; kuralları masadaki gibi oyuncular uygular. Hazır gelen oyun: **Kazan ya da Katlet** (Orijinal ve Claude Versiyonu). **Oyun atölyesi** ("+ Kendi oyununu yap") ile herkes kendi oyununu yapabilir: desteler ve kartlar (resim yüklenebilir ya da yazıyla), taşlar, oyuncu sayaçları, masadaki alanlar, başlangıç dağıtımı, sürükleyerek masa düzeni ve kurallar.
+
 **Sohbet:** oyun masasının sağ altındaki **Sohbet** düğmesi masadakilerin yazıştığı kutuyu açar. Zar atışları da sohbete düşer (**Zarlar** kutusuyla gizlenebilir; `/r 1d20+5` yazmak da zar atar). **Kime** listesinden bir oyuncu seçilirse (ya da `/w Ad mesaj`) mesaj fısıltı olur: yalnızca gönderen ve alan görür, DM bile göremez. 😀 düğmesi emoji seçer, **GIF** düğmesiyle bir GIF adresi yapıştırılır (Giphy ya da Tenor'da GIF'e sağ tık > Resim adresini kopyala) ya da bilgisayardan GIF yüklenir; hiçbir API anahtarı gerekmez. DM **Temizle** ile ortak sohbeti silebilir.
 
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
@@ -112,7 +114,8 @@ web/shim.js       Köprü: uygulamanın kullandığı window.claude.use(...) ara
 web/ext/          Eklentiler: ayrı pencereler, haritada açılır savaş takipçisi, karakter sihirbazı, kağıt rehberi, büyü kitabı ve seviye atlama (5e verisi SRD 5.1, CC-BY-4.0)
 server/           Sunucu: belge deposu, canlı oda (jeton sürükleme, ping, ses efekti), dosya yükleme, Claude vekili
 electron/         Masaüstü kabuğu: bağlan / host et ekranı
-web/oyunlar/      Masa oyunları sayfası (/oyunlar) ve kuralları (kurallar.js; sunucu da hamleleri bununla denetler)
+web/oyunlar/      Masa oyunları sayfası (/oyunlar) ve kuralları (kurallar.js; sunucu da hamleleri bununla denetler);
+                  kart ve taş masası (kartmasa.js motoru, kartmasa-ui.js, atolye.js), hazır kart oyunları (hazir.js, kk/ resimleri)
 web/i18n.js       İngilizce arayüz: ekrandaki Türkçe metinleri web/i18n/en.json sözlüğüyle çevirir
 tools/i18n/       npm run i18n: sözlükte eksik kalan metinleri tools/i18n/missing.json'a yazar
 ```
