@@ -9,6 +9,7 @@ const { WebSocketServer } = require("ws");
 const { Store, parentOf } = require("./store");
 const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
 const { kurHesap } = require("./hesap");
+const { kurKartMasa } = require("./kartmasa");
 
 const WEB = path.join(__dirname, "..", "web");
 const MAX_ASSET = 25 * 1024 * 1024;
@@ -30,10 +31,10 @@ function canAccess(uid, p) {
 // Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*), forum (forum/*),
 // arkadaşlıklar ve özel mesajlar (data/users/<kişi>/{arkadas,konusma,dm}/*) yalnızca sunucu tarafından yazılır:
 // tahtada kurallara uygun hamleler, sohbette, forumda ve mesajlarda gönderen damgalı iletiler.
-const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup"]);
+const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup", "kartmasa"]);
 function canWrite(uid, p) {
   const s = String(p).split("/");
-  return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
+  return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && s[0] !== "kartoyun" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
 }
 
 // Sohbet: masadaki ortak mesajlar chat/<oyun>/<mesaj>, fısıltılar iki tarafın da
@@ -73,6 +74,7 @@ function createServer(opts = {}) {
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
   const hesap = kurHesap({ store, conns, password, same });
+  const kartMasa = kurKartMasa({ store });
 
   /* ---------------- HTTP ---------------- */
   const appHtml = () => {
@@ -113,6 +115,7 @@ function createServer(opts = {}) {
       }
       // Masa oyunları sayfası
       if (req.method === "GET" && (p === "/oyunlar" || p === "/oyunlar/")) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "index.html")), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/oyunlar\/kk\/[a-z0-9-]+\.png$/.test(p) && fs.existsSync(path.join(WEB, "oyunlar", "kk", path.basename(p)))) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "kk", path.basename(p))), "image/png");
       if (req.method === "GET" && /^\/oyunlar\/[a-z0-9-]+\.(js|css)$/.test(p)) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
@@ -246,6 +249,7 @@ function createServer(opts = {}) {
           case "ai": return runAi(c, m, reply, fail);
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
           default:
+            if (kartMasa.OPS.has(m.op)) return reply(kartMasa.op(c, m)); // kart ve taş masaları, oyun atölyesi (server/kartmasa.js)
             if (hesap.OPS.has(m.op)) return reply(hesap.op(c, m)); // hesap, arkadaşlar, mesajlar, gruplar (server/hesap.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
@@ -318,6 +322,7 @@ function createServer(opts = {}) {
     const p = "boards/" + String(m.board || ""), b = canAccess(c.uid, p) && store.get(p);
     if (!b) return fail("not_found", "Böyle bir tahta yok");
     const g = OYUNLAR[b.oyun];
+    if (!g) return fail("invalid_argument", "Bu bir kart masası");
     if (m.op === "bgSit") {
       const k = m.koltuk === 1 ? 1 : 0, cur = b.koltuk[k];
       if (m.kalk) { if (cur && cur.id === me.id) b.koltuk[k] = null; else return fail("permission_denied", "Bu koltuk senin değil"); }

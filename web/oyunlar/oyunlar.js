@@ -8,84 +8,60 @@
   const LS = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
   /* ---------------- Bağlantı ---------------- */
-  let ws, seq = 0, ME = null, IS_OWNER = false;
-  const bekleyen = new Map(), abonelik = new Map();
-  const call = (op, a) => new Promise((res, rej) => { const id = ++seq; bekleyen.set(id, { res, rej }); ws.send(JSON.stringify({ id, op, ...a })); });
-
-  function baglan(form) {
-    return new Promise(done => {
-      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
-      ws.onopen = async () => {
-        try {
-          const r = await call("hello", { userId: LS.get("zm-uid"), secret: LS.get("zm-secret"), name: form.name, color: form.color || LS.get("zm-color"), password: form.password || LS.get("zm-pass") || "", ownerKey: LS.get("zm-owner") || "" });
-          ME = r.me; IS_OWNER = r.isOwner;
-          LS.set("zm-uid", r.me.id); LS.set("zm-secret", r.secret); LS.set("zm-name", r.me.name); if (form.password) LS.set("zm-pass", form.password);
-          $("#ben").textContent = ME.name;
-          for (const [sid, s] of abonelik) ws.send(JSON.stringify({ id: ++seq, op: "sub", sid, kind: s.kind, path: s.path }));
-          done(null);
-        } catch (e) { done(e); }
-      };
-      ws.onmessage = ev => {
-        const m = JSON.parse(ev.data);
-        if (m.re != null && !m.ev) { const w = bekleyen.get(m.re); if (w) { bekleyen.delete(m.re); m.error ? w.rej(Object.assign(new Error(m.error.message), m.error)) : w.res(m.result); } return; }
-        if (m.ev === "snap") { const s = abonelik.get(m.sid); if (s) s.fn(m); }
-      };
-      ws.onclose = () => { if (ME) setTimeout(() => baglan({ name: ME.name }), 1500); else done(Object.assign(new Error("Sunucuya bağlanılamadı"), { code: "network" })); };
-    });
-  }
-  function abone(kind, path, fn) { const sid = "o" + (++seq); abonelik.set(sid, { kind, path, fn }); call("sub", { sid, kind, path }); }
-
-  function girisFormu(ihtiyacSifre, hata) {
-    return new Promise(done => {
-      const ov = document.createElement("div"); ov.className = "giris";
-      ov.innerHTML = `<form><h2 style="margin:0">Masa oyunlarına katıl</h2>
-        <label>Adın<br><input name="ad" maxlength="40" required></label>
-        ${ihtiyacSifre ? `<label>Masa şifresi<br><input name="sifre" type="password" required></label>` : ""}
-        <p class="hata">${esc(hata || "")}</p><button class="btn pri">Katıl</button></form>`;
-      document.body.appendChild(ov);
-      const f = ov.querySelector("form"); f.ad.value = LS.get("zm-name") || ""; f.ad.focus();
-      f.onsubmit = e => { e.preventDefault(); ov.remove(); done({ name: f.ad.value.trim(), password: f.sifre ? f.sifre.value : "" }); };
-    });
+  // Sunucuya /shim.js ile bağlanılır: giriş/kayıt ekranı, yeniden bağlanma ve abonelikler orada.
+  const Z = window.zmSunucu;
+  let ME = null, IS_OWNER = false;
+  const call = (op, a) => Z.call(op, a);
+  // Koleksiyon aboneliği: fn({ initial, changes: [{ type, id, data }] })
+  function abone(kind, path, fn) {
+    let ilk = true;
+    Z.db().collection(path).onSnapshot(s => { fn({ initial: ilk, changes: s.docChanges().map(c => ({ type: c.type, id: c.doc.id, data: c.doc.data() })) }); ilk = false; }, () => {});
   }
 
   async function basla() {
-    let info = {}; try { info = await (await fetch("/api/info")).json(); } catch (e) {}
-    let form = { name: LS.get("zm-name") }, hata = "";
-    for (;;) {
-      if (!form.name || hata) form = await girisFormu(info.needsPassword && !LS.get("zm-owner"), hata);
-      const e = await baglan(form);
-      if (!e) break;
-      hata = e.message || "Bağlanılamadı";
-      if (e.code === "bad_password") LS.set("zm-pass", "");
-    }
+    await Z.ready;
+    ME = Z.me(); IS_OWNER = Z.isOwner();
+    $("#ben").textContent = ME.kullanici || ME.name;
+    const baglam = { call, Z, esc, me: () => ME, isOwner: () => IS_OWNER, tahtalar, kartOyunlari, ciz };
+    if (window.ZM_KARTUI) ZM_KARTUI.kur(baglam);
+    if (window.ZM_ATOLYE) ZM_ATOLYE.kur(baglam);
     abone("col", "boards", m => {
       if (m.initial) tahtalar.clear();
       for (const ch of m.changes) ch.type === "removed" ? tahtalar.delete(ch.id) : tahtalar.set(ch.id, ch.data);
       ciz();
     });
+    abone("col", "kartoyun", m => {
+      if (m.initial) kartOyunlari.clear();
+      for (const ch of m.changes) ch.type === "removed" ? kartOyunlari.delete(ch.id) : kartOyunlari.set(ch.id, ch.data);
+      if (!acikId() || acikId().startsWith("atolye")) ciz();
+    });
   }
 
   /* ---------------- Durum ---------------- */
-  const tahtalar = new Map();
+  const tahtalar = new Map(), kartOyunlari = new Map();
   let secim = [], hataMetni = "", sonId = null;
-  const acikId = () => (location.hash.match(/^#(b[a-z0-9]+)$/) || [])[1];
+  const acikId = () => (location.hash.match(/^#(b[a-z0-9]+|atolye(?:\/[a-z0-9-]+)?)$/) || [])[1];
   window.addEventListener("hashchange", () => { secim = []; hataMetni = ""; ciz(); });
 
   const RENK_GENEL = ["Açık taşlar", "Koyu taşlar"];
   const koltukAdi = (b, k) => (b.koltuk[k] ? b.koltuk[k].name : "boş");
-  const benimKoltuklarim = b => [0, 1].filter(k => b.koltuk[k] && ME && b.koltuk[k].id === ME.id);
+  const benimKoltuklarim = b => (b.oyun === "kart" ? [] : [0, 1]).filter(k => b.koltuk[k] && ME && b.koltuk[k].id === ME.id);
 
   function ciz() {
     const id = acikId();
+    if (!ME) return;
+    if (id && id.startsWith("atolye")) return window.ZM_ATOLYE ? ZM_ATOLYE.ciz(id.slice(7)) : null;
+    if (id && tahtalar.has(id) && tahtalar.get(id).oyun === "kart") return ZM_KARTUI.ciz(id, tahtalar.get(id));
+    if (window.ZM_KARTUI) ZM_KARTUI.kapat();
     if (id && tahtalar.has(id)) return cizTahta(id, tahtalar.get(id));
     if (id && !tahtalar.has(id)) { $("#ana").innerHTML = `<p class="bos">Bu tahta kapatılmış. <a href="#">Oyunlara dön</a></p>`; return; }
     cizLobi();
   }
 
   function cizLobi() {
-    const liste = [...tahtalar.entries()].sort((a, b) => b[1].updated - a[1].updated);
-    $("#ana").innerHTML = `
-      <h2>Yeni oyun aç</h2>
+    const liste = [...tahtalar.entries()].filter(([, b]) => b.oyun !== "kart" && OYUNLAR[b.oyun]).sort((a, b) => b[1].updated - a[1].updated);
+    $("#ana").innerHTML = (window.ZM_KARTUI ? ZM_KARTUI.lobiHtml() : "") + `
+      <h2>Tahta oyunları</h2>
       <div class="kartlar">${Object.entries(OYUNLAR).map(([k, g]) => `<div class="kart"><b>${esc(g.ad)}</b><p>${esc(g.kisa)}</p><div><button class="btn pri" data-yeni="${k}">Tahta aç</button></div></div>`).join("")}</div>
       <h2>Açık tahtalar</h2>
       <div class="liste">${liste.length ? liste.map(([id, b]) => `<div class="satir"><span class="ad">${esc(OYUNLAR[b.oyun]?.ad || b.oyun)}</span>
@@ -136,7 +112,7 @@
     const yeni = e.target.closest("[data-yeni]");
     try {
       if (yeni) { const r = await call("bgNew", { oyun: yeni.dataset.yeni }); await call("bgSit", { board: r.id, koltuk: 0 }); location.hash = r.id; return; }
-      if (!b) return;
+      if (!b || b.oyun === "kart") return;
       const o = e.target.closest("[data-otur]"), k = e.target.closest("[data-kalk]");
       if (o) return await call("bgSit", { board: id, koltuk: +o.dataset.otur });
       if (k) return await call("bgSit", { board: id, koltuk: +k.dataset.kalk, kalk: true });
