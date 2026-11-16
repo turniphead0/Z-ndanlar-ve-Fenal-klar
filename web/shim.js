@@ -137,10 +137,9 @@
         <div class="zm-gsek" role="tablist"><button type="button" role="tab" data-gmod="0" aria-selected="${!kayit}">Giriş yap</button><button type="button" role="tab" data-gmod="1" aria-selected="${kayit}">Hesap oluştur</button></div>
         <p>${kayit ? "Bir kullanıcı adı ve şifre belirle. Başka bilgi gerekmez." : "Kullanıcı adın ve şifrenle gir."}</p>
         <label><span class="lbl">Kullanıcı adı</span><input class="f" name="kullanici" maxlength="20" required autocomplete="username" autocapitalize="none" spellcheck="false"></label>
-        <label><span class="lbl">Şifre</span><input class="f" name="sifre" type="password" required minlength="${kayit ? 6 : 1}" autocomplete="${kayit ? "new-password" : "current-password"}"></label>
+        <label><span class="lbl">Şifre</span><input class="f" name="sifre" type="password" required minlength="${kayit ? 8 : 1}" autocomplete="${kayit ? "new-password" : "current-password"}"></label>
         ${kayit ? `<label><span class="lbl">Şifre (tekrar)</span><input class="f" name="sifre2" type="password" required autocomplete="new-password"></label>` : ""}
-        ${kayit && info.needsPassword ? `<label><span class="lbl">Sunucu şifresi</span><input class="f" name="masa" type="password" required></label>` : ""}
-        ${kayit ? `<p class="hint" style="font-size:12px">Kullanıcı adı 3-20 karakter: harf, rakam, _ . - kullanılabilir. Şifre en az 6 karakter. Şifreni unutma: e-posta olmadığı için sıfırlanamaz.</p>` : ""}
+        ${kayit ? `<p class="hint" style="font-size:12px">Kullanıcı adı 3-20 karakter: harf, rakam, _ . - kullanılabilir. Şifre en az 8 karakter olmalı, kullanıcı adını içermemeli. Şifreni unutma: e-posta olmadığı için sıfırlanamaz.</p>` : ""}
         <p class="jerr" hidden></p>
         <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}${o.istege ? `<button type="button" class="btn" data-hesapsiz>Hesapsız devam et</button>` : ""}<button class="btn pri">${kayit ? "Hesabı oluştur" : "Giriş yap"}</button></div></form>`;
       ov.querySelector("h2").textContent = info.name || "Zar Masası";
@@ -153,7 +152,7 @@
         try {
           if (kayit && f.sifre.value !== f.sifre2.value) throw err("invalid_argument", "Şifreler aynı değil");
           const body = { kullanici: f.kullanici.value.trim(), sifre: f.sifre.value };
-          if (kayit) Object.assign(body, { masaSifresi: f.masa ? f.masa.value : "", userId: LS.get("zm-uid"), secret: LS.get("zm-secret") });
+          if (kayit) Object.assign(body, { userId: LS.get("zm-uid"), secret: LS.get("zm-secret") });
           const r = await hesapIstek(kayit ? "kayit" : "giris", body);
           LS.set("zm-uid", r.userId); LS.set("zm-secret", r.secret); LS.set("zm-name", r.kullanici); LS.set("zm-hesap", r.kullanici);
           if (!LS.get("zm-color")) LS.set("zm-color", COLORS[Math.floor(Math.random() * COLORS.length)]);

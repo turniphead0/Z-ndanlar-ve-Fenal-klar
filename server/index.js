@@ -20,6 +20,20 @@ const rid = (n = 12) => crypto.randomBytes(n).toString("hex");
 const sha = s => crypto.createHash("sha256").update(String(s)).digest("hex");
 const same = (a, b) => { const x = Buffer.from(sha(a)), y = Buffer.from(sha(b)); return crypto.timingSafeEqual(x, y); };
 
+// Her yanıta eklenen güvenlik başlıkları: başka sitelerin sayfayı çerçeveye almasını, tarayıcının dosya türünü
+// tahmin etmesini ve adres bilgisinin dışarı sızmasını engeller.
+const GUVENLIK = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "SAMEORIGIN",
+  "Referrer-Policy": "same-origin",
+  "Content-Security-Policy": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "Cross-Origin-Resource-Policy": "same-site",
+};
+// Yüklenen dosyalar (SVG içinde betik olabilir) kendi başına açılınca hiçbir şey çalıştıramasın.
+const DOSYA_CSP = "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox";
+const BAGLANTI_SINIRI = 40; // bir adresten aynı anda en çok bu kadar WebSocket bağlantısı
+
 // Gizli yollar: _sys/* hiçbir istemciye açık değil; data/users/<kişi>/* yalnızca o kişiye açık.
 function canAccess(uid, p) {
   const s = String(p || "").split("/");
@@ -57,11 +71,17 @@ function createServer(opts = {}) {
   const assetDir = path.join(dataDir, "assets");
   fs.mkdirSync(assetDir, { recursive: true });
   const store = new Store(path.join(dataDir, "db.json"));
-  const password = opts.password || "";
   const name = opts.name || "Zar Masası";
   // Hesap: "zorunlu" ise herkes kullanıcı adı + şifreyle girer; "istege-bagli" ise hesapsız da oynanabilir
   // (masaüstünden host edilen masalar). Profil, arkadaşlar ve özel mesajlar hesap ister.
   const hesapModu = opts.hesap === "zorunlu" ? "zorunlu" : "istege-bagli";
+  // Ortak masa şifresi yalnızca hesapsız girilebilen masalarda kullanılır. Hesaplı sunucuda herkes kendi
+  // kullanıcı adı ve şifresiyle girdiği için ortak şifre yok sayılır.
+  const password = hesapModu === "zorunlu" ? "" : (opts.password || "");
+  // Ters vekil (Caddy, nginx) arkasındaysa gerçek adres X-Forwarded-For başlığından okunur; değilse bu başlık
+  // herkes tarafından uydurulabileceği için yok sayılır.
+  const vekil = !!opts.vekil;
+  const ipOf = req => String((vekil && String(req.headers["x-forwarded-for"] || "").split(",")[0].trim()) || req.socket.remoteAddress || "");
 
   // Sahip anahtarı: masanın sahibi bu anahtarla bağlanır (host eden kişi otomatik olarak).
   let ownerKey = opts.ownerKey || (store.get("_sys/config/owner") || {}).key;
@@ -73,7 +93,7 @@ function createServer(opts = {}) {
 
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
-  const hesap = kurHesap({ store, conns, password, same });
+  const hesap = kurHesap({ store, conns });
   const kartMasa = kurKartMasa({ store });
 
   /* ---------------- HTTP ---------------- */
@@ -90,7 +110,7 @@ function createServer(opts = {}) {
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
-    res.writeHead(code, { "Content-Type": type, "Cache-Control": "no-store", ...extra });
+    res.writeHead(code, { ...GUVENLIK, "Content-Type": type, "Cache-Control": "no-store", ...extra });
     res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
   }
   function authed(req) { return tokens.get(req.headers["x-zm-token"] || ""); }
@@ -122,7 +142,7 @@ function createServer(opts = {}) {
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
       }
       if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu });
-      if (hesap.http(req, res, p, send)) return;
+      if (hesap.http(req, res, p, send, ipOf)) return;
       // Mobil uygulama (telefon tarayıcısı ya da Android uygulaması): /mobil
       if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return send(res, 200, fs.readFileSync(path.join(WEB, "mobil", "index.html")), "text/html; charset=utf-8");
       if (req.method === "GET" && /^\/mobil\/[a-z0-9-]+\.(js|css|json|svg|png|webmanifest)$/.test(p)) {
@@ -141,7 +161,7 @@ function createServer(opts = {}) {
         return send(res, 200, { ok: true });
       }
       send(res, 404, { code: "not_found" });
-    } catch (e) { console.error(e); send(res, 500, { code: "internal", message: String(e.message || e) }); }
+    } catch (e) { console.error(e); send(res, 500, { code: "internal", message: "Sunucuda bir hata oldu" }); }
   });
 
   function uploadAsset(req, res) {
@@ -163,10 +183,11 @@ function createServer(opts = {}) {
     const meta = store.get("_sys/assets/" + id); const f = path.join(assetDir, path.basename(id));
     if (!meta || !fs.existsSync(f)) return send(res, 404, { code: "not_found" });
     const size = fs.statSync(f).size; const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range || "");
-    const head = { "Content-Type": meta.type, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=31536000, immutable" };
+    const head = { ...GUVENLIK, "Content-Type": meta.type, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=31536000, immutable" };
+    if (meta.type !== "application/pdf") head["Content-Security-Policy"] = DOSYA_CSP;
     if (range) {
       const start = range[1] ? +range[1] : size - +range[2], end = range[1] && range[2] ? Math.min(+range[2], size - 1) : size - 1;
-      if (start < 0 || start > end) { res.writeHead(416, { "Content-Range": `bytes */${size}` }); return res.end(); }
+      if (!(start >= 0) || start > end) { res.writeHead(416, { ...GUVENLIK, "Content-Range": `bytes */${size}` }); return res.end(); }
       res.writeHead(206, { ...head, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
       return fs.createReadStream(f, { start, end }).pipe(res);
     }
@@ -194,7 +215,12 @@ function createServer(opts = {}) {
     }
   });
 
-  wss.on("connection", ws => {
+  const ipSayac = new Map(); // adres -> açık bağlantı sayısı
+  wss.on("connection", (ws, req) => {
+    const ip = ipOf(req), n = (ipSayac.get(ip) || 0) + 1;
+    if (n > BAGLANTI_SINIRI) return ws.close(1008, "Bu adresten çok fazla bağlantı var");
+    ipSayac.set(ip, n);
+    ws.once("close", () => { const k = (ipSayac.get(ip) || 1) - 1; if (k > 0) ipSayac.set(ip, k); else ipSayac.delete(ip); });
     const c = { ws, uid: null, peer: rid(6), presence: {}, subs: new Map(), ai: new Map(), send: m => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); } };
     conns.add(c);
     ws.on("message", async raw => {
@@ -268,7 +294,7 @@ function createServer(opts = {}) {
     const valid = hesap.gecerli(uid, secret), known = valid ? store.get("_sys/users/" + uid) : null;
     const hesapli = !!(known && known.username);
     // Hesabıyla giren kişi sunucu şifresini kayıt olurken zaten vermiştir.
-    if (password && !isOwner && !hesapli && !(m.password && same(m.password, password))) return fail("bad_password", "Masa şifresi yanlış");
+    if (password && !isOwner && !hesapli && !(m.password && same(String(m.password), password))) return fail("bad_password", "Masa şifresi yanlış");
     if (hesapModu === "zorunlu" && !hesapli) return fail("login_required", "Kullanıcı adın ve şifrenle giriş yap");
     if (!valid) { uid = "u-" + rid(8); secret = rid(16); }
     const prev = store.get("_sys/users/" + uid) || { created: Date.now() };
@@ -415,7 +441,7 @@ function createServer(opts = {}) {
   return {
     server, store, ownerKey,
     listen(port = 7373, host = "0.0.0.0") { return new Promise((res, rej) => { server.once("error", rej); server.listen(port, host, () => res(server.address().port)); }); },
-    async close() { for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
+    async close() { hesap.kapat(); for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
   };
 }
 

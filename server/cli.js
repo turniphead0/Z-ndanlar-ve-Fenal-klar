@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Bağımsız sunucu: node server/cli.js [--port 7373] [--data ./veri] [--password şifre] [--name "Masa adı"]
-// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_PASSWORD, ZM_NAME, ZM_HESAP, ANTHROPIC_API_KEY, ZM_AI_MODEL
+// Bağımsız sunucu: node server/cli.js [--port 7373] [--data ./veri] [--name "Masa adı"]
+// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_NAME, ZM_HESAP, ZM_VEKIL, ZM_PASSWORD, ANTHROPIC_API_KEY, ZM_AI_MODEL
 // Hesap: bağımsız sunucuda herkes kullanıcı adı + şifreyle girer (--hesap istege-bagli ile hesapsız giriş de açılır).
+// Ortak masa şifresi (--password / ZM_PASSWORD) yalnızca hesapsız modda kullanılır.
+// Ters vekil (Caddy, nginx) arkasında çalışıyorsa ZM_VEKIL=1 ile gerçek ziyaretçi adresi X-Forwarded-For'dan okunur.
 const os = require("os");
 const { createServer } = require("./index");
 
@@ -9,7 +11,10 @@ const args = process.argv.slice(2);
 const arg = (k, env, d) => { const i = args.indexOf("--" + k); return i >= 0 ? args[i + 1] : process.env[env] ?? d; };
 
 (async () => {
-  const srv = createServer({ dataDir: arg("data", "ZM_DATA", "./zar-masasi-veri"), password: arg("password", "ZM_PASSWORD", ""), name: arg("name", "ZM_NAME", "Zar Masası"), hesap: arg("hesap", "ZM_HESAP", "zorunlu") });
+  const hesap = arg("hesap", "ZM_HESAP", "zorunlu"), password = arg("password", "ZM_PASSWORD", "");
+  const vekil = /^(1|true|evet|yes)$/i.test(String(arg("vekil", "ZM_VEKIL", "")));
+  const srv = createServer({ dataDir: arg("data", "ZM_DATA", "./zar-masasi-veri"), password, name: arg("name", "ZM_NAME", "Zar Masası"), hesap, vekil });
+  if (password && hesap === "zorunlu") console.log("Not: Hesaplı sunucuda ortak masa şifresi kullanılmaz (ZM_PASSWORD yok sayıldı). Herkes kendi kullanıcı adı ve şifresiyle girer.");
   const port = await srv.listen(+arg("port", "ZM_PORT", 7373));
   const ips = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === "IPv4" && !i.internal).map(i => i.address);
   console.log(`Zar Masası sunucusu çalışıyor: port ${port}`);

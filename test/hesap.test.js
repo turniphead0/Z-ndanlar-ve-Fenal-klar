@@ -63,7 +63,7 @@ test("profil, arkadaşlık ve özel mesaj", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
   const srv = createServer({ dataDir: dir, hesap: "zorunlu" });
   const port = await srv.listen(0, "127.0.0.1");
-  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "sifre123" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.body.userId, secret: r.body.secret })).me; c.token = null; return c; };
+  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "ejderha42" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.body.userId, secret: r.body.secret })).me; c.token = null; return c; };
   const a = await gir("ali"), b = await gir("berk"), z = await gir("zeyno");
 
   // Profil fotoğrafı: önce yüklenir, sonra profile yazılır. Başkasının dosyası kullanılamaz.
@@ -115,7 +115,7 @@ test("sohbet grupları", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
   const srv = createServer({ dataDir: dir, hesap: "zorunlu" });
   const port = await srv.listen(0, "127.0.0.1");
-  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "sifre123" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.body.userId, secret: r.body.secret })).me; return c; };
+  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "ejderha42" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.body.userId, secret: r.body.secret })).me; return c; };
   const a = await gir("ali"), b = await gir("berk"), z = await gir("zeyno"), y = await gir("yabanci");
   const dost = async (x, w) => { await x.call("arkadasIstek", { kisi: w.me.id }); await w.call("arkadasKabul", { kisi: x.me.id }); };
   await dost(a, b); await dost(a, z); await dost(b, y);
