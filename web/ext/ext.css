@@ -422,3 +422,17 @@
 .zm-sbtn i{font-style:normal;display:contents}
 @media (max-width:720px){ .zm-slme .zm-sbtn[data-zm-sosyal="mesajlar"] span,.zm-slme .zm-sbtn[data-zm-sosyal="arkadaslar"] span{display:none} }
 .zm-slme .zm-sbtn{color:var(--ink)}
+/* Botlar ve yönetim paneli (botlar.js) */
+.zm-botpano{position:fixed;inset:0;z-index:90;background:rgba(10,14,16,.45);display:flex;justify-content:flex-end}
+.zm-botic{width:min(460px,100%);height:100%;overflow:auto;background:var(--surface);color:var(--ink);box-shadow:-10px 0 30px rgba(0,0,0,.25);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.zm-yonetim{width:min(620px,100%)}
+.zm-botbas{display:flex;align-items:center;gap:10px}.zm-botbas h2{flex:1;margin:0;font-size:20px;display:flex;align-items:center;gap:8px}.zm-botbas h2 svg{width:22px;height:22px}
+.zm-botic h3{margin:8px 0 0;font-size:15px}
+.zm-bot{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--surface-2,transparent)}
+.zm-botsatir,.zm-hesap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.zm-botsatir .sp,.zm-hesap .sp{flex:1}
+.zm-botform{display:flex;gap:6px;flex-wrap:wrap}.zm-botform input,.zm-botform select,.zm-hesap select{flex:1 1 120px;min-width:0;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.zm-hesap select{flex:0 0 auto}
+.zm-hesaplar{display:grid;gap:6px}.zm-hesap{padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+.zm-rol{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink,#fff)}.zm-rol.tester{background:#8a5cf6;color:#fff}
+.zm-botnot{margin:0;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.zm-botnav svg{width:22px;height:22px}

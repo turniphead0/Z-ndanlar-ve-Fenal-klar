@@ -22,7 +22,7 @@
   const kimlik = (v, d) => { const s = String(v || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32); return s || d; };
   const renk = (v, d) => (/^#[0-9a-f]{6}$/i.test(String(v || "")) ? String(v) : d);
   // Resimler: sunucuya yüklenmiş dosyalar (/assets/…) ya da uygulamayla gelen resimler (/oyunlar/…png).
-  const resim = v => { const s = String(v || ""); return /^\/assets\/[a-z0-9]+\.(gif|webp|png|jpg)$/.test(s) || /^\/oyunlar\/[a-z0-9-]+\/[a-z0-9-]+\.(png|jpg|svg)$/.test(s) ? s : null; };
+  const resim = v => { const s = String(v || ""); return /^\/assets\/[a-z0-9]+\.(gif|webp|png|jpg)$/.test(s) || /^\/oyunlar\/[a-z0-9-]+\/[a-z0-9-]+\.(png|jpg|svg)$/.test(s) || /^\/gorsel\/[a-z0-9-]+\.svg$/.test(s) ? s : null; };
 
   /* ---------------- Tanımı denetle ve düzelt ---------------- */
   function tanimDuzelt(t) {

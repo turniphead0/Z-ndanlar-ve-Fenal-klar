@@ -210,3 +210,24 @@ main.genis{max-width:1560px}
 .at-onizle{border:1px solid var(--line);border-radius:8px;padding:8px 12px;max-height:420px;overflow-y:auto}
 .at-alt{display:flex;gap:8px;align-items:center;position:sticky;bottom:0;background:var(--bg);padding:10px 0;border-top:1px solid var(--line)}
 code{font-family:var(--f-num);font-size:12.5px;background:var(--surface-2);padding:1px 4px;border-radius:4px}
+
+/* Her tahta oyununa kendi masası ve taşları: masa örtüsü (web/gorsel) + tahta ve taş renkleri */
+.oyun[data-oyun] .tahta{background-size:cover;background-position:center;padding:18px;border-color:rgba(0,0,0,.35);box-shadow:inset 0 0 40px rgba(0,0,0,.35)}
+.oyun[data-oyun] .tahta svg{filter:drop-shadow(0 8px 14px rgba(0,0,0,.45))}
+.oyun[data-oyun="mangala"] .tahta{background-image:url(/gorsel/masa-kilim.svg)}
+.oyun[data-oyun="mangala"]{--wood:#7a4a26;--wood-2:#4f2c14;--wood-ink:#f3dfb8;--p0:#e8f4f2;--p0-isik:#ffffff;--p0-line:#2f6b66;--p1:#d9473b;--p1-isik:#ff9a8a;--p1-line:#5c140e}
+.oyun[data-oyun="dama"] .tahta{background-image:url(/gorsel/masa-yesil-cuha.svg)}
+.oyun[data-oyun="dama"]{--wood:#e9d3a6;--wood-2:#8c5a32;--wood-ink:#3a2412;--p0:#f6efe0;--p0-isik:#ffffff;--p0-line:#7a6a4a;--p1:#2a2522;--p1-isik:#6b625c;--p1-line:#000}
+.oyun[data-oyun="dokuztas"] .tahta{background-image:url(/gorsel/masa-tas.svg)}
+.oyun[data-oyun="dokuztas"]{--wood:#ddd6c6;--wood-2:#bfb6a2;--wood-ink:#4a443c;--p0:#f3f1ec;--p0-isik:#ffffff;--p0-line:#8a8478;--p1:#26313a;--p1-isik:#5d7183;--p1-line:#0b1014}
+.oyun[data-oyun="ur"] .tahta{background-image:url(/gorsel/masa-ahsap.svg)}
+.oyun[data-oyun="ur"]{--wood:#24448a;--wood-2:#c9a65a;--wood-ink:#f1e2b5;--gold:#f6d77a;--p0:#f4ecdc;--p0-isik:#ffffff;--p0-line:#8a7a5a;--p1:#1f1b1a;--p1-isik:#5a524e;--p1-line:#000}
+.oyun[data-oyun="hnefatafl"] .tahta{background-image:url(/gorsel/masa-ahsap.svg)}
+.oyun[data-oyun="hnefatafl"]{--wood:#a7865b;--wood-2:#6e5232;--wood-ink:#20160a;--p0:#efe3c8;--p0-isik:#fffaf0;--p0-line:#7a6440;--p1:#3a2a1e;--p1-isik:#7a5a40;--p1-line:#0e0905}
+.koltuk.bot{background:color-mix(in srgb,var(--accent,#2f8f86) 8%,transparent);border-radius:8px}
+.bot-ayar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:-2px 0 8px 26px;font-size:13px;color:var(--muted)}
+.bot-ayar select{font:inherit;padding:2px 6px;border-radius:6px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.bot-oto{display:inline-flex;gap:4px;align-items:center}
+.km-bot-ayar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;margin:4px 0;color:var(--muted)}
+.km-bot-ayar label{display:inline-flex;gap:4px;align-items:center}
+.km-bot-el{outline:2px dashed var(--accent);outline-offset:-2px}

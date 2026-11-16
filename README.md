@@ -48,7 +48,7 @@ Docker ile:
 ```sh
 docker build -t zar-masasi .
 docker run -d --name zar-masasi -p 7373:7373 -v zar-masasi-veri:/data \
-  -e ZM_NAME="Topluluk masası" -e ZM_PASSWORD="isteğe-bağlı" \
+  -e ZM_NAME="Topluluk masası" \
   zar-masasi
 ```
 
@@ -65,17 +65,21 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | --- | --- | --- | --- |
 | Port | `--port` | `ZM_PORT` | `7373` |
 | Veri klasörü | `--data` | `ZM_DATA` | `./zar-masasi-veri` |
-| Masa şifresi | `--password` | `ZM_PASSWORD` | yok |
+| Ortak masa şifresi | `--password` | `ZM_PASSWORD` | yok (yalnızca `ZM_HESAP=istege-bagli` iken kullanılır; hesaplı sunucuda yok sayılır) |
+| Ters vekil arkasında | `--vekil 1` | `ZM_VEKIL` | kapalı (açıksa ziyaretçi adresi `X-Forwarded-For`'dan okunur) |
 | Masa adı | `--name` | `ZM_NAME` | `Zar Masası` |
+| Adminler | `--admin` | `ZM_ADMIN` | yok (virgülle ayrılmış kullanıcı adları; örn. `cal`. Admin yönetim panelinden test hesabı açar, rol verir, botları kontrol eder) |
 | Hesap | `--hesap` | `ZM_HESAP` | `zorunlu` (herkes kullanıcı adı + şifreyle girer); `istege-bagli` hesapsız girişe de izin verir |
 | Claude API anahtarı | | `ANTHROPIC_API_KEY` | yok (yapay zekâ kapalı) |
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
 
-İnternete açık bir sunucuda HTTPS için önüne bir ters vekil (Caddy, nginx) koyman önerilir. WebSocket yolu `/ws`'dir. Kullanıcılar uygulamada `https://masa.ornek.com` gibi tam adresi yazabilir.
+İnternete açık bir sunucuda HTTPS için önüne bir ters vekil (Caddy, nginx) koyman önerilir; o zaman `ZM_VEKIL=1` de ver ki deneme sınırları gerçek ziyaretçi adresine göre çalışsın. WebSocket yolu `/ws`'dir. Kullanıcılar uygulamada `https://masa.ornek.com` gibi tam adresi yazabilir.
 
 ### Hesaplar, profil, arkadaşlar ve mesajlar
 
 Sunucuda herkes yalnızca bir **kullanıcı adı ve şifre** belirleyerek hesap açar (e-posta ya da başka bilgi istenmez; bu yüzden unutulan şifre sıfırlanamaz). Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
+
+**Güvenlik:** Hesaplı sunucuda ortak bir sunucu şifresi yoktur; herkes kendi kullanıcı adı ve şifresiyle girer. Şifreler scrypt ile özetlenerek saklanır. Yeni şifreler en az 8 karakter olmalı, çok bilinen şifreler ve kullanıcı adını içeren şifreler kabul edilmez. Bir hesaba 15 dakikada 5 yanlış şifre girilirse o hesap 15 dakika kilitlenir; bir adresten de 10 dakikada en çok 10 hatalı deneme yapılabilir. 30 gün kullanılmayan oturumlar kendiliğinden kapanır; profilde "Öteki cihazlardan çıkış yap" ile bütün öteki cihazlar çıkarılabilir, şifre değişince de öteki cihazlar hemen çıkar. Sunucu her yanıta güvenlik başlıkları ekler (başka sitelerin sayfayı çerçeveye alması engellenir) ve yüklenen dosyaları (örneğin SVG) betik çalıştıramayacak biçimde sunar.
 
 **Sohbet grupları:** Mesajlar ekranındaki "+ Yeni grup" ile bir ad verip arkadaşlarını seçerek grup kurulur (en çok 50 kişi). Her üye kendi arkadaşlarını gruba ekleyebilir, grubun adını değiştirebilir ya da gruptan ayrılabilir; üye çıkarmayı yalnızca grubu kuran yapar (kuran ayrılırsa grup en eski üyeye geçer). Masaüstü ve web uygulamasında ana ekranın üstündeki **Mesajlar**, **Arkadaşlar** ve profil düğmeleri, oyun içinde de sol raydaki **Mesajlar** düğmesi aynı ekranları açar.
 

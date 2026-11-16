@@ -3,7 +3,8 @@
 //
 // Veri yapısı (hepsini yalnızca sunucu yazar):
 //   _sys/hesap/<küçük harfli ad>        { uid, ad, salt, hash, created }   şifre özeti (scrypt), kimseye gösterilmez
-//   _sys/oturum/<sha(gizli)>            { uid, t }                          girişte verilen oturum anahtarları
+//   _sys/oturum/<sha(gizli)>            { uid, t, son }                     girişte verilen oturum anahtarları
+//                                                                         (OTURUM_OMRU boyunca kullanılmayan oturum kapanır)
 //   _sys/users/<kişi>                   { ..., username, foto, hakkinda }   herkese açık profil alanları
 //   data/users/<kişi>/arkadas/<öteki>   { durum: "gelen" | "giden" | "arkadas", t }
 //   data/users/<kişi>/konusma/<öteki>   { son, t, benden, okunmamis }      konuşma listesi
@@ -22,6 +23,23 @@ const DM_KEEP = 500;
 const GRUP_ID = /^gr-[0-9a-f]{12}$/, KISI_ID = /^u-[0-9a-f]{8,}$/;
 const GRUP_UYE = 50;
 const RESIM = /^\/assets\/[a-z0-9]+\.(gif|webp|png|jpg)$/;
+const GUN = 24 * 3600 * 1000;
+const OTURUM_OMRU = 30 * GUN; // bu kadar süre kullanılmayan oturum kendiliğinden kapanır
+// Hesap kilidi: bir hesaba 15 dakikada 5 yanlış şifre girilirse o hesaba 15 dakika giriş yapılamaz.
+const KILIT_DENEME = 5, KILIT_SURE = 15 * 60 * 1000;
+// Çok bilinen şifreler (yeni şifrede kabul edilmez).
+const ZAYIF = new Set(["12345678", "123456789", "1234567890", "87654321", "11111111", "00000000", "12341234", "11223344",
+  "password", "password1", "parola123", "sifre123", "şifre123", "qwertyui", "qwerty123", "asdfghjk", "abcd1234", "abc12345",
+  "iloveyou", "football", "trabzonspor", "galatasaray", "fenerbahce", "besiktas", "dragon12", "zarmasasi", "zindanlar"]);
+function sifreKurali(sifre, ad) {
+  sifre = String(sifre || "");
+  if (sifre.length < 8) return "Şifre en az 8 karakter olmalı";
+  if (sifre.length > 200) return "Şifre en çok 200 karakter olabilir";
+  const k = anahtar(sifre);
+  if (ZAYIF.has(k) || new Set(k).size < 3) return "Bu şifre çok kolay tahmin edilir, başka bir şifre seç";
+  if (ad && k.includes(anahtar(ad))) return "Şifre kullanıcı adını içermemeli";
+  return null;
+}
 
 function scrypt(sifre, salt) { return crypto.scryptSync(String(sifre), salt, 32).toString("hex"); }
 function sifreDogru(h, sifre) {
@@ -30,40 +48,73 @@ function sifreDogru(h, sifre) {
 }
 const hata = (code, message) => Object.assign(new Error(message), { code });
 
-function kurHesap({ store, conns, password, same }) {
+function kurHesap({ store, conns }) {
   const hesapOf = ad => store.get("_sys/hesap/" + anahtar(ad));
   const kisi = uid => (/^u-[0-9a-f]{8,}$/.test(String(uid || "")) && store.get("_sys/users/" + uid)) || null;
   const herkeseAcik = (uid, u) => ({ id: uid, kullanici: u.username || null, ad: u.name || u.username || "Oyuncu", renk: u.color || "#2f8f86", foto: u.foto || null });
 
-  // Kimlik doğrulama: eski (hesapsız) gizli anahtar ya da girişte verilmiş oturum anahtarı.
+  // Kimlik doğrulama: hesapsız kimliğin gizli anahtarı ya da girişte verilmiş oturum anahtarı.
+  // Hesabı olan biri yalnızca oturum anahtarıyla girer; hesapsızken kullandığı eski anahtar artık geçmez.
   function gecerli(uid, secret) {
     const u = kisi(uid); if (!u || !secret) return false;
-    if (u.secretHash && sha(secret) === u.secretHash) return true;
-    const o = store.get("_sys/oturum/" + sha(secret));
-    return !!(o && o.uid === uid);
+    if (!u.username && u.secretHash && sha(secret) === u.secretHash) return true;
+    const yol = "_sys/oturum/" + sha(secret), o = store.get(yol);
+    if (!o || o.uid !== uid) return false;
+    const now = Date.now();
+    if (now - (o.son || o.t || 0) > OTURUM_OMRU) { store.delete(yol); return false; }
+    if (now - (o.son || o.t || 0) > 3600000) store.set(yol, { ...o, son: now }); // kullanıldıkça süre uzar
+    return true;
   }
   function oturumAc(uid) {
-    const secret = rid(16);
-    store.set("_sys/oturum/" + sha(secret), { uid, t: Date.now() });
+    const secret = rid(16), t = Date.now();
+    store.set("_sys/oturum/" + sha(secret), { uid, t, son: t });
     return secret;
   }
+  // Süresi dolmuş oturumları temizle (açılışta ve günde bir).
+  function oturumTemizle() {
+    const now = Date.now();
+    for (const d of store.list("_sys/oturum")) if (!d.data || now - (d.data.son || d.data.t || 0) > OTURUM_OMRU) store.delete(d.path);
+  }
+  oturumTemizle();
+  const temizlik = setInterval(oturumTemizle, GUN); temizlik.unref();
 
   // Art arda yanlış şifre denemelerini yavaşlat: bir adresten 10 dakikada en çok 10 hatalı deneme.
   const denemeler = new Map();
   function sinir(ip) {
     const now = Date.now(), a = (denemeler.get(ip) || []).filter(t => now - t < 600000);
-    denemeler.set(ip, a);
+    if (a.length) denemeler.set(ip, a); else denemeler.delete(ip);
     if (a.length >= 10) throw hata("rate_limited", "Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar dene.");
     return () => { a.push(now); denemeler.set(ip, a); };
   }
+  // Hesap başına kilit: farklı adreslerden aynı hesaba şifre denenmesini de durdurur.
+  const hesapDeneme = new Map(); // anahtar(ad) -> { n, ilk, kilit }
+  function kilitli(k) {
+    const d = hesapDeneme.get(k), now = Date.now();
+    if (!d) return false;
+    if (d.kilit && now < d.kilit) return true;
+    if (d.kilit || now - d.ilk > KILIT_SURE) hesapDeneme.delete(k);
+    return false;
+  }
+  function hesapYanlis(k) {
+    const now = Date.now(); let d = hesapDeneme.get(k);
+    if (!d || now - d.ilk > KILIT_SURE) d = { n: 0, ilk: now, kilit: 0 };
+    d.n++; if (d.n >= KILIT_DENEME) d.kilit = now + KILIT_SURE;
+    hesapDeneme.set(k, d);
+  }
+  // Bellekte birikmesin diye eski kayıtları ara ara sil.
+  const supurge = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, a] of denemeler) if (!a.some(t => now - t < 600000)) denemeler.delete(ip);
+    for (const [k, d] of hesapDeneme) if (now - d.ilk > KILIT_SURE && !(d.kilit > now)) hesapDeneme.delete(k);
+  }, 600000); supurge.unref();
+  const SAHTE = { salt: rid(16), hash: "00".repeat(32) }; // olmayan hesapta da aynı süre harcansın
 
   function kayit(b, ip) {
     const yanlis = sinir(ip);
     const ad = String(b.kullanici || "").normalize("NFC").trim(), sifre = String(b.sifre || "");
     if (!ADI.test(ad)) throw hata("invalid_argument", "Kullanıcı adı 3-20 karakter olmalı; harf, rakam, _ . - kullanılabilir");
-    if (sifre.length < 6 || sifre.length > 200) throw hata("invalid_argument", "Şifre en az 6 karakter olmalı");
-    if (password && !(b.masaSifresi && same(b.masaSifresi, password))) { yanlis(); throw hata("bad_password", "Sunucu şifresi yanlış"); }
-    if (hesapOf(ad)) throw hata("taken", "Bu kullanıcı adı alınmış");
+    const zayif = sifreKurali(sifre, ad); if (zayif) throw hata("invalid_argument", zayif);
+    if (hesapOf(ad)) { yanlis(); throw hata("taken", "Bu kullanıcı adı alınmış"); }
     // Bu cihazda daha önce hesapsız oynandıysa o kimlik hesaba bağlanır (masalar, karakterler kaybolmaz).
     let uid = null;
     if (b.userId && gecerli(b.userId, b.secret) && !kisi(b.userId).username) uid = b.userId;
@@ -71,25 +122,30 @@ function kurHesap({ store, conns, password, same }) {
     const salt = rid(16);
     store.set("_sys/hesap/" + anahtar(ad), { uid, ad, salt, hash: scrypt(sifre, salt), created: Date.now() });
     const prev = kisi(uid) || { created: Date.now(), color: "#2f8f86" };
+    delete prev.secretHash; // hesapsız dönemin anahtarı artık geçmez, giriş yalnızca oturumla
     store.set("_sys/users/" + uid, { ...prev, username: ad, name: ad });
     return { userId: uid, secret: oturumAc(uid), kullanici: ad };
   }
 
   function giris(b, ip) {
     const yanlis = sinir(ip);
+    const k = anahtar(b.kullanici).slice(0, 40);
+    if (kilitli(k)) throw hata("rate_limited", "Bu hesaba çok fazla yanlış şifre girildi. 15 dakika sonra tekrar dene.");
     const h = hesapOf(b.kullanici);
-    if (!h || !sifreDogru(h, b.sifre || "")) { yanlis(); throw hata("bad_login", "Kullanıcı adı ya da şifre yanlış"); }
+    const dogru = sifreDogru(h || SAHTE, String(b.sifre || "").slice(0, 200));
+    if (!h || !dogru) { yanlis(); if (h) hesapYanlis(k); throw hata("bad_login", "Kullanıcı adı ya da şifre yanlış"); }
+    hesapDeneme.delete(k);
     return { userId: h.uid, secret: oturumAc(h.uid), kullanici: h.ad };
   }
 
   /* ---------------- HTTP: /api/hesap/kayit ve /api/hesap/giris ---------------- */
-  function http(req, res, p, send) {
+  function http(req, res, p, send, ipOf) {
     if (req.method !== "POST" || (p !== "/api/hesap/kayit" && p !== "/api/hesap/giris")) return false;
     const chunks = []; let size = 0;
     req.on("data", c => { size += c.length; if (size > 8192) req.destroy(); else chunks.push(c); });
     req.on("end", () => {
       let b; try { b = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { return send(res, 400, { code: "invalid_argument", message: "Geçersiz istek" }); }
-      const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+      const ip = ipOf(req);
       try { send(res, 200, p.endsWith("kayit") ? kayit(b, ip) : giris(b, ip)); }
       catch (e) { send(res, e.code === "rate_limited" ? 429 : e.code === "taken" ? 409 : e.code === "invalid_argument" ? 400 : e.code ? 401 : 500, { code: e.code || "internal", message: e.message }); }
     });
@@ -97,7 +153,7 @@ function kurHesap({ store, conns, password, same }) {
   }
 
   /* ---------------- WebSocket işlemleri ---------------- */
-  const OPS = new Set(["cikis", "sifreDegistir", "kisiAra", "kisi", "profilYaz", "arkadasIstek", "arkadasKabul", "arkadasSil", "dmGonder", "dmOkundu", "dmSil",
+  const OPS = new Set(["cikis", "tumCikis", "oturumlar", "sifreDegistir", "kisiAra", "kisi", "profilYaz", "arkadasIstek", "arkadasKabul", "arkadasSil", "dmGonder", "dmOkundu", "dmSil",
     "grupKur", "grupBilgi", "grupMesaj", "grupEkle", "grupCikar", "grupCik", "grupAdi"]);
   const arkadasYol = (a, b) => `data/users/${a}/arkadas/${b}`;
   const durum = (a, b) => (store.get(arkadasYol(a, b)) || {}).durum || null;
@@ -147,17 +203,30 @@ function kurHesap({ store, conns, password, same }) {
     const me = kisi(c.uid);
     if (!me || !me.username) throw hata("hesap_gerekli", "Bunun için bir hesapla giriş yapmalısın");
     switch (m.op) {
-      case "cikis": if (c.secret) store.delete("_sys/oturum/" + sha(c.secret)); return true;
+      case "cikis": if (c.secret) store.delete("_sys/oturum/" + sha(c.secret)); c.secret = null; return true;
+      case "tumCikis": { // öteki bütün cihazlardaki oturumları kapat; bu cihaz açık kalır
+        const bu = c.secret ? sha(c.secret) : null; let n = 0;
+        for (const d of store.list("_sys/oturum")) if (d.data && d.data.uid === c.uid && d.id !== bu) { store.delete(d.path); n++; }
+        for (const o of conns) if (o !== c && o.uid === c.uid && !gecerli(o.uid, o.secret)) o.ws.close(4001, "oturum kapandı");
+        return { kapanan: n };
+      }
+      case "oturumlar": { // kaç cihazda açık oturum var
+        let n = 0; for (const d of store.list("_sys/oturum")) if (d.data && d.data.uid === c.uid) n++;
+        return { sayi: n };
+      }
       case "sifreDegistir": {
+        const k = anahtar(me.username);
+        if (kilitli(k)) throw hata("rate_limited", "Çok fazla yanlış şifre girildi. 15 dakika sonra tekrar dene.");
         const h = hesapOf(me.username);
-        if (!h || !sifreDogru(h, m.eski || "")) throw hata("bad_login", "Şu anki şifre yanlış");
+        if (!h || !sifreDogru(h, String(m.eski || "").slice(0, 200))) { hesapYanlis(k); throw hata("bad_login", "Şu anki şifre yanlış"); }
         const yeni = String(m.yeni || "");
-        if (yeni.length < 6 || yeni.length > 200) throw hata("invalid_argument", "Yeni şifre en az 6 karakter olmalı");
+        const zayif = sifreKurali(yeni, me.username); if (zayif) throw hata("invalid_argument", "Yeni şifre: " + zayif.charAt(0).toLowerCase() + zayif.slice(1));
         const salt = rid(16);
         store.set("_sys/hesap/" + anahtar(me.username), { ...h, salt, hash: scrypt(yeni, salt) });
         // Öteki cihazlardaki oturumlar kapanır; bu cihaz açık kalır.
         const bu = c.secret ? sha(c.secret) : null;
         for (const d of store.list("_sys/oturum")) if (d.data && d.data.uid === c.uid && d.id !== bu) store.delete(d.path);
+        for (const o of conns) if (o !== c && o.uid === c.uid && !gecerli(o.uid, o.secret)) o.ws.close(4001, "oturum kapandı");
         return true;
       }
       case "kisiAra": {
@@ -307,7 +376,8 @@ function kurHesap({ store, conns, password, same }) {
     }
   }
 
-  return { OPS, op, http, gecerli, kisi, herkeseAcik };
+  const kapat = () => { clearInterval(temizlik); clearInterval(supurge); };
+  return { OPS, op, http, gecerli, kisi, herkeseAcik, kapat };
 }
 
-module.exports = { kurHesap, anahtar, ADI };
+module.exports = { kurHesap, anahtar, ADI, sifreKurali };

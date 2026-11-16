@@ -370,10 +370,12 @@
       <div class="renkler">${RENKLER.map(c => `<button class="renk" data-a="renk" data-c="${c}" style="background:${c}" aria-label="Renk ${c}" aria-pressed="${c === ME.color}"></button>`).join("")}</div>
       <h2 class="bolum">Şifre değiştir</h2>
       <form class="form" id="sifref"><input class="f" type="password" name="eski" placeholder="Şu anki şifre" autocomplete="current-password" required aria-label="Şu anki şifre">
-        <input class="f" type="password" name="yeni" placeholder="Yeni şifre (en az 6 karakter)" minlength="6" autocomplete="new-password" required aria-label="Yeni şifre">
+        <input class="f" type="password" name="yeni" placeholder="Yeni şifre (en az 8 karakter)" minlength="8" autocomplete="new-password" required aria-label="Yeni şifre">
         <input class="f" type="password" name="yeni2" placeholder="Yeni şifre (tekrar)" autocomplete="new-password" required aria-label="Yeni şifre tekrar"><button class="btn">Şifreyi değiştir</button></form>
       <h2 class="bolum">Hesap</h2>
-      <div class="form">${GOMULU ? "" : `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn kotu" data-a="cikis">Çıkış yap</button></div>`);
+      <div class="form">${GOMULU ? "" : `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn" data-a="tumcikis">Öteki cihazlardan çıkış yap</button><button class="btn kotu" data-a="cikis">Çıkış yap</button></div>
+      <p class="ipucu" id="oturumsay"></p>`);
+    Z.call("oturumlar", {}).then(r => { const p = $("#oturumsay"); if (p) p.textContent = r.sayi > 1 ? `Hesabın ${r.sayi} cihazda açık. 30 gün kullanılmayan cihazlarda oturum kendiliğinden kapanır.` : "Hesabın yalnızca bu cihazda açık."; }).catch(() => {});
     Z.call("kisi", { kisi: ME.id }).then(p => { const f = $("#hakf"); if (f) f.h.value = p.hakkinda || ""; }).catch(() => {});
     $("#hakf").addEventListener("submit", async e => { e.preventDefault(); try { await cagir("profilYaz", { hakkinda: e.target.h.value }); tost("Kaydedildi"); } catch (x) {} });
     $("#sifref").addEventListener("submit", async e => {
@@ -488,6 +490,7 @@
         case "fotosil": { await cagir("profilYaz", { foto: null }); ME.foto = null; rozetler(); git(true); return; }
         case "renk": { const p = await cagir("profilYaz", { renk: b.dataset.c }); ME.color = p.renk; try { localStorage.setItem("zm-color", p.renk); } catch (x) {} document.querySelectorAll("[data-a=renk]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); rozetler(); yenile(); return; }
         case "cikis": return onayli(b, () => Z.cikis());
+        case "tumcikis": return onayli(b, async () => { try { const r = await cagir("tumCikis", {}); tost(r.kapanan ? `${r.kapanan} cihazda oturum kapatıldı` : "Başka cihazda açık oturum yoktu"); git(true); } catch (x) {} });
         case "mkatil": { const g = st.oyunlar.get(b.dataset.g); await masaYaz(b.dataset.g, { players: { [ME.id]: { joined: Date.now(), charId: null } } }); tost((g && g.name || "Masa") + " masasına katıldın"); location.href = "/?mobil=1#" + b.dataset.g; return; }
         case "mistek": await masaYaz(b.dataset.g, { pending: { [ME.id]: Date.now() } }); tost("İstek gönderildi. Yönetici onaylayınca masayı açabilirsin."); return;
         case "mgeri": await masaYaz(b.dataset.g, { pending: { [ME.id]: null } }); return;

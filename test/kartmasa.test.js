@@ -37,7 +37,7 @@ test("kart masası: gizli el, kapalı kartlar ve izinler", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
   const srv = createServer({ dataDir: dir, hesap: "zorunlu" });
   const port = await srv.listen(0, "127.0.0.1");
-  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "sifre123" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.userId, secret: r.secret })).me; return c; };
+  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "ejderha42" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.userId, secret: r.secret })).me; return c; };
   const a = await gir("ayse"), b = await gir("berk"), z = await gir("zeyno");
   const { id } = await a.call("kmNew", { hazir: "kazan-katlet-claude" });
   await assert.rejects(a.call("kmStart", { board: id }), { code: "invalid_argument" }, "en az 3 kişi");
@@ -86,7 +86,7 @@ test("oyun atölyesi: kaydet, yalnızca sahibi değiştirir, masa aç", async ()
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
   const srv = createServer({ dataDir: dir, hesap: "zorunlu" });
   const port = await srv.listen(0, "127.0.0.1");
-  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "sifre123" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.userId, secret: r.secret })).me; return c; };
+  const gir = async ad => { const r = await post(port, "/api/hesap/kayit", { kullanici: ad, sifre: "ejderha42" }); const c = client(port); await c.opened; c.me = (await c.call("hello", { userId: r.userId, secret: r.secret })).me; return c; };
   const a = await gir("ayse"), b = await gir("berk");
   const tanim = { ad: "Ejderha Avı", oyuncu: { min: 1, max: 2 }, desteler: [{ id: "macera", ad: "Macera", kartlar: [{ id: "ejder", ad: "Ejder", metin: "3 hasar", adet: 4 }, { id: "iksir", ad: "İksir", adet: 6 }] }],
     taslar: [{ id: "piyon", ad: "Piyon", sekil: "piyon", renk: "oyuncu", adet: 1, herOyuncu: true }], sayaclar: [{ id: "can", ad: "Can", baslangic: 10 }],

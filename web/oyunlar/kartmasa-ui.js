@@ -7,10 +7,14 @@
   const $ = (s, r = document) => r.querySelector(s);
   let X = null; // oyunlar.js bağlamı: call, Z, esc, me, isOwner, tahtalar, kartOyunlari, ciz
   const esc = s => X.esc(s);
-  const st = { id: null, b: null, gizli: null, gizliKapat: null, surukle: null, bekleyen: false, menu: null, sekme: "kurallar" };
+  const st = { id: null, b: null, gizli: null, gizliKapat: null, surukle: null, bekleyen: false, menu: null, sekme: "kurallar", olarak: null, botGizli: null, botN: -1 };
+  // Admin ve test hesapları bir botun yerine oynayabilir: o sırada "ben" o bottur, el ve menüler onun adına çalışır.
+  const yonetici = () => { const m = X.me() || {}; return m.rol === "admin" || m.rol === "tester" || X.isOwner(); };
+  const ben = () => (st.olarak ? { id: st.olarak } : X.me());
+  const gizliV = () => (st.olarak ? st.botGizli : st.gizli);
 
   function tost(t) { const el = $("#tost"); if (!el) return; el.textContent = t; el.hidden = false; clearTimeout(tost.t); tost.t = setTimeout(() => (el.hidden = true), 2800); }
-  const islem = h => X.call("kmIslem", { board: st.id, islem: h }).catch(e => tost(e.message));
+  const islem = h => X.call("kmIslem", { board: st.id, islem: h, ...(st.olarak ? { bot: st.olarak } : {}) }).catch(e => tost(e.message));
 
   /* ---------------- Kart ve taş çizimi ---------------- */
   const kartTanim = (t, k) => k && KM.kartTanimi(t, k);
@@ -60,14 +64,16 @@
   /* ---------------- Masa ekranı ---------------- */
   function ciz(id, b) {
     if (st.id !== id) {
-      kapat(); st.id = id; st.gizli = null;
+      kapat(); st.id = id; st.gizli = null; st.olarak = null; st.botGizli = null; st.botN = -1;
       const me = X.me();
       st.gizliKapat = X.Z.db().collection(`data/users/${me.id}/kartmasa`).doc(id).onSnapshot(s => { st.gizli = s.exists ? s.data() : null; ciz(st.id, X.tahtalar.get(st.id)); }, () => {});
     }
     st.b = b;
+    if (st.olarak && !b.durum.koltuk.some(k => k && k.id === st.olarak)) st.olarak = null;
+    if (st.olarak && st.botN !== b.durum.n) botGorunumYenile();
     if (st.surukle) { st.bekleyen = true; return; }
     const ana = $("#ana"); ana.classList.add("genis");
-    const t = b.tanim, d = b.durum, me = X.me(), benKoltuk = d.koltuk.findIndex(k => k && k.id === me.id);
+    const t = b.tanim, d = b.durum, me = ben(), benKoltuk = d.koltuk.findIndex(k => k && k.id === me.id);
     const kaydir = { masa: ($(".km-yan") || {}).scrollTop };
     ana.innerHTML = `<p class="km-ust"><a href="#">← Bütün oyunlar</a><span class="sp"></span><b>${esc(t.ad)}</b>${t.surum ? `<span class="km-surum">${esc(t.surum)}</span>` : ""}</p>
       <div class="km-oyun">
@@ -76,6 +82,14 @@
       </div>`;
     if (kaydir.masa) $(".km-yan").scrollTop = kaydir.masa;
     olcekle();
+  }
+  // Botun yerine oynarken onun elini ve baktığı kartları sunucudan iste (yalnızca yöneticilere açık).
+  async function botGorunumYenile() {
+    const id = st.id, bot = st.olarak, b = st.b; if (!id || !bot || !b) return;
+    st.botN = b.durum.n;
+    const i = b.durum.koltuk.findIndex(k => k && k.id === bot);
+    try { const v = await X.call("botGorunum", { board: id, koltuk: i }); if (st.id === id && st.olarak === bot) { st.botGizli = v; ciz(st.id, X.tahtalar.get(st.id)); } }
+    catch (e) { tost(e.message); }
   }
   function kapat() {
     if (st.gizliKapat) st.gizliKapat();
@@ -92,12 +106,13 @@
     const dolu = d.koltuk.filter(Boolean).length;
     return `<div class="kutu km-bekle"><h3>Oyuncular bekleniyor</h3><p class="bos">${t.oyuncu.min === t.oyuncu.max ? t.oyuncu.max : t.oyuncu.min + "–" + t.oyuncu.max} kişiyle oynanır. Herkes bir koltuğa otursun, sonra biri oyunu başlatsın: kartlar karıştırılıp dağıtılır.</p>
       <div class="km-koltuklar">${d.koltuk.map((k, i) => `<div class="km-koltuk"><i style="background:${KM.RENKLER[i % KM.RENKLER.length]}"></i><span>${k ? esc(k.name) : "<i>boş koltuk</i>"}</span><span class="sp"></span>
-        ${k && k.id === X.me().id ? `<button class="btn" data-km="kalk">Kalk</button>` : k ? "" : `<button class="btn pri" data-km="otur" data-i="${i}">Otur</button>`}</div>`).join("")}</div>
+        ${k && k.id === X.me().id ? `<button class="btn" data-km="kalk">Kalk</button>` : k && k.bot ? `<button class="btn" data-km="bot-cikar" data-i="${i}">Botu kaldır</button>` : k ? "" : `<button class="btn pri" data-km="otur" data-i="${i}">Otur</button><button class="btn" data-km="bot-ekle" data-i="${i}" title="Bu koltuğa bilgisayar oyuncusu oturt">🤖 Bot</button>`}</div>`).join("")}</div>
+      <p class="bos" style="font-size:13px">Botlar sırası gelince kendiliğinden bir tur oynar: kart çeker, bir kart oynar ve sırayı devreder. Kart masasında kurallar uygulanmadığı için botlar oyunu basitçe oynar; admin ve test hesapları botun yerine her hamleyi kendileri de yapabilir.</p>
       <button class="btn pri" data-km="basla" ${dolu < t.oyuncu.min || benKoltuk < 0 ? "disabled" : ""}>Oyunu başlat (${dolu} kişi)</button></div>`;
   }
 
   function masaHtml(t, d) {
-    const g = st.gizli || { gor: {}, ustler: {} }, me = X.me();
+    const g = gizliV() || { gor: {}, ustler: {} };
     const out = [];
     for (const a of t.alanlar) out.push(`<div class="km-alan" style="left:${a.x}px;top:${a.y}px;width:${a.w}px;height:${a.h}px;--ar:${esc(a.renk)}"><span>${esc(a.ad)}</span></div>`);
     for (const [pid, p] of Object.entries(d.desteler)) {
@@ -126,15 +141,16 @@
 
   function elHtml(t, d, oturuyor) {
     if (!oturuyor) return `<p class="bos km-izle">Bu masayı izliyorsun.</p>`;
-    const el = (st.gizli && st.gizli.el) || [];
-    return `<div class="km-el" aria-label="Elin"><span class="km-el-bas">Elin (${el.length}) · yalnızca sen görürsün</span><div class="km-el-kartlar">${el.map(c => {
+    const el = (gizliV() && gizliV().el) || [];
+    const botAd = st.olarak && (d.koltuk.find(k => k && k.id === st.olarak) || {}).name;
+    return `<div class="km-el${st.olarak ? " km-bot-el" : ""}" aria-label="Elin"><span class="km-el-bas">${st.olarak ? `${esc(botAd)} botunun eli (${el.length}) · onun yerine oynuyorsun <button class="btn mini" data-km="olarak" data-k="">Kendine dön</button>` : `Elin (${el.length}) · yalnızca sen görürsün`}</span><div class="km-el-kartlar">${el.map(c => {
       const dt = desteTanim(t, c.k.split("/")[0]), w = Math.round(dt.w * 1.1), h = Math.round(dt.h * 1.1);
       return `<div class="km-kart el" data-tur="el" data-id="${c.iid}" style="width:${w}px;height:${h}px">${yuzHtml(t, c.k, c.k.split("/")[0])}</div>`;
     }).join("") || `<span class="bos">Elin boş.</span>`}</div></div>`;
   }
 
   function yanHtml(t, b, d, benKoltuk) {
-    const me = X.me(), g = st.gizli || { gor: {} };
+    const me = ben(), g = gizliV() || { gor: {} };
     const oyuncular = d.koltuk.map((k, i) => {
       if (!k) return "";
       const onu = (d.onu[k.id] || []).map(iid => {
@@ -146,6 +162,9 @@
       return `<div class="km-oyuncu${d.sira === i ? " sirada" : ""}" style="--or:${esc(k.renk)}"><div class="km-oy-bas"><i></i><b>${esc(k.name)}${k.id === me.id ? " (sen)" : ""}</b><span class="sp"></span><span class="km-elsay" title="Elindeki kart sayısı">🂠 ${elSay}</span>
         ${k.id !== me.id && benKoltuk >= 0 && elSay ? `<button class="btn mini" data-km="rastgele" data-k="${esc(k.id)}" title="Elinden rastgele bir kart seç">Rastgele kart</button>` : ""}
         <button class="btn mini" data-km="sira" data-i="${i}" title="Sırayı bu oyuncuya ver">Sıra</button></div>
+        ${k.bot && yonetici() ? `<div class="km-bot-ayar">🤖 <label title="Kapatınca bot kendiliğinden oynamaz"><input type="checkbox" data-km-oto="${i}"${k.oto !== false ? " checked" : ""}> Otomatik</label>
+          ${st.olarak === k.id ? `<button class="btn mini" data-km="olarak" data-k="">Kendine dön</button>` : `<button class="btn mini" data-km="olarak" data-k="${esc(k.id)}" title="Botun elini gör, onun adına kart oyna">Onun yerine oyna</button>`}
+          <button class="btn mini" data-km="bot-adim" data-i="${i}" title="Bot kendi turunu şimdi oynasın">Tur oynat</button></div>` : ""}
         ${sayac ? `<div class="km-sayaclar">${sayac}</div>` : ""}<div class="km-onu">${onu || `<span class="bos">Önünde kart yok</span>`}</div></div>`;
     }).join("");
     const log = (d.log || []).slice().reverse().map(l => { const k = d.koltuk.find(x => x && x.id === l.kisi); return `<li><i style="background:${esc(k ? k.renk : "#999")}"></i>${esc(l.m)}</li>`; }).join("");
@@ -195,7 +214,7 @@
 
   const desteler = (d, filtre) => Object.entries(d.desteler).filter(([, p]) => !filtre || filtre(p));
   const desteAlt = (d, f) => desteler(d).map(([pid, p]) => ({ ad: p.ad + (p.acik ? " (açık)" : ""), fn: () => islem({ ...f, nereye: "deste", deste: pid }) }));
-  const oyuncuAlt = (d, f) => d.koltuk.filter(k => k && k.id !== X.me().id).map(k => ({ ad: k.name, fn: () => islem({ ...f, kime: k.id }) }));
+  const oyuncuAlt = (d, f) => d.koltuk.filter(k => k && k.id !== ben().id).map(k => ({ ad: k.name, fn: () => islem({ ...f, kime: k.id }) }));
   const yakin = (d, n) => ({ x: 800 + ((d.n * 37 + (n || 0) * 26) % 260) - 130, y: 880 - ((d.n * 13) % 60) });
 
   function buyut(t, k, d) {
@@ -208,7 +227,7 @@
   }
 
   function nesneMenu(el, x, y) {
-    const b = st.b, t = b.tanim, d = b.durum, me = X.me(), g = st.gizli || { gor: {}, el: [] }, tur = el.dataset.tur, id = el.dataset.id;
+    const b = st.b, t = b.tanim, d = b.durum, me = ben(), g = gizliV() || { gor: {}, el: [] }, tur = el.dataset.tur, id = el.dataset.id;
     const oturuyor = !!d.el[me.id];
     if (tur === "deste") {
       const p = d.desteler[id];
@@ -266,7 +285,7 @@
     if (!st.id || e.button > 0) return;
     const el = e.target.closest(".km-ic [data-tur], .km-el [data-tur], .km-onu [data-tur]"); if (!el) return;
     e.preventDefault();
-    st.surukle = { el, x0: e.clientX, y0: e.clientY, oynadi: false, tur: el.dataset.tur, izle: !st.b.durum.el[X.me().id] }; // izleyiciler sürükleyemez
+    st.surukle = { el, x0: e.clientX, y0: e.clientY, oynadi: false, tur: el.dataset.tur, izle: !st.b.durum.el[ben().id] }; // izleyiciler sürükleyemez
     el.setPointerCapture(e.pointerId);
   });
   document.addEventListener("pointermove", e => {
@@ -304,7 +323,7 @@
   });
   document.addEventListener("dblclick", e => {
     const el = e.target.closest(".km-kart[data-id]"); if (!el || !st.b) return;
-    const d = st.b.durum, g = st.gizli || { gor: {}, el: [] }, id = el.dataset.id;
+    const d = st.b.durum, g = gizliV() || { gor: {}, el: [] }, id = el.dataset.id;
     if (el.dataset.tur === "el") { const c = g.el.find(c => c.iid === id); if (c) { menuKapat(); buyut(st.b.tanim, c.k, c.k.split("/")[0]); } return; }
     const c = d.kartlar[id], k = c && (c.acik ? c.k : g.gor[id]); if (k) { menuKapat(); buyut(st.b.tanim, k, c.d); }
   });
@@ -321,6 +340,10 @@
     try {
       if (a === "otur") await X.call("kmSit", { board, koltuk: +b.dataset.i });
       else if (a === "kalk") await X.call("kmSit", { board, kalk: true });
+      else if (a === "bot-ekle") await X.call("botEkle", { board, koltuk: +b.dataset.i });
+      else if (a === "bot-cikar") await X.call("botCikar", { board, koltuk: +b.dataset.i });
+      else if (a === "bot-adim") await X.call("botAdim", { board, koltuk: +b.dataset.i });
+      else if (a === "olarak") { st.olarak = b.dataset.k || null; st.botGizli = null; st.botN = -1; menuKapat(); ciz(st.id, st.b); if (st.olarak) tost("Artık botun yerine oynuyorsun: onun elini görüyorsun, yaptığın her şey onun adına"); }
       else if (a === "basla") await X.call("kmStart", { board });
       else if (a === "sifirla") { if (confirm("Oyun baştan başlasın mı? Kartlar toplanır, herkes koltuğunda kalır.")) await X.call("kmReset", { board }); }
       else if (a === "sil") { if (confirm("Masa herkes için kapansın mı?")) { await X.call("kmDelete", { board }); location.hash = ""; } }
@@ -338,6 +361,11 @@
         ]);
       }
     } catch (err) { tost(err.message); }
+  });
+
+  document.addEventListener("change", async e => {
+    const o = e.target.closest("[data-km-oto]"); if (!o || !st.id) return;
+    try { await X.call("botAyar", { board: st.id, koltuk: +o.dataset.kmOto, oto: o.checked }); } catch (err) { tost(err.message); }
   });
 
   window.ZM_KARTUI = { kur: x => (X = x), lobiHtml, ciz, kapat, yuzHtml, arkaHtml, tasHtml, kuralHtml, olcekle };

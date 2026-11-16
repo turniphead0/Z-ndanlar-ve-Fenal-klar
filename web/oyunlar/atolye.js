@@ -65,7 +65,7 @@
   }
   function yeniden() { const ana = $("#ana"); ana.dataset.at = "-"; const y = scrollY; ciz(yukluId); scrollTo(0, y); }
 
-  const resimAlani = (yol, url, etiket) => `<span class="at-resim">${url ? `<img src="${esc(url)}" alt="">` : ""}<button class="btn mini" data-at="yukle" data-yol="${yol}">${url ? "Değiştir" : etiket || "Resim yükle"}</button>${url ? `<button class="btn mini" data-at="resimsil" data-yol="${yol}">Kaldır</button>` : ""}</span>`;
+  const resimAlani = (yol, url, etiket) => `<span class="at-resim">${url ? `<img src="${esc(url)}" alt="">` : ""}<button class="btn mini" data-at="yukle" data-yol="${yol}">${url ? "Değiştir" : etiket || "Resim yükle"}</button>${window.ZM_GORSEL_SEC ? `<button class="btn mini" data-at="hazir" data-yol="${yol}" title="Uygulamayla gelen hazır görsellerden seç">Hazır</button>` : ""}${url ? `<button class="btn mini" data-at="resimsil" data-yol="${yol}">Kaldır</button>` : ""}</span>`;
   const boyAnahtar = d => (Object.entries(BOYLAR).find(([, b]) => b[0] === d.w && b[1] === d.h) || ["ozel"])[0];
 
   function formHtml() {
@@ -247,6 +247,12 @@
       else if (a === "sil-oge") { const p = b.dataset.yol.split("."), i = +p.pop(), liste = p.reduce((o, k) => o[k], t); if (p[0] === "desteler" && p.length === 1 && !confirm("Deste ve bütün kartları silinsin mi?")) return; liste.splice(i, 1); }
       else if (a === "yukle") { const [f] = await dosyalarSec(false); if (!f) return; yaz(b.dataset.yol, await yukleDosya(f)); }
       else if (a === "resimsil") yaz(b.dataset.yol, null);
+      else if (a === "hazir") { // uygulamayla gelen masa arka planları, taş ve jeton resimleri
+        const K = window.ZM_GORSEL, masa = b.dataset.yol === "masa.resim";
+        const s = await window.ZM_GORSEL_SEC(masa ? { baslik: "Hazır masa arka planı", gruplar: [{ ad: "Masa örtüleri", liste: K.masa }, { ad: "Haritalar", liste: K.harita }] }
+          : { baslik: "Hazır taş ve jeton resmi", kare: true, gruplar: [{ ad: "Taşlar", liste: K.tas }, { ad: "Jetonlar", liste: K.jeton }] });
+        if (!s) return; yaz(b.dataset.yol, s.url);
+      }
       else if (a === "kaydet" || a === "kaydet-ac") {
         if (!t.ad.trim()) { tost("Oyuna bir ad ver"); $('[data-f="ad"]').focus(); return; }
         b.disabled = true;

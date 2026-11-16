@@ -46,6 +46,12 @@
   const RENK_GENEL = ["Açık taşlar", "Koyu taşlar"];
   const koltukAdi = (b, k) => (b.koltuk[k] ? b.koltuk[k].name : "boş");
   const benimKoltuklarim = b => (b.oyun === "kart" ? [] : [0, 1]).filter(k => b.koltuk[k] && ME && b.koltuk[k].id === ME.id);
+  // Admin ve test hesapları botları yönetir: otomatik oynamayı kapatınca botun yerine tahtaya tıklayarak oynarlar.
+  const yonetici = () => !!(ME && (ME.rol === "admin" || ME.rol === "tester")) || IS_OWNER;
+  const elimdekiBotlar = b => (b.oyun === "kart" || !yonetici() ? [] : [0, 1]).filter(k => b.koltuk[k] && b.koltuk[k].bot && b.koltuk[k].oto === false);
+  const oynadigimKoltuklar = b => benimKoltuklarim(b).concat(elimdekiBotlar(b));
+  const masadayim = b => !!ME && (b.olusturan === ME.id || IS_OWNER || yonetici() || b.koltuk.some(k => k && k.id === ME.id));
+  const ZORLUK = (window.ZM_BOT && ZM_BOT.ZORLUK) || { kolay: "Kolay", orta: "Orta", zor: "Zor" };
 
   function ciz() {
     const id = acikId();
@@ -71,24 +77,31 @@
 
   function cizTahta(id, b) {
     if (sonId !== id) { secim = []; sonId = id; }
-    const g = OYUNLAR[b.oyun], d = b.durum, benim = benimKoltuklarim(b);
+    const g = OYUNLAR[b.oyun], d = b.durum, benim = oynadigimKoltuklar(b);
     const RENK = g.taraflar || RENK_GENEL, renk = k => (g.renk ? g.renk[k] : k);
     const oynayabilir = !d.bitti && benim.includes(d.sira);
     const yasal = oynayabilir ? g.hamleler(d) : [];
     const uyan = yasal.filter(h => ayni(h.slice(0, secim.length), secim));
     const ipucu = new Set(uyan.map(h => h[secim.length]));
-    const cevir = benim.length === 1 && benim[0] === 1; // yalnızca ikinci koltuktaysan tahtayı kendi tarafından gör
+    const cevir = benimKoltuklarim(b).length === 1 && benimKoltuklarim(b)[0] === 1; // yalnızca ikinci koltuktaysan tahtayı kendi tarafından gör
+    const siradaki = b.koltuk[d.sira];
     const durumMetni = d.bitti
       ? (d.bitti.kazanan == null ? `Berabere (${d.bitti.neden})` : `Kazanan: ${koltukAdi(b, d.bitti.kazanan)} · ${RENK[d.bitti.kazanan]} (${d.bitti.neden})`)
       : !b.koltuk[d.sira] ? `Sıra ${RENK[d.sira].toLowerCase()}da, ama koltuk boş`
-      : oynayabilir ? `Sıra sende (${RENK[d.sira].toLowerCase()})` : `Sıra ${koltukAdi(b, d.sira)} oyuncusunda`;
+      : oynayabilir && siradaki.bot ? `Sıra ${siradaki.name} botunda: tahtaya tıklayarak onun yerine oynuyorsun`
+      : oynayabilir ? `Sıra sende (${RENK[d.sira].toLowerCase()})`
+      : siradaki.bot ? `Sıra ${siradaki.name} botunda${siradaki.oto === false ? " (otomatik kapalı, bir yöneticinin oynatmasını bekliyor)" : ", düşünüyor…"}`
+      : `Sıra ${koltukAdi(b, d.sira)} oyuncusunda`;
     const koltukHtml = k => {
       const x = b.koltuk[k], mine = x && ME && x.id === ME.id;
-      return `<div class="koltuk" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
-        ${mine ? `<button class="btn" data-kalk="${k}">Kalk</button>` : x ? "" : `<button class="btn pri" data-otur="${k}">Otur</button>`}</div>`;
+      const botDug = !x && masadayim(b) ? `<button class="btn" data-bot-ekle="${k}" title="Bu koltuğa bilgisayar oyuncusu oturt">🤖 Bot</button>` : "";
+      const botAyar = x && x.bot ? `<div class="bot-ayar">${masadayim(b) ? `<label>Zorluk <select data-bot-zorluk="${k}">${Object.entries(ZORLUK).map(([z, ad]) => `<option value="${z}"${x.zorluk === z ? " selected" : ""}>${esc(ad)}</option>`).join("")}</select></label><button class="btn" data-bot-cikar="${k}">Botu kaldır</button>` : ""}
+        ${yonetici() ? `<label class="bot-oto" title="Kapatınca bot kendiliğinden oynamaz; sırası gelince sen onun yerine oynarsın"><input type="checkbox" data-bot-oto="${k}"${x.oto !== false ? " checked" : ""}> Otomatik oynasın</label>${x.oto === false && !d.bitti && d.sira === k ? `<button class="btn" data-bot-adim="${k}" title="Botun kendi seçtiği hamleyi yaptır">Bot hamlesini yap</button>` : ""}` : ""}</div>` : "";
+      return `<div class="koltuk${x && x.bot ? " bot" : ""}" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
+        ${mine ? `<button class="btn" data-kalk="${k}">Kalk</button>` : x ? "" : `<button class="btn pri" data-otur="${k}">Otur</button>${botDug}`}</div>${botAyar}`;
     };
     $("#ana").innerHTML = `<p><a href="#">← Bütün oyunlar</a></p>
-      <div class="oyun"><div class="tahta">${CIZICI[b.oyun](d, { ipucu, secim, cevir })}</div>
+      <div class="oyun" data-oyun="${esc(b.oyun)}"><div class="tahta">${CIZICI[b.oyun](d, { ipucu, secim, cevir }).replace(/^<svg([^>]*)>/, "<svg$1>" + TAS_DEFS)}</div>
       <div class="yan">
         <div class="kutu"><h3>${esc(g.ad)}</h3>${koltukHtml(0)}${koltukHtml(1)}
           <div class="durum${d.bitti ? " bitti" : ""}">${esc(durumMetni)}</div>
@@ -96,7 +109,7 @@
           <div class="hata" role="alert">${esc(hataMetni)}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-sifirla>Yeniden başlat</button><button class="btn tehlike" data-sil>Tahtayı kapat</button></div></div>
         <div class="kutu"><h3>Kurallar</h3><ul class="kurallar">${g.kurallar.map(k => `<li>${esc(k)}</li>`).join("")}</ul>
-          <p class="bos" style="margin:0;font-size:13px">Tek bilgisayarda iki kişi oynayacaksanız iki koltuğa da oturabilirsin.</p></div>
+          <p class="bos" style="margin:0;font-size:13px">Tek bilgisayarda iki kişi oynayacaksanız iki koltuğa da oturabilirsin. Rakip yoksa boş koltuğa bir bot oturt.</p></div>
       </div></div>`;
   }
 
@@ -116,6 +129,12 @@
       const o = e.target.closest("[data-otur]"), k = e.target.closest("[data-kalk]");
       if (o) return await call("bgSit", { board: id, koltuk: +o.dataset.otur });
       if (k) return await call("bgSit", { board: id, koltuk: +k.dataset.kalk, kalk: true });
+      const bot = e.target.closest("[data-bot-ekle],[data-bot-cikar],[data-bot-adim]");
+      if (bot) {
+        if (bot.dataset.botEkle) return await call("botEkle", { board: id, koltuk: +bot.dataset.botEkle, zorluk: "orta" });
+        if (bot.dataset.botCikar) return await call("botCikar", { board: id, koltuk: +bot.dataset.botCikar });
+        return await call("botAdim", { board: id, koltuk: +bot.dataset.botAdim });
+      }
       if (e.target.closest("[data-sifirla]")) { if (confirm("Oyun baştan başlasın mı?")) await call("bgReset", { board: id }); return; }
       if (e.target.closest("[data-sil]")) { if (confirm("Tahta herkes için kapansın mı?")) { await call("bgDelete", { board: id }); location.hash = ""; } return; }
       const kare = e.target.closest("[data-k]");
@@ -125,18 +144,35 @@
 
   async function kareTik(id, b, k) {
     const g = OYUNLAR[b.oyun], d = b.durum;
-    if (d.bitti || !benimKoltuklarim(b).includes(d.sira)) return;
+    if (d.bitti || !oynadigimKoltuklar(b).includes(d.sira)) return;
     const yasal = g.hamleler(d), yeni = secim.concat(k);
     let uyan = yasal.filter(h => ayni(h.slice(0, yeni.length), yeni));
     if (!uyan.length) { secim = yasal.some(h => h[0] === k) ? [k] : []; hataMetni = ""; return ciz(); }
     secim = yeni; hataMetni = "";
     const tam = uyan.find(h => h.length === secim.length);
-    if (tam && uyan.length === 1) { secim = []; ciz(); await call("bgMove", { board: id, hamle: tam }); return; }
+    if (tam && uyan.length === 1) {
+      secim = []; ciz();
+      const botun = b.koltuk[d.sira] && b.koltuk[d.sira].bot; // yönetici botun yerine oynuyor
+      await call(botun ? "botHamle" : "bgMove", botun ? { board: id, koltuk: d.sira, hamle: tam } : { board: id, hamle: tam });
+      return;
+    }
     ciz();
   }
 
+  document.addEventListener("change", async e => {
+    const id = acikId(), b = id && tahtalar.get(id); if (!b || b.oyun === "kart") return;
+    const z = e.target.closest("[data-bot-zorluk]"), o = e.target.closest("[data-bot-oto]");
+    try {
+      if (z) await call("botAyar", { board: id, koltuk: +z.dataset.botZorluk, zorluk: z.value });
+      if (o) await call("botAyar", { board: id, koltuk: +o.dataset.botOto, oto: o.checked });
+    } catch (err) { hataMetni = err.message; ciz(); }
+  });
+
   /* ---------------- Tahta çizimleri (SVG) ---------------- */
-  const tas = (x, y, r, p, ek = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--p${p})" stroke="var(--p${p}-line)" stroke-width="2" ${ek}/>`;
+  // Taşlar: ışık alan, hafif gölgeli; her oyunun taş renkleri oyunlar.css'te (data-oyun).
+  const TAS_DEFS = `<defs>${[0, 1].map(p => `<radialGradient id="tg${p}" cx="38%" cy="32%" r="70%"><stop offset="0" style="stop-color:var(--p${p}-isik,var(--p${p}))"/><stop offset=".7" style="stop-color:var(--p${p})"/><stop offset="1" style="stop-color:var(--p${p}-line)"/></radialGradient>`).join("")}
+    <filter id="tgolge" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-opacity=".45"/></filter></defs>`;
+  const tas = (x, y, r, p, ek = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#tg${p})" stroke="var(--p${p}-line)" stroke-width="2" filter="url(#tgolge)" ${ek}/><circle cx="${x}" cy="${y}" r="${r * 0.62}" fill="none" stroke="var(--p${p}-line)" stroke-opacity=".35" stroke-width="1.5"/>`;
   const ipucuDaire = (x, y, r) => `<circle class="ipucu" cx="${x}" cy="${y}" r="${r}" opacity=".55"/>`;
 
   const CIZICI = {
