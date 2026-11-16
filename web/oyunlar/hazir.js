@@ -64,7 +64,7 @@
         ? "Cal'in oyununun eksikleri tamamlanmış, dengesi ayarlanmış sürümü: 3–5 oyuncu, herkese bir karakter, oyuncu ölümü ve yedek canavar kuralları, daha dengeli eşya destesi."
         : "Cal'in tasarladığı gizli rollü kart oyunu, belgedeki kurallar ve kartlarla birebir. Canavarları besle ya da katlet; melek misin şeytan mı, kimse bilmesin.",
       oyuncu: claude ? { min: 3, max: 5 } : { min: 3, max: 5 },
-      masa: { renk: "#3d4a52" },
+      masa: { renk: "#3d4a52", resim: "/gorsel/masa-laboratuvar.svg" },
       desteler: [
         { id: "canavar", ad: "Canavarlar", w: 130, h: 186, x: 1250, y: 560, arka: { resim: R("canavar-arka") }, iskarta: { ad: claude ? "Katledilen canavarlar" : "Canavar ıskartası", x: 1440, y: 560, acik: true }, kartlar: CANAVARLAR.map(k => uyarla(k, "canavar")) },
         { id: "huy", ad: "Gizli huy", w: 84, h: 126, x: 1250, y: 130, arka: { resim: R("huy-arka") }, iskarta: { ad: "Huy ıskartası (kapalı)", x: 1440, y: 130, acik: false },
@@ -75,7 +75,7 @@
         { id: "katlet", ad: "Karar: Katlet", w: 80, h: 120, x: 1530, y: 790, karistir: false, arka: { resim: R("karar-arka") }, kartlar: [{ id: "katlet", ad: "Katlet", resim: R("karar-katlet"), adet: 5 }] },
       ],
       taslar: [
-        { id: "amir", ad: "Vardiya Amiri", sekil: "yildiz", renk: "#e3b23c", boy: 54, adet: 1, x: 80, y: 900 },
+        { id: "amir", ad: "Vardiya Amiri", sekil: "yildiz", renk: "#e3b23c", resim: "/gorsel/tas-jeton-altin.svg", boy: 54, adet: 1, x: 80, y: 900 },
         { id: "dusuk", ad: "Düşük öncelik", sekil: "kare", renk: "#7f8c8d", boy: 40, adet: 1, x: 160, y: 900 },
         { id: "hedef", ad: "Hedef işareti", sekil: "daire", renk: "oyuncu", boy: 30, adet: 3, herOyuncu: true, x: 240, y: 890 },
       ],

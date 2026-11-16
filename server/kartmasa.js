@@ -15,15 +15,16 @@ const rid = (n = 6) => crypto.randomBytes(n).toString("hex");
 const hata = (code, message) => Object.assign(new Error(message), { code });
 const MASA_ID = /^b[a-z0-9]{6,24}$/, OYUN_ID = /^ko-[0-9a-f]{12}$/;
 
-function kurKartMasa({ store }) {
+function kurKartMasa({ store, botKisi }) {
   const OPS = new Set(["kmNew", "kmSit", "kmStart", "kmIslem", "kmReset", "kmDelete", "kmTanimYaz", "kmTanimSil", "kmDuzen"]);
   const ben = c => { const u = store.get("_sys/users/" + c.uid) || {}; return { id: c.uid, name: u.username || u.name || "Oyuncu" }; };
 
   function yayinla(bid, d, ek) {
     const eski = store.get("boards/" + bid) || {};
     store.set("boards/" + bid, { ...eski, ...(ek || {}), oyun: "kart", durum: KM.acikGorunum(d), updated: Date.now() });
-    for (const k of d.koltuk) if (k) store.set(`data/users/${k.id}/kartmasa/${bid}`, KM.gizliGorunum(d, k.id));
+    for (const k of d.koltuk) if (k && !k.bot) store.set(`data/users/${k.id}/kartmasa/${bid}`, KM.gizliGorunum(d, k.id));
   }
+  const kaydet = (bid, d) => { store.set("_sys/kartmasa/" + bid, d); yayinla(bid, d); };
   function al(m) {
     const bid = String(m.board || ""), d = MASA_ID.test(bid) && store.get("_sys/kartmasa/" + bid);
     if (!d) throw hata("not_found", "Böyle bir masa yok");
@@ -60,6 +61,7 @@ function kurKartMasa({ store }) {
       case "kmStart": case "kmReset": {
         const [bid, d] = al(m), b = store.get("boards/" + bid) || {};
         if (!d.koltuk.some(x => x && x.id === c.uid) && b.olusturan !== c.uid && !c.isOwner) throw hata("permission_denied", "Yalnızca oyuncular ya da masayı açan yapabilir");
+        d.botTur = 0;
         if (m.op === "kmStart") KM.baslat(d, Math.random);
         else { for (const k of d.koltuk) if (k) gizliSil(bid, k.id); Object.assign(d, KM.yeni(d.tanim), { koltuk: d.koltuk }); }
         store.set("_sys/kartmasa/" + bid, d); yayinla(bid, d);
@@ -68,7 +70,9 @@ function kurKartMasa({ store }) {
       case "kmIslem": {
         const [bid, d] = al(m);
         const h = m.islem && typeof m.islem === "object" ? m.islem : {};
-        KM.uygula(d, h, c.uid, Math.random);
+        // Admin ve test hesapları masadaki bir botun yerine oynayabilir (server/botlar.js).
+        const kisi = m.bot ? botKisi(c, d, String(m.bot)) : c.uid;
+        KM.uygula(d, h, kisi, Math.random);
         store.set("_sys/kartmasa/" + bid, d); yayinla(bid, d);
         return true;
       }
@@ -121,7 +125,7 @@ function kurKartMasa({ store }) {
     }
     throw hata("unknown_op", "Bilinmeyen işlem");
   }
-  return { OPS, op };
+  return { OPS, op, kaydet };
 }
 
 module.exports = { kurKartMasa };

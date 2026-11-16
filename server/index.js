@@ -10,6 +10,8 @@ const { Store, parentOf } = require("./store");
 const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
 const { kurHesap } = require("./hesap");
 const { kurKartMasa } = require("./kartmasa");
+const { kurRoller } = require("./roller");
+const { kurBotlar } = require("./botlar");
 
 const WEB = path.join(__dirname, "..", "web");
 const MAX_ASSET = 25 * 1024 * 1024;
@@ -94,19 +96,28 @@ function createServer(opts = {}) {
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
   const hesap = kurHesap({ store, conns });
-  const kartMasa = kurKartMasa({ store });
+  // Roller (admin, tester): ilk admin ZM_ADMIN ile ya da sahip bağlantısıyla belirlenir (server/roller.js).
+  const roller = kurRoller({ store, conns, adminler: opts.admin || "" });
+  let botlar = null;
+  const kartMasa = kurKartMasa({ store, botKisi: (c, d, id) => botlar.kartBotKisi(c, d, id) });
+  // Sohbette anılan bot için kısa yanıt (yalnızca yapay zekâ açıksa).
+  const yapayZeka = anthropic ? async istek => {
+    const r = await anthropic.messages.create({ model: aiModel, max_tokens: 600, messages: [{ role: "user", content: istek }] });
+    return r.content.filter(b => b.type === "text").map(b => b.text).join("");
+  } : null;
+  botlar = kurBotlar({ store, conns, roller, kartMasa, sohbeteYaz: (gid, by, text) => sohbeteYaz(gid, by, text), yapayZeka, gecikme: opts.botGecikme });
 
   /* ---------------- HTTP ---------------- */
   const appHtml = () => {
     const html = fs.readFileSync(path.join(WEB, "app.html"), "utf8");
     // Köprü uygulamadan önce, eklentiler (web/ext) uygulamadan sonra yüklenir.
-    const ext = '<link rel="stylesheet" href="/ext/ext.css"><link rel="stylesheet" href="/ext/temalar.css">' + EXT_SCRIPTS.map(n => `<script src="/ext/${n}.js"></script>`).join("");
+    const ext = '<link rel="stylesheet" href="/ext/ext.css"><link rel="stylesheet" href="/ext/temalar.css"><script src="/gorsel/katalog.js"></script><script src="/gorsel/secici.js"></script>' + EXT_SCRIPTS.map(n => `<script src="/ext/${n}.js"></script>`).join("");
     const i = html.lastIndexOf("</body>");
     const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
     return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
   };
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum", "sosyal", "mobil-mod"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
@@ -133,6 +144,13 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
       }
+      // Hazır masa arka planları ve jetonlar (web/gorsel): RPG haritaları, kart ve tahta oyunları kullanır.
+      if (req.method === "GET" && /^\/gorsel\/[a-z0-9-]+\.svg$/.test(p)) {
+        const f = path.join(WEB, "gorsel", path.basename(p));
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return send(res, 200, fs.readFileSync(f), "image/svg+xml", { "Cache-Control": "public, max-age=86400" });
+      }
+      if (req.method === "GET" && (p === "/gorsel/katalog.js" || p === "/gorsel/secici.js")) return send(res, 200, fs.readFileSync(path.join(WEB, "gorsel", path.basename(p))), "text/javascript; charset=utf-8");
       // Masa oyunları sayfası
       if (req.method === "GET" && (p === "/oyunlar" || p === "/oyunlar/")) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "index.html")), "text/html; charset=utf-8");
       if (req.method === "GET" && /^\/oyunlar\/kk\/[a-z0-9-]+\.png$/.test(p) && fs.existsSync(path.join(WEB, "oyunlar", "kk", path.basename(p)))) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "kk", path.basename(p))), "image/png");
@@ -255,7 +273,7 @@ function createServer(opts = {}) {
           case "profiles": {
             const out = {};
             const on = new Set([...conns].map(x => x.uid));
-            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: on.has(id) }; }
+            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: on.has(id) || !!u.bot, ...(u.bot ? { bot: true } : {}), ...(roller.rolu(id) ? { rol: roller.rolu(id) } : {}) }; }
             return reply(out);
           }
           case "presence": c.presence = { ...c.presence, ...(m.data || {}) }; broadcastPeers([], []); return reply(true);
@@ -277,6 +295,8 @@ function createServer(opts = {}) {
           default:
             if (kartMasa.OPS.has(m.op)) return reply(kartMasa.op(c, m)); // kart ve taş masaları, oyun atölyesi (server/kartmasa.js)
             if (hesap.OPS.has(m.op)) return reply(hesap.op(c, m)); // hesap, arkadaşlar, mesajlar, gruplar (server/hesap.js)
+            if (botlar.OPS.has(m.op)) return reply(botlar.op(c, m)); // botlar (server/botlar.js)
+            if (roller.OPS.has(m.op)) return reply(roller.op(c, m)); // yönetim: roller ve hesap açma (server/roller.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }
@@ -303,7 +323,7 @@ function createServer(opts = {}) {
     c.uid = uid; c.secret = secret; c.isOwner = isOwner || !!prev.owner;
     const token = rid(16); tokens.set(token, uid); c.token = token;
     c.ws.once("close", () => tokens.delete(token));
-    reply({ me: { id: uid, name: nm, color, kullanici: prev.username || null, foto: prev.foto || null }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList(), hesap: hesapModu });
+    reply({ me: { id: uid, name: nm, color, kullanici: prev.username || null, foto: prev.foto || null, rol: roller.rolOf(c) }, secret, token, isOwner: c.isOwner, ai: !!anthropic, peer: c.peer, peers: peerList(), hesap: hesapModu });
     broadcastPeers([{ peer: c.peer, by: uid }], []);
   }
 
@@ -328,11 +348,18 @@ function createServer(opts = {}) {
     const to = m.to ? String(m.to) : null;
     if (to && (to === c.uid || !isMember(to))) return fail("invalid_argument", "Fısıldanacak kişi bu oyunda değil");
     c.chatT.push(now);
-    const id = "m" + now.toString(36) + rid(3);
-    const msg = { id, t: now, by: c.uid, text, ...(gif ? { gif } : {}), ...(to ? { to } : {}) };
-    if (to) for (const u of [c.uid, to]) { const col = `data/users/${u}/chat/${gid}`; store.set(col + "/" + id, msg); trim(col); }
+    const msg = sohbeteYaz(gid, c.uid, text, gif, to);
+    if (!to) botlar.sohbetGeldi(gid, msg); // anılan bot yanıt versin
+    return reply({ id: msg.id, t: msg.t });
+  }
+  // Sohbete ileti yaz (fısıltıysa iki tarafın kutusuna). Botlar da bunu kullanır.
+  function sohbeteYaz(gid, by, text, gif, to) {
+    const now = Date.now(), id = "m" + now.toString(36) + rid(3);
+    const trim = col => { const all = store.list(col); if (all.length <= CHAT_KEEP) return; all.sort((a, b) => (a.data?.t || 0) - (b.data?.t || 0)); for (const d of all.slice(0, all.length - CHAT_KEEP)) store.delete(col + "/" + d.id); };
+    const msg = { id, t: now, by, text, ...(gif ? { gif } : {}), ...(to ? { to } : {}) };
+    if (to) for (const u of [by, to]) { const col = `data/users/${u}/chat/${gid}`; store.set(col + "/" + id, msg); trim(col); }
     else { store.set(`chat/${gid}/${id}`, msg); trim("chat/" + gid); }
-    return reply({ id, t: now });
+    return msg;
   }
 
   // Masa oyunları: tahta durumu boards/<id> belgesinde. İstemciler okur ve abone olur,
@@ -441,7 +468,7 @@ function createServer(opts = {}) {
   return {
     server, store, ownerKey,
     listen(port = 7373, host = "0.0.0.0") { return new Promise((res, rej) => { server.once("error", rej); server.listen(port, host, () => res(server.address().port)); }); },
-    async close() { hesap.kapat(); for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
+    async close() { hesap.kapat(); botlar.kapat(); for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
   };
 }
 

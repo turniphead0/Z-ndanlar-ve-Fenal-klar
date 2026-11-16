@@ -68,6 +68,7 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | Ortak masa şifresi | `--password` | `ZM_PASSWORD` | yok (yalnızca `ZM_HESAP=istege-bagli` iken kullanılır; hesaplı sunucuda yok sayılır) |
 | Ters vekil arkasında | `--vekil 1` | `ZM_VEKIL` | kapalı (açıksa ziyaretçi adresi `X-Forwarded-For`'dan okunur) |
 | Masa adı | `--name` | `ZM_NAME` | `Zar Masası` |
+| Adminler | `--admin` | `ZM_ADMIN` | yok (virgülle ayrılmış kullanıcı adları; örn. `cal`. Admin yönetim panelinden test hesabı açar, rol verir, botları kontrol eder) |
 | Hesap | `--hesap` | `ZM_HESAP` | `zorunlu` (herkes kullanıcı adı + şifreyle girer); `istege-bagli` hesapsız girişe de izin verir |
 | Claude API anahtarı | | `ANTHROPIC_API_KEY` | yok (yapay zekâ kapalı) |
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
