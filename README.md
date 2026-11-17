@@ -73,7 +73,22 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | Claude API anahtarı | | `ANTHROPIC_API_KEY` | yok (yapay zekâ kapalı) |
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
 
-İnternete açık bir sunucuda HTTPS için önüne bir ters vekil (Caddy, nginx) koyman önerilir; o zaman `ZM_VEKIL=1` de ver ki deneme sınırları gerçek ziyaretçi adresine göre çalışsın. WebSocket yolu `/ws`'dir. Kullanıcılar uygulamada `https://masa.ornek.com` gibi tam adresi yazabilir.
+### HTTPS (önerilir)
+
+İnternete açık bir sunucuda şifreler ve sohbet şifrelenmeden gitmesin diye HTTPS kullan. `deploy/kur.sh` bunu tek komutla kurar (Ubuntu + Docker): sunucunun önüne [Caddy](https://caddyserver.com) koyar, Caddy Let's Encrypt'ten ücretsiz sertifikayı kendisi alır ve süresi dolmadan yeniler.
+
+```sh
+bash deploy/kur.sh                  # alan adın yoksa: IP'den ücretsiz bir adres (ör. 51-21-224-126.sslip.io)
+bash deploy/kur.sh masa.ornek.com   # kendi alan adın varsa (DNS kaydı sunucunun IP'sini göstermeli)
+```
+
+- Sunucunun güvenlik duvarında **80** ve **443** (TCP) portları açık olmalı. 7373'ü dışarıya açmaya gerek kalmaz.
+- Ayarlar `~/zm.env` dosyasından okunur (`ZM_ADMIN=…` gibi, satır başına bir tane); veriler `zar-masasi-veri` biriminde kalır.
+- Sunucuyu güncellemek için kodu çektikten sonra aynı komutu yeniden çalıştır; seçilen alan adı `~/zm-alan-adi` dosyasında hatırlanır.
+- Eski `http://IP` adresiyle gelenler (eski uygulama sürümleri dahil) otomatik olarak HTTPS adresine yönlenir. WebSocket bağlantısı da kendiliğinden `wss://` olur.
+- Uygulamalar şema yazılmamış bir adreste önce `https://`, sonra `http://` dener.
+
+Kendi ters vekilini (nginx vb.) kullanırsan `ZM_VEKIL=1` ver ki deneme sınırları gerçek ziyaretçi adresine göre çalışsın; WebSocket yolu `/ws`'dir.
 
 ### Hesaplar, profil, arkadaşlar ve mesajlar
 
@@ -90,7 +105,7 @@ Sunucunun adresi bir telefon tarayıcısında açılınca mobil görünüm kendi
 Telefon için iki yol var, ikisi de ücretsiz ve aynı ekranları açar (forum, mesajlar, arkadaşlar, profil, masalar, zar; masa açılınca karakter kağıtları, notlar, savaş sırası, zar tepsisi ve masa sohbeti; harita ve harita düzenleyici yok):
 
 - **Android uygulaması:** [Sürümler](../../releases) sayfasındaki `ZarMasasi-…-android.apk` dosyasını telefona indirip kur (bilinmeyen kaynaklardan yüklemeye izin vermek gerekir). İlk açılışta sunucu adresini sorar.
-- **Tarayıcı (Android ve iPhone):** telefonda `http://SUNUCU-ADRESİ/mobil` aç, tarayıcı menüsünden "Ana ekrana ekle" de.
+- **Tarayıcı (Android ve iPhone):** telefonda `https://SUNUCU-ADRESİ/mobil` aç, tarayıcı menüsünden "Ana ekrana ekle" de.
 
 Uygulamanın ekranları sunucudan gelir (`web/mobil/`); sunucu güncellenince telefondaki uygulama da güncellenir. APK kaynağı `mobil-uygulama/` klasöründedir.
 

@@ -1,10 +1,10 @@
 {
   "name": "zar-masasi",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Zar Masası: ücretsiz, açık kaynak sanal masa (VTT) — masaüstü uygulaması ve sunucusu",
   "main": "electron/main.js",
   "zarMasasi": {
-    "sunucu": "http://51.21.224.126"
+    "sunucu": "https://51-21-224-126.sslip.io"
   },
   "license": "MIT",
   "scripts": {

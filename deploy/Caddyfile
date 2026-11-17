@@ -1,0 +1,18 @@
+# Zar Masası önündeki ters vekil (Caddy). Let's Encrypt sertifikasını kendisi alır ve süresi dolmadan yeniler.
+# Alan adı ZM_ALAN_ADI ortam değişkeninden gelir (deploy/kur.sh bunu ayarlar).
+
+{$ZM_ALAN_ADI} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	# WebSocket (/ws) ve dosya yüklemeleri dahil her şey Node sunucusuna gider.
+	# Caddy X-Forwarded-For başlığını kendisi ekler (sunucu ZM_VEKIL=1 ile bunu okur).
+	reverse_proxy zar-masasi:7373
+}
+
+# Eski adresle (http://IP) gelenler, eski uygulama sürümleri dahil, HTTPS adresine yönlenir.
+http:// {
+	redir https://{$ZM_ALAN_ADI}{uri} permanent
+}

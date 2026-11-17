@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Zar Masası'nı HTTPS ile kurar ya da günceller (Ubuntu + Docker). Önünde Caddy durur ve Let's Encrypt
+# sertifikasını kendisi alıp yeniler. Veriler (zar-masasi-veri birimi) ve ~/zm.env ayarları korunur.
+#
+# Kullanım (depo klasöründe, sudo OLMADAN):
+#   bash deploy/kur.sh                    alan adı yoksa sunucunun IP'sinden ücretsiz bir sslip.io adresi kullanılır
+#   bash deploy/kur.sh masa.ornek.com     kendi alan adın (DNS kaydı bu sunucunun IP'sini göstermeli)
+# Seçilen alan adı ~/zm-alan-adi dosyasına yazılır; sonraki güncellemelerde yine o kullanılır.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+KOK="$PWD"
+AYAR="$HOME/zm-alan-adi"
+
+ALAN="${1:-${ZM_ALAN_ADI:-}}"
+if [ -z "$ALAN" ] && [ -s "$AYAR" ]; then ALAN="$(cat "$AYAR")"; fi
+if [ -z "$ALAN" ]; then
+  IP="$(curl -fsS --max-time 10 https://checkip.amazonaws.com | tr -d '[:space:]')"
+  if ! [[ "$IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "Sunucunun dış IP adresi bulunamadı."; exit 1; fi
+  ALAN="${IP//./-}.sslip.io"
+fi
+ALAN="${ALAN#http://}"; ALAN="${ALAN#https://}"; ALAN="${ALAN%%/*}"; ALAN="${ALAN,,}"
+if ! [[ "$ALAN" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ && "$ALAN" == *.* ]]; then echo "Alan adı anlaşılamadı: $ALAN"; exit 1; fi
+echo "$ALAN" > "$AYAR"
+touch "$HOME/zm.env"
+
+echo "1/4 Zar Masası derleniyor…"
+sudo docker build -q -t zar-masasi "$KOK" >/dev/null
+echo "2/4 Ağ hazırlanıyor…"
+sudo docker network inspect zm-ag >/dev/null 2>&1 || sudo docker network create zm-ag >/dev/null
+echo "3/4 Sunucu ve Caddy yeniden başlatılıyor (veriler korunur)…"
+sudo docker rm -f zar-masasi caddy >/dev/null 2>&1 || true
+# Node sunucusu artık dışarıya port açmaz; yalnızca Caddy ona ulaşır. ZM_VEKIL=1: gerçek ziyaretçi adresi
+# Caddy'nin eklediği X-Forwarded-For başlığından okunur (deneme sınırları için).
+sudo docker run -d --name zar-masasi --restart unless-stopped --network zm-ag \
+  -v zar-masasi-veri:/data --env-file "$HOME/zm.env" -e ZM_VEKIL=1 zar-masasi >/dev/null
+sudo docker run -d --name caddy --restart unless-stopped --network zm-ag \
+  -p 80:80 -p 443:443 -e ZM_ALAN_ADI="$ALAN" \
+  -v "$KOK/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -v caddy-veri:/data -v caddy-ayar:/config \
+  caddy:2 >/dev/null
+
+echo "4/4 Sertifika alınıyor ve deneniyor (en fazla 2 dakika)…"
+for _ in $(seq 1 24); do
+  if curl -fsS --max-time 5 "https://$ALAN/api/info" >/dev/null 2>&1; then
+    echo
+    echo "Hazır: https://$ALAN/"
+    echo "Oyuncular bu adresi kullanır. Eski http://IP adresi de otomatik olarak buraya yönlenir."
+    exit 0
+  fi
+  sleep 5
+done
+echo
+echo "HTTPS henüz çalışmıyor. En sık sebep: Lightsail güvenlik duvarında 443 (HTTPS) portu kapalı."
+echo "Portu açtıktan sonra bu komutu yeniden çalıştır. Ayrıntı için: sudo docker logs caddy --tail 30"
+exit 1
