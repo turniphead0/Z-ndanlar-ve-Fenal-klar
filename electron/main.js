@@ -19,20 +19,26 @@ const L = (tr, en) => lang() === "en" ? en : tr;
 const withLang = url => { const u = new URL(url); u.searchParams.set("lang", lang()); return u.toString(); };
 const lanIps = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === "IPv4" && !i.internal).map(i => i.address);
 
-// Denenecek adresler. Port yazılmadıysa http için önce 80 (ör. Docker -p 80:7373), sonra 7373 denenir.
+// Denenecek adresler. Şema yazılmadıysa önce https, sonra http denenir; http'de port yoksa önce 80
+// (ör. Docker -p 80:7373), sonra 7373. Yazılan şema ne ise yalnızca o denenir.
 function adaylar(addr) {
   let a = String(addr || "").trim();
   if (!a) throw new Error(L("Sunucu adresi boş", "The server address is empty"));
-  if (!/^https?:\/\//i.test(a)) a = "http://" + a;
-  const u = new URL(a);
-  if (u.port || u.protocol !== "http:") return [u.origin];
-  const u2 = new URL(u.origin); u2.port = "7373";
-  return [u.origin, u2.origin];
+  const semasiz = !/^https?:\/\//i.test(a);
+  const u = new URL(semasiz ? "http://" + a : a);
+  const out = [];
+  if (semasiz || u.protocol === "https:") { const h = new URL(u.origin); h.protocol = "https:"; out.push(h.origin); }
+  if (semasiz || u.protocol === "http:") {
+    out.push(u.origin);
+    if (!u.port) { const u2 = new URL(u.origin); u2.port = "7373"; out.push(u2.origin); }
+  }
+  return [...new Set(out)];
 }
 async function bul(addr) {
   for (const o of adaylar(addr)) {
     const r = await fetch(o + "/api/info", { signal: AbortSignal.timeout(6000) }).catch(() => null);
-    if (r && r.ok) { const j = await r.json().catch(() => null); if (j && j.version) return o; }
+    // Sunucu (ör. eski http://IP adresi) HTTPS adresine yönlendirdiyse son adres kullanılır.
+    if (r && r.ok) { const j = await r.json().catch(() => null); if (j && j.version) return new URL(r.url || o).origin; }
   }
   throw new Error(L("Bu adreste Zar Masası sunucusu bulunamadı", "No Zar Masası server was found at this address"));
 }
