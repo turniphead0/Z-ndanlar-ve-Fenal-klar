@@ -690,6 +690,8 @@ let USER=null, ROOM=null, ME={id:null}, PEERS=[], LOCAL=false, IS_OWNER=false;
 const PROF={}, remoteDrag={}, pings=[];
 const who=id=>!id?"":id===ME.id?"Sen":(PROF[id]?.name||"Bir oyuncu");
 const nameOf=id=>!id?"":id===ME.id?(ME.name||"Sen"):(PROF[id]?.name||"Bir oyuncu");
+// Tıklanınca kişinin profil sayfasını açan ad (web/shim.js: zmKisi).
+const kisiA=(id,nm,o)=>window.zmKisi?zmKisi(id,nm==null?nameOf(id):nm,o):esc(nm==null?nameOf(id):nm);
 const peerColor=id=>PROF[id]?.color||"#c08a1e";
 async function resolveNames(ids){
   if(!USER) return; const miss=[...new Set(ids)].filter(i=>i&&!PROF[i]); if(!miss.length) return;
@@ -704,7 +706,7 @@ function renderPeers(){
   const list=peersHere(), g=S.games[G.id];
   $("#peerList").innerHTML=list.map(p=>{ const pr=p.presence||{}; let where=VIEWN[pr.view]||""; if(pr.view==="harita"&&S.maps[pr.m]&&(isDM()||!S.maps[pr.m].hidden)) where+=": "+S.maps[pr.m].name; if(pr.view==="karakterler"&&S.chars[pr.c]) where+=": "+S.chars[pr.c].name;
     const nm=p.isMe?"Sen":(p.kind==="agent"?"Claude":who(p.by)); const col=p.isMe?(ME.color||"var(--accent)"):peerColor(p.by); const r=roleOf(g,p.by);
-    return `<div class="peer"><span class="pdot" style="background:${esc(col)}">${esc((nm[0]||"?").toLocaleUpperCase("tr"))}</span><span><b>${esc(nm)}</b>${r==="dm"?' <small class="rtag">DM</small>':""}<small>${esc(where)}</small></span></div>` }).join("");
+    return `<div class="peer"><span class="pdot" style="background:${esc(col)}">${esc((nm[0]||"?").toLocaleUpperCase("tr"))}</span><span><b>${p.isMe||p.kind==="agent"?esc(nm):kisiA(p.by,nm)}</b>${r==="dm"?' <small class="rtag">DM</small>':""}<small>${esc(where)}</small></span></div>` }).join("");
   $("#peerCount").textContent=list.length;
   $("#trayFab").textContent=`Zar tepsisi · ${list.length} kişi`;
 }
@@ -832,7 +834,7 @@ function gameCard(g){
   return `<article class="gcard ${r==="dm"||r==="player"?"mine":""}" data-gid="${esc(g.id)}">${emblem(g)}
     <div class="gbody"><div class="gtop"><h3>${esc(g.name||"Adsız oyun")}</h3>${badge}</div>
       <p class="gdesc">${esc(g.desc||"Açıklama yok.")}</p>
-      <p class="gmeta">${gmT(g.system)}: ${dms.length?dms.map(id=>esc(nameOf(id))).join(", "):"—"} · ${players} oyuncu · ${g.open===false?"Onaylı katılım":"Açık katılım"}${online?` · <b class="onl">${online} kişi masada</b>`:""}</p>
+      <p class="gmeta">${gmT(g.system)}: ${dms.length?dms.map(id=>kisiA(id)).join(", "):"—"} · ${players} oyuncu · ${g.open===false?"Onaylı katılım":"Açık katılım"}${online?` · <b class="onl">${online} kişi masada</b>`:""}</p>
       <div class="gfoot"><span class="gtime">Son hareket ${ago(g.updated)}</span>${act}</div></div></article>`;
 }
 function renderLobby(){
@@ -884,7 +886,7 @@ function viewGame(){
   const dm=G.role==="dm", ms=members(g), pend=Object.entries(g.pending||{}).filter(([,v])=>v).map(([k])=>k);
   const charOpts=id=>`<option value="">— karakter yok —</option>`+Object.values(S.chars).map(c=>`<option value="${c.id}" ${g.players?.[id]?.charId===c.id?"selected":""}>${esc(c.name||"İsimsiz")}</option>`).join("");
   const row=id=>{ const r=roleOf(g,id), isMe=id===ME.id, ch=g.players?.[id]?.charId&&S.chars[g.players[id].charId], online=PEERS.some(p=>p.by===id&&(p.presence||{}).g===G.id);
-    return `<tr><td><span class="pdot sm" style="background:${esc(id===ME.id?(ME.color||"var(--accent)"):peerColor(id))}">${esc((nameOf(id)[0]||"?").toLocaleUpperCase("tr"))}</span> <b>${esc(nameOf(id))}</b>${isMe?" <small>(sen)</small>":""}${online?' <small class="onl">çevrimiçi</small>':""}${g.createdBy===id?' <small class="muted">kurucu</small>':""}</td>
+    return `<tr><td><span class="pdot sm" style="background:${esc(id===ME.id?(ME.color||"var(--accent)"):peerColor(id))}">${esc((nameOf(id)[0]||"?").toLocaleUpperCase("tr"))}</span> <b>${kisiA(id)}</b>${isMe?" <small>(sen)</small>":""}${online?' <small class="onl">çevrimiçi</small>':""}${g.createdBy===id?' <small class="muted">kurucu</small>':""}</td>
       <td>${r==="dm"?`<span class="rbadge dm">${gmT()}</span>`:'<span class="rbadge pl">Oyuncu</span>'}</td>
       <td>${dm&&r!=="dm"?`<select class="f" data-gm="char" data-id="${id}" aria-label="${esc(nameOf(id))} karakteri">${charOpts(id)}</select>`:esc(ch?ch.name:r==="dm"?"—":"Seçmedi")}</td>
       <td class="gact">${dm?`${r==="dm"?(isMe&&Object.values(g.dms).filter(Boolean).length<2?"":`<button class="btn sm" data-gm="undm" data-id="${id}">DM'likten al</button>`):`<button class="btn sm" data-gm="mkdm" data-id="${id}">DM yap</button>`}${!isMe&&g.createdBy!==id?`<button class="btn sm danger" data-gm="kick" data-id="${id}">Çıkar</button>`:""}`:""}</td></tr>` };
@@ -896,7 +898,7 @@ function viewGame(){
         <label class="toggle w2"><input type="checkbox" data-gk="open" ${g.open!==false?"checked":""}> Açık katılım (kapalıysa katılma isteklerini sen onaylarsın)</label></div>`
        :`<p style="margin:0"><b>${esc(g.name)}</b></p><p class="hint" style="margin-top:4px">${esc(g.desc||"")}</p>`}
     </section>
-    ${dm&&pend.length?`<section class="panel"><h3>Katılma istekleri <span class="dmtag">${pend.length}</span></h3>${pend.map(id=>`<div class="tok"><span class="pdot sm" style="background:${esc(peerColor(id))}">${esc((nameOf(id)[0]||"?").toLocaleUpperCase("tr"))}</span><span style="flex:1">${esc(nameOf(id))} <small class="muted">${ago(g.pending[id])}</small></span><button class="btn sm pri" data-gm="accept" data-id="${id}">Onayla</button><button class="btn sm danger" data-gm="reject" data-id="${id}">Reddet</button></div>`).join("")}</section>`:""}
+    ${dm&&pend.length?`<section class="panel"><h3>Katılma istekleri <span class="dmtag">${pend.length}</span></h3>${pend.map(id=>`<div class="tok"><span class="pdot sm" style="background:${esc(peerColor(id))}">${esc((nameOf(id)[0]||"?").toLocaleUpperCase("tr"))}</span><span style="flex:1">${kisiA(id)} <small class="muted">${ago(g.pending[id])}</small></span><button class="btn sm pri" data-gm="accept" data-id="${id}">Onayla</button><button class="btn sm danger" data-gm="reject" data-id="${id}">Reddet</button></div>`).join("")}</section>`:""}
     <section class="panel"><h3>Masadakiler</h3><div class="tblwrap"><table class="mtbl"><thead><tr><th>Kişi</th><th>Rol</th><th>Karakter</th><th></th></tr></thead><tbody>${ms.map(row).join("")}</tbody></table></div>
       ${dm?`<p class="hint">DM'ler haritayı düzenler, sisi ve canavarları görür, savaşı yönetir. Canavar kartları ve gizli notlar her DM'in kendine özeldir.</p>`:""}</section>
     <section class="panel"><h3>${dm?"Tehlikeli bölge":"Oyundan ayrıl"}</h3><div class="chips">${G.role==="player"?`<button class="btn danger" data-gm="leave">Oyundan ayrıl</button>`:""}${dm&&g.createdBy===ME.id?`<button class="btn danger" data-gm="delete">Oyunu sil</button>`:""}${dm&&g.createdBy!==ME.id?`<p class="hint" style="margin:0">Oyunu yalnızca kurucusu silebilir.</p>`:""}</div></section>
@@ -1028,8 +1030,8 @@ function viewChars(){
   const I=(k,ph="",cls="f",type="text")=>`<input class="${cls}" type="${type}" data-k="${k}" value="${esc(getPath(c,k)??"")}" placeholder="${esc(ph)}">`;
   const hpPct=Math.max(0,Math.min(100,(+c.hp||0)/Math.max(1,+c.hpMax||1)*100));
   const own=canEditChar(c);
-  if(sysKey()!=="dnd5e") return head+(own?"":`<p class="dmnote">${c.owner?esc(nameOf(c.owner))+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}>${sysKey()==="coc7"?cocSheet(c):xsys()?xsys().sheet(c):yzeSheet(c)}<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="dupchar">Kopyala</button><button class="btn danger" data-act="delchar">Karakteri sil</button></div></fieldset>`;
-  return head+(own?"":`<p class="dmnote">${c.owner?esc(nameOf(c.owner))+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}><div class="sheet">
+  if(sysKey()!=="dnd5e") return head+(own?"":`<p class="dmnote">${c.owner?kisiA(c.owner)+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}>${sysKey()==="coc7"?cocSheet(c):xsys()?xsys().sheet(c):yzeSheet(c)}<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-act="dupchar">Kopyala</button><button class="btn danger" data-act="delchar">Karakteri sil</button></div></fieldset>`;
+  return head+(own?"":`<p class="dmnote">${c.owner?kisiA(c.owner)+" adlı oyuncunun karakteri":"Henüz kimsenin karakteri değil"}. Sadece görüntüleyebilirsin.</p>`)+`<fieldset class="sheetfs" ${own?"":"disabled"}><div class="sheet">
   <div class="panel">
     <input class="cname" data-k="name" value="${esc(c.name)}" aria-label="Karakter adı">
     <div class="idrow">

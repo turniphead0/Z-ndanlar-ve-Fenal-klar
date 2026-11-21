@@ -11,7 +11,6 @@
   const UYGULAMA = /ZarMasasiApp/.test(navigator.userAgent); // Android uygulaması
   const Z = window.zmSunucu;
   const SISTEM = { dnd5e: "D&D 5e", coc7: "CoC 7e", yze: "YZE", pf2e: "PF2e", motw: "MotW" };
-  const RENKLER = ["#2f8f86", "#c0392b", "#8e44ad", "#2980b9", "#d4880f", "#27ae60", "#d35400", "#7f8c8d"];
 
   let DB = null, ME = null, INFO = { forum: [] };
   const st = { konusma: new Map(), arkadas: new Map(), forum: new Map(), oyunlar: new Map(), prof: {}, profBekle: new Set() };
@@ -180,14 +179,14 @@
     if (!t) { el.innerHTML = st.forum.size ? `<div class="bos"><h2>Bu konu silinmiş</h2></div>` : ""; $("#yanitf").hidden = !!st.forum.size; return; }
     const benim = t.yazar && t.yazar.id === ME.id, yetki = benim || Z.isOwner();
     el.innerHTML = `<article class="ileti ilk"><h2>${t.sabit ? "📌 " : ""}${esc(t.baslik)}</h2>
-      <div class="kim"><a href="#kisi/${esc(t.yazar.id)}">${av(t.yazar.id, "k")}</a><div><b>${esc(t.yazar.name)}</b><div class="zaman">${zaman(t.created)} · ${esc(t.kategori)}</div></div></div>
+      <div class="kim"><a href="#kisi/${esc(t.yazar.id)}">${av(t.yazar.id, "k")}</a><div><b>${Z.kisiHtml(t.yazar.id, t.yazar.name)}</b><div class="zaman">${zaman(t.created)} · ${esc(t.kategori)}</div></div></div>
       ${t.govde ? `<div class="govde">${esc(t.govde)}</div>` : ""}
       ${yetki ? `<div class="dugmeler" style="margin-top:10px">${Z.isOwner() ? `<button class="btn sm" data-a="fsabit" data-t="${esc(tid)}">${t.sabit ? "Sabitlemeyi kaldır" : "Sabitle"}</button>` : ""}<button class="btn sm kotu" data-a="fsil" data-t="${esc(tid)}">Konuyu sil</button></div>` : ""}</article>`;
   };
   function yanitCiz(tid) {
     const el = $("#yanitlar"), yan = EKRAN["forum-konu"].yan; if (!el || !yan) return;
     const l = [...yan.entries()].map(([id, p]) => ({ id, ...p })).sort((a, b) => a.created - b.created);
-    el.innerHTML = l.map(p => `<li class="ileti"><div class="kim"><a href="#kisi/${esc(p.yazar.id)}">${av(p.yazar.id, "k")}</a><div><b>${esc(p.yazar.name)}</b><div class="zaman">${zaman(p.created)}</div></div><span class="sp"></span>
+    el.innerHTML = l.map(p => `<li class="ileti"><div class="kim"><a href="#kisi/${esc(p.yazar.id)}">${av(p.yazar.id, "k")}</a><div><b>${Z.kisiHtml(p.yazar.id, p.yazar.name)}</b><div class="zaman">${zaman(p.created)}</div></div><span class="sp"></span>
       ${p.yazar.id === ME.id || Z.isOwner() ? `<button class="btn sm kotu" data-a="fysil" data-t="${esc(tid)}" data-p="${esc(p.id)}">Sil</button>` : ""}</div><div class="govde">${esc(p.govde)}</div></li>`).join("");
   }
 
@@ -341,54 +340,17 @@
     return `<button class="btn sm pri" data-a="ekle" data-k="${esc(id)}">+ Ekle</button>`;
   }
 
-  // ---- Başkasının profili ----
-  EKRAN.kisi = async (uid, ilk) => {
-    if (uid === ME.id) { location.replace("#profil"); return; }
-    baslik(prof(uid).ad);
-    if (ilk) ekran(`<div id="kisi"><div class="bos">Yükleniyor…</div></div>`);
-    let p; try { p = await Z.call("kisi", { kisi: uid }); } catch (e) { if ($("#kisi")) $("#kisi").innerHTML = `<div class="bos"><h2>Bulunamadı</h2></div>`; return; }
-    st.prof[uid] = { ad: p.kullanici || p.ad, renk: p.renk, foto: p.foto, kullanici: p.kullanici, cevrimici: (st.prof[uid] || {}).cevrimici };
-    const el = $("#kisi"); if (!el || rota().arg !== uid) return;
-    baslik(p.kullanici || p.ad);
-    const d = (st.arkadas.get(uid) || {}).durum || null;
-    el.innerHTML = `<div class="profil">${av(uid, "b")}<h2>${esc(p.kullanici || p.ad)}</h2>
-
-      ${st.prof[uid].cevrimici ? `<span class="rozetk">Çevrimiçi</span>` : ""}
-      ${p.hakkinda ? `<p class="hak">${esc(p.hakkinda)}</p>` : ""}
-      ${p.katildi ? `<p class="ipucu">Üyelik: ${new Date(p.katildi).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</p>` : ""}
-      ${p.kullanici ? `<div class="dugmeler" style="justify-content:center">${d === "arkadas" ? `<a class="btn pri" href="#mesaj/${esc(uid)}">Mesaj gönder</a><button class="btn kotu" data-a="cikar" data-k="${esc(uid)}">Arkadaşlıktan çıkar</button>` : d === "gelen" ? `<button class="btn pri" data-a="kabul" data-k="${esc(uid)}">İsteği kabul et</button><button class="btn" data-a="reddet" data-k="${esc(uid)}">Reddet</button>` : d === "giden" ? `<button class="btn" data-a="reddet" data-k="${esc(uid)}">İsteği geri çek</button>` : `<button class="btn pri" data-a="ekle" data-k="${esc(uid)}">+ Arkadaş ekle</button>`}</div>` : `<p class="ipucu">Bu kişinin hesabı yok (hesapsız oynuyor).</p>`}</div>
-      <div id="koyunlar">${oyunHtml[uid] || `<p class="ipucu">Oyunları yükleniyor…</p>`}</div>`;
-    if (ilk) oyunlariIzle(uid, "koyunlar", false);
-  };
-
-  // ---- Profildeki oyunlar: masa oyunları ve FRP'ler ayrı gruplarda, açıkken canlı yenilenir ----
-  const DURUM_AD = { bekliyor: "Oyuncu bekliyor", oynaniyor: "Oynanıyor", bitti: "Bitti" };
-  const hedefSayfa = yol => (GOMULU ? ` href="${yol}" target="_top"` : ` href="${yol}"`);
-  function oyunlarHtml(v, ben) {
-    const sende = v.masa.filter(b => b.siraSende).length;
-    const masa = v.masa.map(b => {
-      const rakip = b.oyuncular.filter(o => !ben || o.id !== ME.id).map(o => esc(o.ad)).join(", ");
-      const rozet = b.siraSende && ben ? `<span class="rozetk">Sıra sende</span>` : b.durum === "bitti" ? `<span class="rozetk ${b.kazandi ? "altin" : ""}">${b.kazandi === true ? "Kazandı" : b.kazandi === false ? "Bitti" : "Berabere"}</span>` : `<span class="rozetk altin">${DURUM_AD[b.durum]}</span>`;
-      return `<li><a class="satir"${hedefSayfa("/oyunlar#" + encodeURIComponent(b.id))}><span class="poyun ${b.tur}">${b.tur === "kart" ? "🃏" : "♟"}</span><span class="ic"><b>${esc(b.ad || b.oyunAd)}</b><small>${b.ad ? esc(b.oyunAd) + " · " : ""}${rakip ? (ben ? "Rakip: " : "") + rakip : "kimse yok"}</small></span>${rozet}</a></li>`;
-    }).join("");
-    const frp = v.frp.map(g => `<li><a class="satir"${hedefSayfa((GOMULU ? "/#" : "/?mobil=1#") + encodeURIComponent(g.id))}><span class="poyun frp">🎲</span><span class="ic"><b>${esc(g.ad)}</b><small>${esc(g.sistemAd || "")} · ${g.oyuncu} oyuncu${g.masada ? ` · şu an masada ${g.masada} kişi` : ""}</small></span><span class="rozetk${g.rol === "dm" ? " altin" : ""}">${g.rol === "dm" ? "Yönetici" : "Oyuncu"}</span></a></li>`).join("");
-    return `<div class="pistat"><span><b>${v.masa.length}</b> masa oyunu</span><span><b>${v.frp.length}</b> FRP</span>${ben && sende ? `<span class="vurgu"><b>${sende}</b> oyunda sıra sende</span>` : ""}${v.masa.some(b => b.kazandi) ? `<span><b>${v.masa.filter(b => b.kazandi).length}</b> galibiyet</span>` : ""}</div>
-      <h2 class="bolum">Masa oyunları <small>(${v.masa.length})</small></h2>${masa ? `<ul class="liste">${masa}</ul>` : `<p class="ipucu">${ben ? "Henüz bir masa oyununda değilsin. Masa oyunları sayfasından bir oda açabilir ya da açık bir odaya katılabilirsin." : "Şu an bir masa oyununda değil."}</p>`}
-      <h2 class="bolum">FRP'ler <small>(${v.frp.length})</small></h2>${frp ? `<ul class="liste">${frp}</ul>` : `<p class="ipucu">${ben ? "Henüz bir FRP masasında değilsin." : "Şu an bir FRP masasında değil."}</p>`}`;
-  }
-  const oyunHtml = {}; // kişi -> son çizilen oyun listesi (ekran yeniden çizilince kaybolmasın)
-  function oyunlariIzle(uid, elId, ben) {
-    let son = "";
-    const yukle = async () => {
-      let v; try { v = await Z.call("profilOyunlar", { kisi: uid }); } catch (e) { const el = $("#" + elId); if (el && !son) el.innerHTML = `<p class="ipucu">${esc(e.message)}</p>`; return; }
-      const el = $("#" + elId); if (!el) return;
-      const html = oyunlarHtml(v, ben); oyunHtml[uid] = html; if (html !== son || !el.querySelector(".pistat")) { son = html; el.innerHTML = html; }
-    };
-    yukle();
-    const t = setInterval(() => { if (!document.hidden) yukle(); }, 15000);
-    ekranKapat.push(() => clearInterval(t));
-    return yukle;
-  }
+  // ---- Profiller: ayrı profil sayfasında (/profil, web/profil) açılır ----
+  // Eski #kisi/<kimlik> ve #profil adresleri oraya yönlenir; geri tuşu bu ekrana dönmesin diye adres değiştirilir.
+  const profileGit = uid => { const url = Z.profilAdresi(uid); if (GOMULU && parent !== window) { Z.profilAc(uid); history.back(); } else location.replace(url); };
+  EKRAN.kisi = uid => profileGit(uid === ME.id ? null : uid);
+  EKRAN.profil = () => profileGit(null);
+  // Uygulamanın her yerindeki kişi bağlantıları (#kisi/…, #profil) doğrudan profil sayfasını açar.
+  document.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest('a[href^="#kisi/"], a[href="#profil"]'); if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    const h = a.getAttribute("href"); Z.profilAc(h === "#profil" ? null : decodeURIComponent(h.slice(6)));
+  }, true);
 
   // ---- Yüklediklerim: kişinin bütün oyunlara yüklediği dosyalar ve kotası ----
   const boyut = b => (b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB");
@@ -479,35 +441,6 @@
     for (const f of l) parcalar.push({ ad: f.webkitRelativePath || f.name, veri: new Uint8Array(await f.arrayBuffer()), zaman: f.lastModified });
     yedekGonder(new Blob(window.ZM_ZIP.olustur(parcalar), { type: "application/zip" }));
   }
-
-  // ---- Kendi profilim ----
-  EKRAN.profil = (arg, ilk) => {
-    baslik("Profilim");
-    if (!ilk) { const a = $("#benav"); if (a) a.innerHTML = av(ME.id, "b"); return; }
-    ekran(`<div class="profil"><span id="benav">${av(ME.id, "b")}</span><h2>${esc(ME.kullanici)}</h2>
-        <div class="dugmeler" style="justify-content:center"><button class="btn sm" data-a="foto">Fotoğraf ${ME.foto ? "değiştir" : "ekle"}</button>${ME.foto ? `<button class="btn sm" data-a="fotosil">Kaldır</button>` : ""}<a class="btn sm" href="#dosyalar">Yüklediklerim</a></div></div>
-      <div id="poyunlar"><p class="ipucu">Oyunların yükleniyor…</p></div>
-      <h2 class="bolum">Hakkımda</h2>
-      <form class="form" id="hakf"><textarea class="f" name="h" maxlength="500" rows="3" placeholder="Hangi oyunları seversin, ne zaman oynarsın?" aria-label="Hakkımda"></textarea><button class="btn">Kaydet</button></form>
-      <h2 class="bolum">Rengim</h2>
-      <div class="renkler">${RENKLER.map(c => `<button class="renk" data-a="renk" data-c="${c}" style="background:${c}" aria-label="Renk ${c}" aria-pressed="${c === ME.color}"></button>`).join("")}</div>
-      <h2 class="bolum">Şifre değiştir</h2>
-      <form class="form" id="sifref"><input class="f" type="password" name="eski" placeholder="Şu anki şifre" autocomplete="current-password" required aria-label="Şu anki şifre">
-        <input class="f" type="password" name="yeni" placeholder="Yeni şifre (en az 8 karakter)" minlength="8" autocomplete="new-password" required aria-label="Yeni şifre">
-        <input class="f" type="password" name="yeni2" placeholder="Yeni şifre (tekrar)" autocomplete="new-password" required aria-label="Yeni şifre tekrar"><button class="btn">Şifreyi değiştir</button></form>
-      <h2 class="bolum">Hesap</h2>
-      <div class="form">${GOMULU ? "" : `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn" data-a="tumcikis">Öteki cihazlardan çıkış yap</button><button class="btn kotu" data-a="cikis">Çıkış yap</button></div>
-      <p class="ipucu" id="oturumsay"></p>`);
-    oyunlariIzle(ME.id, "poyunlar", true);
-    Z.call("oturumlar", {}).then(r => { const p = $("#oturumsay"); if (p) p.textContent = r.sayi > 1 ? `Hesabın ${r.sayi} cihazda açık. 30 gün kullanılmayan cihazlarda oturum kendiliğinden kapanır.` : "Hesabın yalnızca bu cihazda açık."; }).catch(() => {});
-    Z.call("kisi", { kisi: ME.id }).then(p => { const f = $("#hakf"); if (f) f.h.value = p.hakkinda || ""; }).catch(() => {});
-    $("#hakf").addEventListener("submit", async e => { e.preventDefault(); try { await cagir("profilYaz", { hakkinda: e.target.h.value }); tost("Kaydedildi"); } catch (x) {} });
-    $("#sifref").addEventListener("submit", async e => {
-      e.preventDefault(); const f = e.target;
-      if (f.yeni.value !== f.yeni2.value) return tost("Yeni şifreler aynı değil");
-      try { await cagir("sifreDegistir", { eski: f.eski.value, yeni: f.yeni.value }); f.reset(); tost("Şifren değişti. Öteki cihazlarda yeniden giriş yapman gerekecek."); } catch (x) {}
-    });
-  };
 
   // ---- Masalar ----
   const rolu = g => !g || !ME ? "none" : g.dms && g.dms[ME.id] ? "dm" : g.players && g.players[ME.id] ? "player" : g.pending && g.pending[ME.id] ? "pending" : "none";
@@ -605,12 +538,6 @@
           const up = await Z.upload(await kucult(f, 1280, false), { yer: "mesaj" });
           await sohbetKur.gonder({ resim: up.url }); return;
         }
-        case "foto": {
-          const f = await dosyaSec(); if (!f) return;
-          b.disabled = true; tost("Yükleniyor…");
-          const up = await Z.upload(await kucult(f, 384, true), { yer: "profil" });
-          const p = await cagir("profilYaz", { foto: up.id }); ME.foto = p.foto; rozetler(); git(true); tost("Profil fotoğrafın güncellendi"); return;
-        }
         case "dsil": return onayli(b, async () => {
           try { await Z.sil(b.dataset.d); } catch (x) { return tost(x.message); }
           if (df.veri) { const d = df.veri.dosyalar.find(x => x.id === b.dataset.d); df.veri.dosyalar = df.veri.dosyalar.filter(x => x.id !== b.dataset.d); if (d) df.veri.kullanilan = Math.max(0, df.veri.kullanilan - d.size); }
@@ -633,10 +560,6 @@
           i.onchange = () => { if (!i.files.length) return; if (a === "ygeri") yedekGonder(i.files[0]); else klasordenYedek(i.files); };
           i.click(); return;
         }
-        case "fotosil": { await cagir("profilYaz", { foto: null }); ME.foto = null; rozetler(); git(true); return; }
-        case "renk": { const p = await cagir("profilYaz", { renk: b.dataset.c }); ME.color = p.renk; try { localStorage.setItem("zm-color", p.renk); } catch (x) {} document.querySelectorAll("[data-a=renk]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); rozetler(); yenile(); return; }
-        case "cikis": return onayli(b, () => Z.cikis());
-        case "tumcikis": return onayli(b, async () => { try { const r = await cagir("tumCikis", {}); tost(r.kapanan ? `${r.kapanan} cihazda oturum kapatıldı` : "Başka cihazda açık oturum yoktu"); git(true); } catch (x) {} });
         case "mkatil": { const g = st.oyunlar.get(b.dataset.g); await masaYaz(b.dataset.g, { players: { [ME.id]: { joined: Date.now(), charId: null } } }); tost((g && g.name || "Masa") + " masasına katıldın"); location.href = "/?mobil=1#" + b.dataset.g; return; }
         case "mistek": await masaYaz(b.dataset.g, { pending: { [ME.id]: Date.now() } }); tost("İstek gönderildi. Yönetici onaylayınca masayı açabilirsin."); return;
         case "mgeri": await masaYaz(b.dataset.g, { pending: { [ME.id]: null } }); return;

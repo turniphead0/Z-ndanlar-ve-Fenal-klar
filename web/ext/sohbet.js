@@ -28,6 +28,7 @@
   /* ---------------- Yardımcılar ---------------- */
   const game = () => (G.id && S.games[G.id]) || null;
   const nm = id => (id === ME.id ? (ME.name || "Sen") : nameOf(id));
+  const kA = (id, t) => (window.zmKisi ? window.zmKisi(id, t) : esc(t)); // ada tıklanınca profil açılır
   const col = id => (id === ME.id ? (ME.color || "var(--accent)") : peerColor(id));
   const time = t => new Date(t).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
   const others = () => { const g = game(); return g ? members(g).filter(id => id !== ME.id) : []; };
@@ -134,15 +135,15 @@
 
   function msgHtml(m) {
     const w = !!m.to, mine = m.by === ME.id;
-    const head = w ? (mine ? `<b style="color:${esc(col(m.by))}">Sen</b> <span class="zc-arrow">fısıldadın →</span> <b style="color:${esc(col(m.to))}">${esc(nm(m.to))}</b>` : `<b style="color:${esc(col(m.by))}">${esc(nm(m.by))}</b> <span class="zc-arrow">sana fısıldadı</span>`)
-      : `<b style="color:${esc(col(m.by))}">${esc(mine ? "Sen" : nm(m.by))}</b>`;
+    const head = w ? (mine ? `<b style="color:${esc(col(m.by))}">Sen</b> <span class="zc-arrow">fısıldadın →</span> <b style="color:${esc(col(m.to))}">${kA(m.to, nm(m.to))}</b>` : `<b style="color:${esc(col(m.by))}">${kA(m.by, nm(m.by))}</b> <span class="zc-arrow">sana fısıldadı</span>`)
+      : `<b style="color:${esc(col(m.by))}">${mine ? "Sen" : kA(m.by, nm(m.by))}</b>`;
     const reply = !mine && others().includes(m.by) ? `<button class="zc-reply" data-zc="whisper" data-id="${esc(m.by)}" title="Fısıldayarak yanıtla">Fısılda</button>` : "";
     const gif = m.gif && safeGif(m.gif) ? `<img class="zc-gif" src="${esc(m.gif)}" alt="GIF" loading="lazy" referrerpolicy="no-referrer">` : "";
     return `<div class="zc-m${w ? " zc-w" : ""}${mine ? " zc-me" : ""}"><div class="zc-by">${head}<time>${time(m.t)}</time>${reply}</div>${m.text ? `<div class="zc-t" data-noi18n>${esc(m.text)}</div>` : ""}${gif}</div>`;
   }
   function rollHtml(r) {
     const c = r.crit === "20" ? " n20" : r.crit === "1" ? " n1" : "";
-    return `<div class="zc-r${r.secret ? " zc-sec" : ""}"><div class="zc-by">${r.secret ? '<i class="sec">Gizli</i> ' : ""}<b style="color:${esc(col(r.by))}">${esc(r.by ? (r.by === ME.id ? "Sen" : nm(r.by)) : "")}</b> <span>${esc(r.label)}</span><time>${time(r.t)}</time></div>
+    return `<div class="zc-r${r.secret ? " zc-sec" : ""}"><div class="zc-by">${r.secret ? '<i class="sec">Gizli</i> ' : ""}<b style="color:${esc(col(r.by))}">${r.by ? (r.by === ME.id ? "Sen" : kA(r.by, nm(r.by))) : ""}</b> <span>${esc(r.label)}</span><time>${time(r.t)}</time></div>
       <div class="zc-rr"><span class="zc-tot num${c}">${esc(r.total)}</span><small>${esc(r.expr ? r.expr + " → " : "")}${esc(r.detail)}</small></div></div>`;
   }
 

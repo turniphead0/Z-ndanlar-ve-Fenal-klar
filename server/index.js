@@ -16,6 +16,7 @@ const { kurBotlar } = require("./botlar");
 const { kurDosyalar } = require("./dosyalar");
 const { kurBildirim } = require("./bildirim");
 const { kurYedek } = require("./yedek");
+const { kurProfil } = require("./profil");
 
 const WEB = path.join(__dirname, "..", "web");
 const ASSET_TYPES = /^(image\/|audio\/|video\/|application\/pdf$)/;
@@ -128,6 +129,8 @@ function createServer(opts = {}) {
   const dosyalar = kurDosyalar({ store, roller, conns, maxDosya: opts.maxDosya || process.env.ZM_MAX_DOSYA, kota: opts.kota || process.env.ZM_KOTA });
   // Bildirimler: sıra sende, oyun bitti, katılma istekleri, arkadaşlık ve kişiden kişiye (server/bildirim.js).
   bildirim = kurBildirim({ store, conns, dosyalar });
+  // Profil sayfası: kişinin forumda yazdıkları (server/profil.js).
+  const profil = kurProfil({ store });
   let botlar = null;
   const kartMasa = kurKartMasa({ store, botKisi: (c, d, id) => botlar.kartBotKisi(c, d, id) });
   // Sohbette anılan bot için kısa yanıt (yalnızca yapay zekâ açıksa).
@@ -231,6 +234,13 @@ function createServer(opts = {}) {
       }
       if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, maxDosya: dosyalar.MAX });
       if (hesap.http(req, res, p, send, ipOf)) return;
+      // Profil sayfası: /profil (kendi profilin), /profil?kisi=<kimlik> ya da /profil?ad=<kullanıcı adı>
+      if (req.method === "GET" && (p === "/profil" || p === "/profil/")) return sunDosya(req, res, path.join(WEB, "profil", "index.html"), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/profil\/[a-z0-9-]+\.(js|css)$/.test(p)) {
+        const f = path.join(WEB, p);
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
+      }
       // Mobil uygulama (telefon tarayıcısı ya da Android uygulaması): /mobil
       if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return sunDosya(req, res, path.join(WEB, "mobil", "index.html"), "text/html; charset=utf-8");
       if (req.method === "GET" && /^\/mobil\/[a-z0-9-]+\.(js|css|json|svg|png|webmanifest)$/.test(p)) {
@@ -400,6 +410,7 @@ function createServer(opts = {}) {
             if (dosyalar.OPS.has(m.op)) return reply(dosyalar.op(c, m)); // yüklediklerim, kota, profildeki oyunlar (server/dosyalar.js)
             if (bildirim.OPS.has(m.op)) return reply(bildirim.op(c, m)); // bildirimler (server/bildirim.js)
             if (yedek.OPS.has(m.op)) return reply(yedek.op(c, m)); // oyun yedekleri (server/yedek.js)
+            if (profil.OPS.has(m.op)) return reply(profil.op(c, m)); // profil sayfası (server/profil.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }

@@ -7,6 +7,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   let X = null; // oyunlar.js bağlamı: call, Z, esc, me, isOwner, tahtalar, kartOyunlari, ciz
   const esc = s => X.esc(s);
+  const kisiA = k => (window.zmKisi ? window.zmKisi(k.id, k.name) : esc(k.name)); // ada tıklanınca profil açılır (bot ise düz ad)
   const st = { id: null, b: null, gizli: null, gizliKapat: null, surukle: null, bekleyen: false, menu: null, sekme: "kurallar", olarak: null, botGizli: null, botN: -1 };
   // Admin ve test hesapları bir botun yerine oynayabilir: o sırada "ben" o bottur, el ve menüler onun adına çalışır.
   const yonetici = () => { const m = X.me() || {}; return m.rol === "admin" || m.rol === "tester" || X.isOwner(); };
@@ -56,7 +57,7 @@
         <a class="kart km-atolye" href="#atolye"><b>+ Kendi oyununu yap</b><p>Oyun atölyesi: kartlar ve desteler, taşlar, sayaçlar, masa alanları ve kurallar. Kart resimlerini yükleyebilirsin.</p></a></div>
       ${masalar.length ? `<h2>Açık kart masaları</h2><div class="liste">${masalar.map(([id, b]) => {
         const d = b.durum, otur = d.koltuk.filter(Boolean), benim = otur.some(k => k.id === me.id);
-        return `<div class="satir"><span class="ad">${esc(b.tanim.ad)}${b.tanim.surum ? " · " + esc(b.tanim.surum) : ""}</span><span class="bilgi">${otur.map(k => esc(k.name)).join(", ") || "kimse oturmadı"} · ${d.basladi ? "oynanıyor" : "oyuncu bekliyor"}</span><span class="sp"></span>
+        return `<div class="satir"><span class="ad">${esc(b.tanim.ad)}${b.tanim.surum ? " · " + esc(b.tanim.surum) : ""}</span><span class="bilgi">${otur.map(kisiA).join(", ") || "kimse oturmadı"} · ${d.basladi ? "oynanıyor" : "oyuncu bekliyor"}</span><span class="sp"></span>
           <a class="btn" href="#${id}">${benim ? "Devam et" : !d.basladi && d.koltuk.includes(null) ? "Katıl" : "İzle"}</a></div>`;
       }).join("")}</div>` : ""}`;
   }
@@ -115,7 +116,7 @@
   function lobiMasaHtml(t, d, benKoltuk) {
     const dolu = d.koltuk.filter(Boolean).length;
     return `<div class="kutu km-bekle"><h3>Oyuncular bekleniyor</h3><p class="bos">${t.oyuncu.min === t.oyuncu.max ? t.oyuncu.max : t.oyuncu.min + "–" + t.oyuncu.max} kişiyle oynanır. Herkes bir koltuğa otursun, sonra biri oyunu başlatsın: kartlar karıştırılıp dağıtılır.</p>
-      <div class="km-koltuklar">${d.koltuk.map((k, i) => `<div class="km-koltuk"><i style="background:${KM.RENKLER[i % KM.RENKLER.length]}"></i><span>${k ? esc(k.name) : "<i>boş koltuk</i>"}</span><span class="sp"></span>
+      <div class="km-koltuklar">${d.koltuk.map((k, i) => `<div class="km-koltuk"><i style="background:${KM.RENKLER[i % KM.RENKLER.length]}"></i><span>${k ? kisiA(k) : "<i>boş koltuk</i>"}</span><span class="sp"></span>
         ${k && k.id === X.me().id ? `<button class="btn" data-km="kalk">Kalk</button>` : k && k.bot ? `<button class="btn" data-km="bot-cikar" data-i="${i}">Botu kaldır</button>` : k ? "" : `<button class="btn pri" data-km="otur" data-i="${i}">Otur</button><button class="btn" data-km="bot-ekle" data-i="${i}" title="Bu koltuğa bilgisayar oyuncusu oturt">🤖 Bot</button>`}</div>`).join("")}</div>
       <p class="bos" style="font-size:13px">Botlar sırası gelince kendiliğinden bir tur oynar: kart çeker, bir kart oynar ve sırayı devreder. Kart masasında kurallar uygulanmadığı için botlar oyunu basitçe oynar; admin ve test hesapları botun yerine her hamleyi kendileri de yapabilir.</p>
       <button class="btn pri" data-km="basla" ${dolu < t.oyuncu.min || benKoltuk < 0 ? "disabled" : ""}>Oyunu başlat (${dolu} kişi)</button></div>`;
@@ -169,7 +170,7 @@
       }).join("");
       const sayac = t.sayaclar.map(s => { const v = (d.sayac[k.id] || {})[s.id]; return `<span class="km-sayac">${esc(s.ad)} <button class="btn mini" data-km="sayac" data-k="${esc(k.id)}" data-s="${esc(s.id)}" data-v="${v - 1}" aria-label="${esc(s.ad)} azalt">−</button><b class="num">${v}</b><button class="btn mini" data-km="sayac" data-k="${esc(k.id)}" data-s="${esc(s.id)}" data-v="${v + 1}" aria-label="${esc(s.ad)} artır">+</button></span>`; }).join("");
       const elSay = (d.el[k.id] || []).length;
-      return `<div class="km-oyuncu${d.sira === i ? " sirada" : ""}" style="--or:${esc(k.renk)}"><div class="km-oy-bas"><i></i><b>${esc(k.name)}${k.id === me.id ? " (sen)" : ""}</b><span class="sp"></span><span class="km-elsay" title="Elindeki kart sayısı">🂠 ${elSay}</span>
+      return `<div class="km-oyuncu${d.sira === i ? " sirada" : ""}" style="--or:${esc(k.renk)}"><div class="km-oy-bas"><i></i><b>${kisiA(k)}${k.id === me.id ? " (sen)" : ""}</b><span class="sp"></span><span class="km-elsay" title="Elindeki kart sayısı">🂠 ${elSay}</span>
         ${k.id !== me.id && benKoltuk >= 0 && elSay ? `<button class="btn mini" data-km="rastgele" data-k="${esc(k.id)}" title="Elinden rastgele bir kart seç">Rastgele kart</button>` : ""}
         <button class="btn mini" data-km="sira" data-i="${i}" title="Sırayı bu oyuncuya ver">Sıra</button></div>
         ${k.bot && yonetici() ? `<div class="km-bot-ayar">🤖 <label title="Kapatınca bot kendiliğinden oynamaz"><input type="checkbox" data-km-oto="${i}"${k.oto !== false ? " checked" : ""}> Otomatik</label>

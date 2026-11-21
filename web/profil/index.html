@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F6F6B">
+<title>Profil · Zar Masası</title>
+<link rel="icon" href="/mobil/ikon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="/profil/profil.css">
+</head>
+<body>
+<header class="ust">
+  <button class="btn geri" id="geri" type="button" aria-label="Geri"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Geri</span></button>
+  <a class="marka" href="/" id="ana-link">Zar Masası</a>
+  <nav class="ust-nav" aria-label="Bölümler">
+    <a href="/" id="nav-masalar">Masalar</a>
+    <a href="/oyunlar">Masa oyunları</a>
+  </nav>
+  <span class="sp"></span>
+  <span data-zm-bildirim-yer></span>
+  <a class="benbtn" id="ben" href="/profil" aria-label="Profilim"></a>
+</header>
+<main id="ana" aria-live="polite"><div class="yukleniyor">Profil yükleniyor…</div></main>
+<div id="tost" class="tost" role="status" aria-live="polite" hidden></div>
+<script src="/shim.js"></script>
+<script src="/profil/profil.js"></script>
+<script src="/ext/bildirim.js"></script>
+</body>
+</html>
