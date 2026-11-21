@@ -5,6 +5,7 @@
   const { OYUNLAR, ayni } = window.ZM_OYUNLAR;
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const kisiA = k => (window.zmKisi ? window.zmKisi(k.id, k.name) : esc(k.name)); // ada tıklanınca profil açılır (bot ise düz ad)
   const LS = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
   /* ---------------- Bağlantı ---------------- */
@@ -149,7 +150,7 @@
     const l = tum.filter(odaUyar).sort((a, b) => (b.siraSende - a.siraSende) || ((b.benim || b.acan) - (a.benim || a.acan)) || ((a.durum === "bitti") - (b.durum === "bitti")) || b.updated - a.updated);
     if (!l.length) return `<div class="bos-kutu"><h2>Aramana uyan oda yok</h2><p>Başka bir kelime dene ya da süzgeçleri temizle.</p><button class="btn" data-f-temizle>Süzgeçleri temizle</button></div>`;
     return `<p class="sayac">${l.length === tum.length ? `${tum.length} oda` : `${tum.length} odadan ${l.length} tanesi`}</p><div class="liste">${l.map(o => {
-      const oyuncular = o.koltuk.map(k => (k ? esc(k.name) : "<i>boş</i>")).join(", ");
+      const oyuncular = o.koltuk.map(k => (k ? kisiA(k) : "<i>boş</i>")).join(", ");
       const dug = o.benim || (!o.kart && benimKoltuklarim(o.b).length) ? "Devam et" : o.bos && o.durum !== "bitti" ? "Katıl" : "İzle";
       return `<div class="satir oda${o.siraSende ? " sirada" : ""}"><span class="tur-rozet ${o.kart ? "kart" : "tahta"}">${o.kart ? "Kart" : "Tahta"}</span>
         <span class="oda-ad"><span class="ad" data-noi18n>${esc(o.ad)}</span>${o.ozelAd ? `<small>${esc(o.oyunAd)}</small>` : ""}</span>
@@ -245,7 +246,7 @@
       const botDug = !x && masadayim(b) ? `<button class="btn" data-bot-ekle="${k}" title="Bu koltuğa bilgisayar oyuncusu oturt">🤖 Bot</button>` : "";
       const botAyar = x && x.bot ? `<div class="bot-ayar">${masadayim(b) ? `<label>Zorluk <select data-bot-zorluk="${k}">${Object.entries(ZORLUK).map(([z, ad]) => `<option value="${z}"${x.zorluk === z ? " selected" : ""}>${esc(ad)}</option>`).join("")}</select></label><button class="btn" data-bot-cikar="${k}">Botu kaldır</button>` : ""}
         ${yonetici() ? `<label class="bot-oto" title="Kapatınca bot kendiliğinden oynamaz; sırası gelince sen onun yerine oynarsın"><input type="checkbox" data-bot-oto="${k}"${x.oto !== false ? " checked" : ""}> Otomatik oynasın</label>${x.oto === false && !d.bitti && d.sira === k ? `<button class="btn" data-bot-adim="${k}" title="Botun kendi seçtiği hamleyi yaptır">Bot hamlesini yap</button>` : ""}` : ""}</div>` : "";
-      return `<div class="koltuk${x && x.bot ? " bot" : ""}" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
+      return `<div class="koltuk${x && x.bot ? " bot" : ""}" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? kisiA(x) : "<i>boş</i>"}</span><span class="sp"></span>
         ${mine ? `<button class="btn" data-kalk="${k}">Kalk</button>` : x ? "" : `<button class="btn pri" data-otur="${k}">Otur</button>${botDug}`}</div>${botAyar}`;
     };
     $("#ana").dataset.lobi = "";

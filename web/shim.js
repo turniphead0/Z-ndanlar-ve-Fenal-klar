@@ -14,7 +14,8 @@
     if (q.get("masaustu") === "1") { LS.set("zm-gorunum", "masaustu"); q.delete("masaustu"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
     const telefon = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && Math.min(screen.width, screen.height) < 600);
     if (location.pathname === "/" && telefon && !/Electron/.test(navigator.userAgent) && !q.has("pop") && !q.has("mobil") && LS.get("zm-gorunum") !== "masaustu") {
-      location.replace(location.hash.length > 1 ? "/?mobil=1" + location.hash : "/mobil");
+      const konu = q.get("forum"); // profil sayfasındaki forum bağlantısı: telefonda mobil forumda açılır
+      location.replace(konu ? "/mobil#forum-konu/" + encodeURIComponent(konu) : location.hash.length > 1 ? "/?mobil=1" + location.hash : "/mobil");
       return;
     }
   } catch (e) {}
@@ -377,6 +378,45 @@
       location.reload();
     },
   };
+
+  /* ---------------- Kişi adları: tıklanınca o kişinin profil sayfası açılır ---------------- */
+  // zmKisi(kimlik, ad) bir adı tıklanabilir yapar (bağlantı). Bir düğmenin ya da tıklanan bir satırın içindeyse
+  // { ic: true } ile <span> olur; tıklama satırın kendi işine gitmez. Botlar ve hesapsız adlar düz metin kalır.
+  const KISI_ID = /^u-[0-9a-f]{8,}$/;
+  const escH = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const profilAdresi = id => "/profil" + (id ? "?kisi=" + encodeURIComponent(id) : "");
+  function kisiHtml(id, ad, o) {
+    o = o || {}; const a = escH(ad);
+    if (!KISI_ID.test(String(id || ""))) return a;
+    const ort = ` class="zm-kisi${o.cls ? " " + escH(o.cls) : ""}" data-zm-kisi="${escH(id)}" data-noi18n title="${escH(String(ad || "") + " · profilini aç")}"`;
+    return o.ic ? `<span role="link"${ort}>${a}</span>` : `<a href="${profilAdresi(id)}"${ort}>${a}</a>`;
+  }
+  // Oyun masasındayken (FRP ya da masa oyunu) profil yeni sekmede/pencerede açılır, masa kapanmasın.
+  function profilAc(id, yeni) {
+    const url = profilAdresi(id);
+    let w = window; try { if (window.top !== window && window.top.location.origin === location.origin) w = window.top; } catch (e) {}
+    const l = w.location, mobil = /[?&]mobil=1/.test(l.search) || l.pathname.startsWith("/mobil");
+    const oyunda = ((l.pathname === "/" || l.pathname.startsWith("/oyunlar")) && l.hash.length > 1) || /[?&]pop=/.test(l.search);
+    if (yeni || (oyunda && !mobil)) { const y = w.open(url, "_blank", "noopener"); if (y !== null || yeni) return; }
+    l.href = url;
+  }
+  document.addEventListener("click", e => {
+    const el = e.target && e.target.closest && e.target.closest("[data-zm-kisi]"); if (!el) return;
+    e.stopPropagation();
+    if (el.tagName === "A" && (e.ctrlKey || e.metaKey || e.shiftKey)) return; // tarayıcı yeni sekmede açar
+    e.preventDefault(); profilAc(el.dataset.zmKisi, e.ctrlKey || e.metaKey);
+  }, true);
+  document.addEventListener("keydown", e => {
+    const el = e.target; if (!(e.key === "Enter" || e.key === " ") || !el || !el.matches || !el.matches("span[data-zm-kisi]")) return;
+    e.preventDefault(); e.stopPropagation(); profilAc(el.dataset.zmKisi);
+  }, true);
+  try {
+    const st = document.createElement("style");
+    st.textContent = ".zm-kisi{color:inherit;text-decoration:none;cursor:pointer;border-radius:3px}.zm-kisi:hover{text-decoration:underline;text-underline-offset:2px;color:var(--accent,inherit)}";
+    (document.head || document.documentElement).appendChild(st);
+  } catch (e) {}
+  window.zmKisi = kisiHtml; window.zmProfilAc = profilAc;
+  Object.assign(window.zmSunucu, { kisiHtml, profilAc, profilAdresi });
 
   /* ---------------- window.claude ---------------- */
   window.claude = {

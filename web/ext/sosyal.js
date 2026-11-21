@@ -62,7 +62,12 @@
       b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 6h18v12H3z"/><path d="M3 7l9 6 9-6"/></svg>Mesajlar${rozet()}`;
     }
   }
-  document.addEventListener("click", e => { const b = e.target.closest("[data-zm-sosyal]"); if (b) ac(b.dataset.zmSosyal); });
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-zm-sosyal]"); if (!b) return;
+    // Profil artık ayrı bir sayfa (/profil); pencerede yalnızca mesajlar, arkadaşlar ve dosyalar açılır.
+    if (b.dataset.zmSosyal === "profil") { if (!Z.hesapli()) Z.girisEkrani({ kayit: true }); else Z.profilAc(null); return; }
+    ac(b.dataset.zmSosyal);
+  });
 
   // Okunmamış mesaj ve gelen istek sayısı (pencere kapalıyken de).
   Z.ready.then(async () => {

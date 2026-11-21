@@ -89,7 +89,8 @@
   /* ---------- Forum ---------- */
   const konuUyar = t => (!F.kategori || t.kategori === F.kategori) && (!F.sistem || t.sistem === F.sistem) && uyar(F.q, t.baslik, t.govde, t.yazar && t.yazar.name, t.kategori, sysAd(t.sistem));
   const nokta = (y, cls) => `<span class="pdot sm ${cls || ""}" data-noi18n style="background:${esc((y && y.color) || "#7f8c8d")}">${esc(((y && y.name) || "?")[0].toLocaleUpperCase("tr"))}</span>`;
-  const yazarAdi = y => (y && y.id === ME.id ? "Sen" : `<span data-noi18n>${esc((y && y.name) || "Bir oyuncu")}</span>`);
+  // Yazarın adı tıklanınca profil sayfası açılır (web/shim.js: zmKisi). Başlık satırı bir düğme olduğundan orada <span> olur.
+  const yazarAdi = (y, ic) => (y && y.id === ME.id ? "Sen" : window.zmKisi && y ? window.zmKisi(y.id, y.name || "Bir oyuncu", { ic }) : `<span data-noi18n>${esc((y && y.name) || "Bir oyuncu")}</span>`);
   const silebilir = y => !!y && (y.id === ME.id || ZF.isOwner());
 
   function yeniForm() {
@@ -106,7 +107,7 @@
     return `<button type="button" class="zf-konu ${t.sabit ? "sabit" : ""}" data-zf-ac="${esc(t.id)}">
       ${nokta(t.yazar)}
       <span class="zf-kb"><span class="zf-kt">${t.sabit ? '<span class="zf-pin">Sabit</span>' : ""}<b data-noi18n>${esc(t.baslik)}</b></span>
-        <span class="zf-km"><span class="zf-kat">${esc(t.kategori || "Genel sohbet")}</span>${t.sistem ? `<span class="rbadge sys">${esc(sysAd(t.sistem))}</span>` : ""}${yazarAdi(t.yazar)} · <span>${ago(t.created)}</span></span></span>
+        <span class="zf-km"><span class="zf-kat">${esc(t.kategori || "Genel sohbet")}</span>${t.sistem ? `<span class="rbadge sys">${esc(sysAd(t.sistem))}</span>` : ""}${yazarAdi(t.yazar, true)} · <span>${ago(t.created)}</span></span></span>
       <span class="zf-ks"><span><b>${t.yanit || 0}</b> yanıt</span>${t.yanit ? `<small>son: ${esc(t.sonYazan || "")} · ${ago(t.updated)}</small>` : ""}</span></button>`;
   }
 
@@ -161,6 +162,7 @@
       ref.insertAdjacentHTML("afterend", bar());
     }
     masalariSuz(root); forumBolumu(root); yanitlaraAbone();
+    if (F.kaydir && F.acik && F.konular[F.acik]) { F.kaydir = false; setTimeout(() => document.querySelector("#lobby .zf-forum")?.scrollIntoView({ block: "start" }), 0); }
   }
   function barYenile() { const b = document.querySelector("#lobby .zf-bar"); if (!b) return; const a = document.activeElement && document.activeElement.id === "zfAra"; const pos = a ? document.activeElement.selectionStart : 0; b.outerHTML = bar(); if (a) { const i = document.getElementById("zfAra"); i.focus(); try { i.setSelectionRange(pos, pos); } catch (e) {} } }
 
@@ -216,6 +218,11 @@
   /* ---------- Lobi çiziminden sonra ---------- */
   const _renderLobby = window.renderLobby;
   window.renderLobby = function () { const r = _renderLobby.apply(this, arguments); try { abone(); uygula(); } catch (e) { console.error(e); } return r; };
+  // /?forum=<konu> (profil sayfasındaki bağlantılar): o başlığı açık getir, adresten sil.
+  try {
+    const u = new URL(location.href), k = u.searchParams.get("forum");
+    if (/^t[0-9a-z]+$/.test(k || "")) { F.acik = k; F.kaydir = true; if (F.goster === "masalar") F.goster = "hepsi"; u.searchParams.delete("forum"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
+  } catch (e) {}
   // Lobi ilk çizildiğinde DB henüz hazır olmayabilir; hazır olunca abone ol.
   ZF.ready.then(() => { const t = setInterval(() => { if (DB) { clearInterval(t); abone(); } }, 200); });
 })();

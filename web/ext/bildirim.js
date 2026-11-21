@@ -162,9 +162,8 @@
       if (SAYFA === "uygulama" && typeof window.enterGame === "function") { try { if (typeof S !== "undefined" && S.games[h.id]) { window.enterGame(h.id); return; } } catch (e) {} location.href = "/#" + h.id; }
       else location.href = (SAYFA === "mobil" ? "/?mobil=1#" : "/#") + encodeURIComponent(h.id);
     } else if (h.tur === "kisi") {
-      if (SAYFA === "mobil") location.hash = "kisi/" + h.id;
-      else if (SAYFA === "uygulama" && window.ZM_SOSYAL_AC) window.ZM_SOSYAL_AC("kisi/" + h.id);
-      else location.href = "/mobil#kisi/" + encodeURIComponent(h.id);
+      if (window.zmProfilAc) window.zmProfilAc(h.id); // ayrı profil sayfası (web/profil)
+      else location.href = "/profil?kisi=" + encodeURIComponent(h.id);
     }
   }
   function ac(sekme) { st.acik = true; if (sekme) st.sekme = sekme; if (st.sekme === "gonder") st.kisiler = null; panoCiz(); yerlestir(); }
