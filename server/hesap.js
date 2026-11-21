@@ -60,7 +60,9 @@ const KAYIT_SAATLIK = 3, KAYIT_GUNLUK = 10, TOPLU_KAYIT = 20;
 // Kodlar: 6 hane, 15 dakika geçerli, 5 yanlış denemede geçersiz olur; en erken 60 saniyede bir yeniden gönderilir.
 const KOD_OMRU = 15 * 60 * 1000, KOD_DENEME = 5, KOD_ARALIK = 60 * 1000, KOD_GONDERIM = 5;
 
-function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null, epostaModu = "", sunucuAdi = "Zar Masası", log = console, insanMi = kurInsanMi() }) {
+function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null, epostaModu = "", sunucuAdi = "Zar Masası", log = console, insanMi = kurInsanMi(), kurallar = null }) {
+  // Gizlilik kuralları (server/gizlilik.js): profil görünürlüğü ve engelleme. Verilmezse herkes her şeyi görür.
+  const K = kurallar || { gorebilir: () => true, aranabilir: () => true, engelVar: () => false, engelledi: () => false, gorunum: () => "herkes" };
   // E-posta zorunluluğu: yalnızca bir gönderici (SMTP) varsa açılır; yoksa kimse kilitli kalmasın diye kapalıdır.
   const epostaAcik = !!epostaGonder && epostaModu !== "kapali";
   const hesapOf = ad => store.get("_sys/hesap/" + anahtar(ad));
@@ -447,7 +449,8 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
         const out = [];
         for (const d of store.list("_sys/hesap")) {
           if (!d.id.includes(q) || d.data.uid === c.uid) continue;
-          const u = kisi(d.data.uid); if (u) out.push({ ...herkeseAcik(d.data.uid, u), bas: d.id.startsWith(q) });
+          const u = kisi(d.data.uid); if (u && !K.aranabilir(c, d.data.uid)) continue;
+          if (u) out.push({ ...herkeseAcik(d.data.uid, u), bas: d.id.startsWith(q) });
         }
         out.sort((a, b) => (b.bas - a.bas) || a.kullanici.localeCompare(b.kullanici, "tr"));
         return out.slice(0, 20).map(({ bas, ...x }) => ({ ...x, arkadas: durum(c.uid, x.id) }));
@@ -455,8 +458,11 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
       case "kisi": {
         let uid = m.kisi;
         if (!uid && m.kullanici) { const h = hesapOf(m.kullanici); uid = h && h.uid; }
-        const u = kisi(uid); if (!u) throw hata("not_found", "Böyle biri yok");
-        return { ...herkeseAcik(uid, u), hakkinda: u.hakkinda || "", katildi: u.created || null, arkadas: uid === c.uid ? "ben" : durum(c.uid, uid) };
+        const u = kisi(uid); if (!u || u.silindi) throw hata("not_found", "Böyle biri yok");
+        const arkadas = uid === c.uid ? "ben" : durum(c.uid, uid), engelledim = uid !== c.uid && K.engelledi(c.uid, uid);
+        // Gizli ya da yalnızca arkadaşlara açık profil: başkaları yalnızca adı ve fotoğrafı görür.
+        if (!K.gorebilir(c, uid)) return { ...herkeseAcik(uid, u), gizli: true, arkadas, engelledim };
+        return { ...herkeseAcik(uid, u), hakkinda: u.hakkinda || "", katildi: u.created || null, arkadas, engelledim, ...(uid === c.uid ? { gorunum: K.gorunum(uid) } : {}) };
       }
       case "profilYaz": {
         const yeni = { ...me };
@@ -479,6 +485,7 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
         const u = kisi(uid);
         if (!u || !u.username) throw hata("not_found", "Böyle bir kullanıcı yok");
         if (uid === c.uid) throw hata("invalid_argument", "Kendini arkadaş ekleyemezsin");
+        if (K.engelVar(c.uid, uid)) throw hata("permission_denied", "Bu kişiye arkadaşlık isteği gönderilemiyor");
         const d = durum(c.uid, uid), t = Date.now();
         if (d === "arkadas") return "arkadas";
         if (d === "gelen") { store.set(arkadasYol(c.uid, uid), { durum: "arkadas", t }); store.set(arkadasYol(uid, c.uid), { durum: "arkadas", t }); arkadasBildir("kabul", c.uid, uid); return "arkadas"; }
@@ -489,6 +496,7 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
       case "arkadasKabul": {
         const uid = String(m.kisi || "");
         if (durum(c.uid, uid) !== "gelen") throw hata("not_found", "Böyle bir istek yok");
+        if (K.engelVar(c.uid, uid)) throw hata("permission_denied", "Bu kişiyle arkadaş olamazsın");
         const t = Date.now();
         store.set(arkadasYol(c.uid, uid), { durum: "arkadas", t }); store.set(arkadasYol(uid, c.uid), { durum: "arkadas", t });
         arkadasBildir("kabul", c.uid, uid);
@@ -502,7 +510,7 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
       }
       case "dmGonder": {
         const to = String(m.to || "");
-        if (durum(c.uid, to) !== "arkadas") throw hata("permission_denied", "Yalnızca arkadaşlarına mesaj gönderebilirsin");
+        if (durum(c.uid, to) !== "arkadas" || K.engelVar(c.uid, to)) throw hata("permission_denied", "Yalnızca arkadaşlarına mesaj gönderebilirsin");
         const now = Date.now(); c.dmT = (c.dmT || []).filter(t => now - t < 5000);
         if (c.dmT.length >= 8) throw hata("rate_limited", "Biraz yavaş: çok hızlı yazıyorsun");
         const text = String(m.text || "").replace(/\r\n?/g, "\n").trim().slice(0, 2000);
@@ -591,8 +599,18 @@ function kurHesap({ store, conns, arkadasBildir = () => {}, epostaGonder = null,
     }
   }
 
+  // Hesap silme gibi önemli işlemlerden önce şifre sorulur (yanlış denemeler hesap kilidine sayılır).
+  function sifreKontrol(uid, sifre) {
+    const u = kisi(uid), h = u && u.username && hesapOf(u.username);
+    if (!h) throw hata("hesap_gerekli", "Bunun için bir hesapla giriş yapmalısın");
+    const k = anahtar(u.username);
+    if (kilitli(k)) throw hata("rate_limited", "Çok fazla yanlış şifre girildi. 15 dakika sonra tekrar dene.");
+    if (!sifreDogru(h, String(sifre || "").slice(0, 200))) { hesapYanlis(k); throw hata("bad_login", "Şifre yanlış"); }
+    return true;
+  }
+
   const kapat = () => { clearInterval(temizlik); clearInterval(supurge); clearInterval(bellekSupurge); };
-  return { OPS, op, http, gecerli, kisi, herkeseAcik, kapat, epostaAcik, epostaGerekli };
+  return { OPS, op, http, gecerli, kisi, herkeseAcik, kapat, epostaAcik, epostaGerekli, sifreKontrol };
 }
 
 module.exports = { kurHesap, anahtar, ADI, sifreKurali };

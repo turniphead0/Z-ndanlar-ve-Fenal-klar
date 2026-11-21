@@ -31,7 +31,7 @@ const ROZETLER = [
 
 const bugun = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 
-function kurRozetler({ store, conns, dosyalar, forumu }) {
+function kurRozetler({ store, conns, dosyalar, forumu, kurallar = null }) {
   const OPS = new Set(["rozetler"]);
   const yol = uid => "_sys/rozet/" + uid;
   const al = uid => store.get(yol(uid)) || {};
@@ -106,7 +106,10 @@ function kurRozetler({ store, conns, dosyalar, forumu }) {
       case "rozetler": {
         const uid = m.kisi ? String(m.kisi) : c.uid;
         if (!KISI_ID.test(uid) && uid !== c.uid) throw hata("invalid_argument", "Geçersiz kişi");
-        if (!store.get("_sys/users/" + uid)) throw hata("not_found", "Böyle biri yok");
+        const u = store.get("_sys/users/" + uid);
+        if (!u || u.silindi) throw hata("not_found", "Böyle biri yok");
+        // Gizli profil (ya da engel): rozetler de görünmez (server/gizlilik.js).
+        if (kurallar && !kurallar.gorebilir(c, uid)) throw hata("permission_denied", "Bu profil gizli");
         return rozetleri(uid);
       }
     }

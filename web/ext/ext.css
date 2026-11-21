@@ -439,3 +439,10 @@
 a.zf-konu{text-decoration:none;color:var(--ink)}
 .zf-forum a.btn{text-decoration:none;color:var(--ink)}
 .zf-forum a.btn.pri{color:var(--accent-ink)}
+/* Yönetim: şikâyetler (web/ext/botlar.js, server/gizlilik.js) */
+.zm-sikayet{padding:8px 10px;border:1px solid var(--line);border-radius:8px;display:grid;gap:4px}
+.zm-sikayet.acik{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
+.zm-sikayet p{margin:0}
+.zm-sikayet-metin{white-space:pre-wrap}
+.zm-sikayet-kanit{margin:0;padding:6px 10px;border-left:3px solid var(--line);white-space:pre-wrap;font-size:13px}
+.zm-sikayet .zm-hesap{border:0;padding:0}

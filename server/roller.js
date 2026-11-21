@@ -82,7 +82,7 @@ function kurRoller({ store, conns, adminler }) {
     throw hata("unknown_op", "Bilinmeyen işlem");
   }
 
-  return { OPS, op, rolu, rolOf, admin, botYoneticisi };
+  return { OPS, op, rolu, rolOf, admin, botYoneticisi, envAdminMi };
 }
 
 module.exports = { kurRoller, ROLLER };

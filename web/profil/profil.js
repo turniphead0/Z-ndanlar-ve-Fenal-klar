@@ -9,6 +9,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const Z = window.zmSunucu;
+  const GZ = window.zmGizlilik; // gizlilik, engelleme, şikâyet, verilerimi indir, hesap silme (web/profil/gizlilik.js)
   const RENKLER = ["#2f8f86", "#c0392b", "#8e44ad", "#2980b9", "#d4880f", "#27ae60", "#d35400", "#7f8c8d"];
   const TELEFON = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
   const UYGULAMA = /ZarMasasiApp/.test(navigator.userAgent); // Android uygulaması
@@ -77,13 +78,14 @@
     const p = st.p;
     if (st.ben) return `<a class="btn" href="#ayarlar">Profili düzenle</a><button class="btn" data-a="paylas" type="button">Bağlantıyı kopyala</button>`;
     if (!p.kullanici) return "";
+    if (p.engelledim) return GZ.dugmeler(p);
     const d = p.arkadas;
     const mesaj = `<button class="btn pri" data-a="mesaj" type="button">Mesaj gönder</button>`;
     const ark = d === "arkadas" ? `${mesaj}<button class="btn kotu" data-a="cikar" type="button">Arkadaşlıktan çıkar</button>`
       : d === "gelen" ? `<button class="btn pri" data-a="kabul" type="button">İsteği kabul et</button><button class="btn" data-a="reddet" type="button">Reddet</button>`
       : d === "giden" ? `<button class="btn" data-a="gerical" type="button">İstek gönderildi · geri çek</button>`
       : `<button class="btn pri" data-a="ekle" type="button">+ Arkadaş ekle</button>`;
-    return ark + `<button class="btn" data-a="paylas" type="button">Bağlantıyı kopyala</button>`;
+    return ark + `<button class="btn" data-a="paylas" type="button">Bağlantıyı kopyala</button>` + GZ.dugmeler(p);
   }
   function sayilar() {
     const o = st.oyun, f = st.forum, n = v => (v == null ? "…" : v);
@@ -110,7 +112,7 @@
         </div>
         <div class="dugmeler">${dugmeler()}</div>
       </div>
-      ${sayilar()}
+      ${p.gizli ? "" : sayilar()}
     </section>`;
   }
 
@@ -184,6 +186,7 @@
           ${TELEFON ? `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>` : ""}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}</div>
         <p class="ipucu" id="oturumsay"></p>
         <div class="dugmeler"><button class="btn" type="button" data-a="tumcikis">Öteki cihazlardan çıkış yap</button><button class="btn kotu" type="button" data-a="cikis">Çıkış yap</button></div></section>
+      ${GZ.ayarlarHtml()}
     </div>`;
   }
   function ayarlarBagla() {
@@ -196,6 +199,7 @@
       if (s.yeni.value !== s.yeni2.value) return tost("Yeni şifreler aynı değil");
       try { await cagir("sifreDegistir", { eski: s.eski.value, yeni: s.yeni.value }); s.reset(); tost("Şifren değişti. Öteki cihazlarda yeniden giriş yapman gerekecek."); } catch (x) {}
     });
+    GZ.bagla(ctx);
     Z.call("oturumlar", {}).then(r => { const p = $("#oturumsay"); if (p) p.textContent = r.sayi > 1 ? `Hesabın ${r.sayi} cihazda açık. 30 gün kullanılmayan cihazlarda oturum kendiliğinden kapanır.` : "Hesabın yalnızca bu cihazda açık."; }).catch(() => {});
   }
 
@@ -210,6 +214,7 @@
     if (st.sekme === "ayarlar" && a && ana.contains(a) && /INPUT|TEXTAREA/.test(a.tagName) && $("#panel")) {
       $(".kapak").outerHTML = kapak(); $(".sekmeler").outerHTML = sekmeler(); return;
     }
+    if (st.p.gizli) { ana.innerHTML = kapak() + `<section class="panel" id="panel">${GZ.gizliPanel(st.p)}</section>`; return; }
     const panel = st.sekme === "konular" ? konularPanel() : st.sekme === "yanitlar" ? yanitlarPanel() : st.sekme === "ayarlar" ? ayarlarPanel() : oyunlarPanel();
     ana.innerHTML = kapak() + (window.zmRozetler ? window.zmRozetler.html(st.rozet, st.ben) : "") + sekmeler() + `<section class="panel" id="panel" role="tabpanel" aria-labelledby="sek-${st.sekme}">${panel}</section>`;
     if (st.sekme === "ayarlar") ayarlarBagla();
@@ -270,11 +275,19 @@
     return new File([blob], "foto.jpg", { type: "image/jpeg" });
   }
   const dosyaSec = () => new Promise(res => { const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.onchange = () => res(i.files[0] || null); i.click(); });
+  // Engelleme gibi profilin görünürlüğünü değiştiren işlemlerden sonra her şeyi yeniden yükle.
+  async function profilTazele() {
+    try { await profilYukle(); } catch (e) {}
+    if (!st.p.gizli) await Promise.all([oyunYukle(), forumYukle()]);
+    ciz();
+  }
+  const ctx = { st, tost, onayli, profilTazele };
   async function arkadasYenile() { try { const p = await Z.call("kisi", { kisi: st.uid }); st.p.arkadas = p.arkadas; } catch (e) {} ciz(); }
 
   $("#ana").addEventListener("click", async e => {
     const b = e.target.closest("[data-a]"); if (!b) return;
     const a = b.dataset.a, uid = st.uid;
+    if (a.startsWith("gz-")) return GZ.tikla(a, b, ctx);
     try {
       switch (a) {
         case "osuz": st.oyunSuz = b.dataset.k; ciz(); return;
@@ -325,10 +338,10 @@
       return;
     }
     sekmeOku(); ciz();
-    await Promise.all([oyunYukle(), forumYukle(), Z.call("rozetler", { kisi: st.uid }).then(r => { st.rozet = r; }).catch(() => {})]); ciz();
+    if (!st.p.gizli) { await Promise.all([oyunYukle(), forumYukle(), Z.call("rozetler", { kisi: st.uid }).then(r => { st.rozet = r; }).catch(() => {})]); ciz(); }
     // Açıkken oyunlar ve çevrimiçi durumu ara ara tazelenir.
     setInterval(async () => {
-      if (document.hidden) return;
+      if (document.hidden || st.p.gizli) return;
       const once = JSON.stringify([st.oyun, st.cevrimici]);
       await oyunYukle();
       try { const r = await Z.call("profiles", { ids: [st.uid] }); st.cevrimici = st.ben || !!(r[st.uid] && r[st.uid].cevrimici); } catch (e) {}

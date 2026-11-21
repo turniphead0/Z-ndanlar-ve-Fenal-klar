@@ -102,6 +102,17 @@ bash deploy/kur.sh masa.ornek.com   # kendi alan adın varsa (DNS kaydı sunucun
 - Eski `http://IP` adresiyle gelenler (eski uygulama sürümleri dahil) otomatik olarak HTTPS adresine yönlenir. WebSocket bağlantısı da kendiliğinden `wss://` olur.
 - Uygulamalar şema yazılmamış bir adreste önce `https://`, sonra `http://` dener.
 
+### Otomatik yedek
+
+`deploy/kur.sh` her gece (sunucu saatiyle 01:17) çalışan bir yedek de kurar (`deploy/yedek.sh`): veritabanı ve yüklenen dosyaların tamamı tek bir arşive konur, `~/zm-yedek.env` içindeki `ZM_YEDEK_SIFRE` ile AES-256 olarak şifrelenir ve `~/zm-yedekler/` klasörüne yazılır (son 14 yedek tutulur). Sunucu kaybolursa yedekler de kaybolmasın diye [rclone](https://rclone.org) ile sunucunun dışına da kopyalanabilir: ücretsiz bir Backblaze B2 hesabının (10 GB) bilgilerini `B2_HESAP`, `B2_ANAHTAR`, `B2_KOVA` satırlarına yazmak yeter; Google Drive gibi başka bir rclone hedefi için `ZM_YEDEK_HEDEF=ad:klasor`. Uzakta son 30 günün yedekleri durur. Son yedeğin zamanı ve uzak kopyanın durumu adminlere Yönetim panelinde görünür.
+
+```bash
+bash deploy/yedek.sh                 # hemen bir yedek al
+bash deploy/geri-yukle.sh            # yedekleri listele (sunucudakiler ve uzaktakiler)
+bash deploy/geri-yukle.sh <ad>       # o yedeği geri yükle (önce şimdiki veriler de yedeklenir)
+bash deploy/geri-yukle.sh --uzak <ad>  # uzaktaki yedeği indirip geri yükle (yeni sunucuya taşırken)
+```
+
 Kendi ters vekilini (nginx vb.) kullanırsan `ZM_VEKIL=1` ver ki deneme sınırları gerçek ziyaretçi adresine göre çalışsın; WebSocket yolu `/ws`'dir.
 
 ### Hesaplar, profil, arkadaşlar ve mesajlar
@@ -109,6 +120,8 @@ Kendi ters vekilini (nginx vb.) kullanırsan `ZM_VEKIL=1` ver ki deneme sınırl
 Sunucuda herkes bir **kullanıcı adı ve şifre** belirleyerek hesap açar. Sunucuya bir SMTP hesabı tanıtılmışsa (`ZM_SMTP_*`) kayıt iki adımlıdır: e-posta adresine 6 haneli bir kod gider, kod girilince hesap açılır; bir adres yalnızca bir hesapta kullanılabilir, girişte kullanıcı adı yerine e-posta da yazılabilir ve "Şifremi unuttum" ile şifre e-postaya gelen kodla yenilenir. E-postası olmayan eski hesaplar giriş yaptıktan sonra bir adres ekleyip doğrulamadan masaya giremez. Aynı bağlantıdan art arda kayıt denenirse (bir saatte 3. deneme ya da aynı gün ikinci hesap) sunucunun kendi çizdiği bir "insan mısın?" resmi sorulur; bir bağlantıdan günde en çok 10 hesap açılır, bütün sunucuya 10 dakikada 20'den fazla kayıt gelirse herkese resim sorulur. Dışarıdan bir hizmet kullanılmaz. Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
 
 **Güvenlik:** Hesaplı sunucuda ortak bir sunucu şifresi yoktur; herkes kendi kullanıcı adı ve şifresiyle girer. Şifreler scrypt ile özetlenerek saklanır. Yeni şifreler en az 8 karakter olmalı, çok bilinen şifreler ve kullanıcı adını içeren şifreler kabul edilmez. Bir hesaba 15 dakikada 5 yanlış şifre girilirse o hesap 15 dakika kilitlenir; bir adresten de 10 dakikada en çok 10 hatalı deneme yapılabilir. 30 gün kullanılmayan oturumlar kendiliğinden kapanır; profilde "Öteki cihazlardan çıkış yap" ile bütün öteki cihazlar çıkarılabilir, şifre değişince de öteki cihazlar hemen çıkar. Sunucu her yanıta güvenlik başlıkları ekler (başka sitelerin sayfayı çerçeveye alması engellenir) ve yüklenen dosyaları (örneğin SVG) betik çalıştıramayacak biçimde sunar.
+
+**Gizlilik ve kişisel veriler (KVKK):** Profil > Ayarlar'dan profil herkese açık, yalnızca arkadaşlara açık ya da gizli yapılabilir (gizli profil kişi aramasında da çıkmaz; adminler şikâyetleri inceleyebilmek için her profili görür). Bir profildeki ⋯ düğmesiyle kişi engellenir (arkadaşlık biter; birbirlerine mesaj, arkadaşlık isteği ve bildirim gönderemez, engellenen engelleyenin profilini göremez) ya da şikâyet edilir; şikâyete aradaki son 10 özel mesaj eklenebilir. Şikâyetler adminlere bildirim olarak gelir ve Yönetim panelinde listelenir. "Verilerimi indir" sunucunun kişi hakkında sakladığı her şeyi (hesap, profil, arkadaşlar, mesajlar, bildirimler, forum yazıları, oyun sohbeti, yüklenen dosyalar) tek bir .zip olarak verir. "Hesabı sil" şifre sorup hesabı ve kişisel verileri kalıcı olarak siler; başkalarıyla paylaşılan masalar onlar için kalır ve orada ad "Silinmiş hesap" görünür.
 
 **Sohbet grupları:** Mesajlar ekranındaki "+ Yeni grup" ile bir ad verip arkadaşlarını seçerek grup kurulur (en çok 50 kişi). Her üye kendi arkadaşlarını gruba ekleyebilir, grubun adını değiştirebilir ya da gruptan ayrılabilir; üye çıkarmayı yalnızca grubu kuran yapar (kuran ayrılırsa grup en eski üyeye geçer). Masaüstü ve web uygulamasında ana ekranın üstündeki **Mesajlar**, **Arkadaşlar** ve profil düğmeleri, oyun içinde de sol raydaki **Mesajlar** düğmesi aynı ekranları açar.
 

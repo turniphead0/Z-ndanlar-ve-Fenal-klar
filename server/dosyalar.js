@@ -44,7 +44,7 @@ function masaOzeti(id, b, uid) {
 const masadaMi = (b, uid) => ((b.oyun === "kart" ? (b.durum || {}).koltuk : b.koltuk) || []).some(k => k && k.id === uid);
 const frpRolu = (g, uid) => (g.dms && g.dms[uid] ? "dm" : g.players && g.players[uid] ? "oyuncu" : null);
 
-function kurDosyalar({ store, roller, conns, maxDosya, kota }) {
+function kurDosyalar({ store, roller, conns, maxDosya, kota, kurallar = null }) {
   const MAX = Math.round(mbSayi(maxDosya, 25) * MB);
   const KOTA = Math.round(mbSayi(kota, 200) * MB);
   const OPS = new Set(["dosyalarim", "profilOyunlar", "kotaListe", "kotaAyar"]);
@@ -126,6 +126,7 @@ function kurDosyalar({ store, roller, conns, maxDosya, kota }) {
         const uid = m.kisi ? String(m.kisi) : c.uid;
         if (!KISI_ID.test(uid) && uid !== c.uid) throw hata("invalid_argument", "Geçersiz kişi");
         if (!store.get("_sys/users/" + uid)) throw hata("not_found", "Böyle biri yok");
+        if (kurallar && !kurallar.gorebilir(c, uid)) throw hata("permission_denied", "Bu profil gizli");
         return oyunlari(uid);
       }
       case "kotaListe": { // admin: her hesabın kullandığı alan ve kotası

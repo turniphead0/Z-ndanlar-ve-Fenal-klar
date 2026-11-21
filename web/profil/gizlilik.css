@@ -1,0 +1,25 @@
+/* Gizlilik, engelleme, şikâyet ve hesap silme (web/profil/gizlilik.js) */
+.gz-menu{position:relative;display:inline-block}
+.gz-menu>summary{list-style:none;cursor:pointer;min-width:38px;text-align:center}
+.gz-menu>summary::-webkit-details-marker{display:none}
+.gz-menu-ic{position:absolute;right:0;bottom:calc(100% + 4px);z-index:30;display:grid;gap:6px;padding:8px;min-width:170px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.gz-menu-ic .btn{width:100%;justify-content:flex-start}
+.gz-secenekler{display:grid;gap:8px;margin:0 0 12px}
+.gz-secenek{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--bg)}
+.gz-secenek:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.gz-secenek input{margin-top:3px;accent-color:var(--accent)}
+.gz-secenek span{display:grid;gap:2px}
+.gz-secenek small{color:var(--muted);font-size:13px;line-height:1.4}
+.gz-alt{font-size:15px;margin:14px 0 6px}
+.gz-engelliler{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:6px}
+.gz-engelliler li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
+.gz-engelliler li a{font-weight:700;flex:1;min-width:0}
+.gz-kutucuk{display:flex;gap:8px;align-items:flex-start;line-height:1.4}
+.gz-kutucuk input{margin-top:3px;accent-color:var(--accent)}
+.gz-tehlike{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.gz-tehlike h2{color:var(--bad)}
+.gz-sil{border-color:var(--bad)}
+.gz-pencere{width:min(480px,calc(100vw - 32px));border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);padding:18px}
+.gz-pencere::backdrop{background:rgba(0,0,0,.45)}
+.gz-pencere h2{font-family:var(--f-display);font-weight:500;font-size:20px;margin:0}
+.gz-etiket{display:grid;gap:4px;font-weight:600}

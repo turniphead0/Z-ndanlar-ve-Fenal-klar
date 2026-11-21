@@ -26,7 +26,7 @@ function puanla(kelimeler, ad, ...diger) {
 }
 const ozet = (s, n = 120) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 
-function kurArama({ store, conns, hesap, masaOzeti }) {
+function kurArama({ store, conns, hesap, masaOzeti, kurallar = null }) {
   const OPS = new Set(["genelAra"]);
 
   function ara(c, q) {
@@ -39,10 +39,13 @@ function kurArama({ store, conns, hesap, masaOzeti }) {
     // Oyuncular: hesabı olanlar (botlar ve hesapsız adlar aranmaz).
     const kisiler = [];
     for (const p of store.paths("_sys/users")) {
-      const u = store.get(p); if (!u || u.bot || !u.username) continue;
+      const u = store.get(p); if (!u || u.bot || !u.username || u.silindi) continue;
       const pu = puanla(kelimeler, u.username, u.name || ""); if (!pu) continue;
       const id = p.slice(11);
-      kisiler.push({ ...hesap.herkeseAcik(id, u), cevrimici: cevrimici.has(id), ben: id === c.uid, p: pu + (cevrimici.has(id) ? 1 : 0), t: u.created || 0 });
+      // Gizli profiller ve engellenen/engelleyen kişiler aramada çıkmaz (kişi aramasıyla aynı kural, server/gizlilik.js).
+      if (kurallar && id !== c.uid && !kurallar.aranabilir(c, id)) continue;
+      const gorur = !kurallar || kurallar.gorebilir(c, id);
+      kisiler.push({ ...hesap.herkeseAcik(id, u), cevrimici: gorur && cevrimici.has(id), ben: id === c.uid, p: pu + (gorur && cevrimici.has(id) ? 1 : 0), t: u.created || 0 });
     }
 
     // Masalar: FRP masaları (games/*) ve masa oyunu odaları (boards/*).

@@ -118,3 +118,16 @@ test("rozetler: forum, galibiyet ve yönetilen oturum sayılır; masa silinse de
     await assert.rejects(dm.call("rozetler", { kisi: "u-00000000ffff" }), /Böyle biri yok/);
   } finally { await bitir(); }
 });
+
+test("gizlilik: gizli profil ve engellenen kişi genel aramada çıkmaz, rozetleri görünmez", async () => {
+  const { kisi, bitir } = await kur();
+  try {
+    const a = await kisi("gizlici"), b = await kisi("arayan"), c = await kisi("gizlikanka");
+    await a.call("gizlilikAyar", { gorunum: "gizli" });
+    assert.equal((await b.call("genelAra", { q: "gizli" })).kisiler.map(k => k.kullanici).join(), "gizlikanka");
+    await assert.rejects(b.call("rozetler", { kisi: a.id }), /gizli/);
+    assert.ok((await a.call("rozetler", {})).rozetler.length, "kendi rozetlerini görür");
+    await c.call("engelle", { kisi: b.id });
+    assert.equal((await b.call("genelAra", { q: "gizli" })).kisiler.length, 0);
+  } finally { await bitir(); }
+});
