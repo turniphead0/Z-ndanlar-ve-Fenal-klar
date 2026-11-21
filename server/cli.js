@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Bağımsız sunucu: node server/cli.js [--port 7373] [--data ./veri] [--name "Masa adı"]
-// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_NAME, ZM_HESAP, ZM_VEKIL, ZM_PASSWORD, ZM_ADMIN, ZM_KOTA, ZM_MAX_DOSYA, ANTHROPIC_API_KEY, ZM_AI_MODEL
+// Ortam değişkenleri: ZM_PORT, ZM_DATA, ZM_NAME, ZM_HESAP, ZM_VEKIL, ZM_PASSWORD, ZM_ADMIN, ZM_KOTA, ZM_MAX_DOSYA, ANTHROPIC_API_KEY, ZM_AI_MODEL,
+// ZM_SMTP_HOST, ZM_SMTP_PORT, ZM_SMTP_USER, ZM_SMTP_PASS, ZM_SMTP_FROM, ZM_EPOSTA (ayrıntı: server/eposta.js)
+// E-posta: ZM_SMTP_HOST verilirse kayıtta e-posta doğrulama kodu istenir ve e-postası olmayan hesaplar bir adres ekler.
 // Yükleme sınırı: ZM_KOTA kişi başına toplam (MB, varsayılan 200), ZM_MAX_DOSYA dosya başına (MB, varsayılan 25).
 // Admin: ZM_ADMIN=kullanici1,kullanici2 bu hesapları admin yapar (yönetim paneli, test hesapları, bot kontrolü).
 // Hesap: bağımsız sunucuda herkes kullanıcı adı + şifreyle girer (--hesap istege-bagli ile hesapsız giriş de açılır).
@@ -17,6 +19,7 @@ const arg = (k, env, d) => { const i = args.indexOf("--" + k); return i >= 0 ? a
   const vekil = /^(1|true|evet|yes)$/i.test(String(arg("vekil", "ZM_VEKIL", "")));
   const srv = createServer({ dataDir: arg("data", "ZM_DATA", "./zar-masasi-veri"), password, name: arg("name", "ZM_NAME", "Zar Masası"), hesap, vekil, admin: arg("admin", "ZM_ADMIN", ""), kota: arg("kota", "ZM_KOTA", ""), maxDosya: arg("max-dosya", "ZM_MAX_DOSYA", "") });
   if (password && hesap === "zorunlu") console.log("Not: Hesaplı sunucuda ortak masa şifresi kullanılmaz (ZM_PASSWORD yok sayıldı). Herkes kendi kullanıcı adı ve şifresiyle girer.");
+  if (hesap === "zorunlu") console.log(process.env.ZM_SMTP_HOST ? (/^kapal/i.test(process.env.ZM_EPOSTA || "") ? "E-posta: ZM_EPOSTA=kapali, doğrulama istenmiyor." : "E-posta: kayıtta doğrulama kodu isteniyor.") : "Not: ZM_SMTP_HOST verilmedi; kayıtta e-posta doğrulaması kapalı.");
   const port = await srv.listen(+arg("port", "ZM_PORT", 7373));
   const ips = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === "IPv4" && !i.internal).map(i => i.address);
   console.log(`Zar Masası sunucusu çalışıyor: port ${port}`);

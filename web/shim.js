@@ -67,7 +67,7 @@
         rej: e => {
           if (onFirst) { const f = onFirst; onFirst = null; f(e); }
           // Yeniden bağlanırken oturum geçersiz kaldıysa (şifre başka cihazda değişti) giriş ekranına dön.
-          else if (e.code === "login_required") location.reload();
+          else if (e.code === "login_required" || e.code === "eposta_gerekli") location.reload();
           ws.onclose = null; ws.close();
         },
       });
@@ -109,6 +109,7 @@
       if (LS.get("zm-uid") && LS.get("zm-secret")) {
         const e = await new Promise(r => connect(saved, r));
         if (!e) return readyRes();
+        if (e.code === "eposta_gerekli") return showEposta(info);
         if (e.code === "network") return showGiris(info, { hata: e.message });
       }
       return showGiris(info);
@@ -122,56 +123,182 @@
   }
 
   /* ---------------- Hesap: giriş ve kayıt ekranı ---------------- */
-  // Üyelik için yalnızca kullanıcı adı ve şifre istenir. Bu cihazda daha önce hesapsız oynandıysa
-  // o kimlik (masalar, karakterler) yeni hesaba bağlanır.
+  // Kayıt: kullanıcı adı, e-posta ve şifre; e-postaya gelen 6 haneli kod girilince hesap açılır (sunucuda e-posta
+  // açıksa). Aynı bağlantıdan art arda kayıt denenirse "insan mısın?" resmi sorulur. Bu cihazda daha önce hesapsız
+  // oynandıysa o kimlik (masalar, karakterler) yeni hesaba bağlanır.
   async function hesapIstek(tur, body) {
     const r = await fetch("/api/hesap/" + tur, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw err(j.code || "failed", j.message || "Olmadı, tekrar dene");
     return j;
   }
+  const kacir = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const KOD_ALANI = `<label><span class="lbl">Doğrulama kodu</span><input class="f" name="kod" required inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" autocomplete="one-time-code" placeholder="6 haneli kod" style="font-size:22px;letter-spacing:6px;text-align:center"></label>`;
+  const INSAN_ALANI = x => `<div class="zm-insan" style="display:grid;gap:6px"><span class="lbl">İnsan mısın? Resimdeki harfleri yaz</span>
+      <div style="display:flex;gap:8px;align-items:center"><img src="${x.resim}" alt="Harflerin olduğu doğrulama resmi" width="240" height="80" style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--line);background:#eee"><button type="button" class="btn" data-insan-yeni title="Yeni resim" aria-label="Yeni resim">↻</button></div>
+      <input class="f" name="insanCevap" required maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Harfler (büyük-küçük fark etmez)"></div>`;
+  // Yeniden gönder düğmesi 60 saniye bekler.
+  function geriSayim(btn, sn) {
+    if (!btn) return;
+    const yaz = () => { btn.disabled = sn > 0; btn.textContent = sn > 0 ? `Yeni kod (${sn} sn)` : "Kodu yeniden gönder"; };
+    yaz(); const t = setInterval(() => { sn--; yaz(); if (sn <= 0 || !btn.isConnected) clearInterval(t); }, 1000);
+  }
+  async function oturumuAc(info, r) {
+    LS.set("zm-uid", r.userId); LS.set("zm-secret", r.secret); LS.set("zm-name", r.kullanici); LS.set("zm-hesap", r.kullanici);
+    if (!LS.get("zm-color")) LS.set("zm-color", COLORS[Math.floor(Math.random() * COLORS.length)]);
+    if (ME) { location.reload(); return true; } // hesapsız bağlıyken giriş yapıldı: yeni kimlikle baştan aç
+    const x = await new Promise(res => connect({ name: r.kullanici, color: LS.get("zm-color") }, res));
+    if (x && x.code === "eposta_gerekli") return "eposta";
+    if (x) throw x;
+    return true;
+  }
+
   function showGiris(info, o) {
     o = o || {};
-    const desk = window.zmDesktop;
-    let kayit = !!o.kayit;
+    const desk = window.zmDesktop, eposta = !!info.eposta;
+    // mod: giris | kayit | kod (kayıt kodu) | unuttum | yeni (sıfırlama kodu + yeni şifre)
+    let mod = o.kayit ? "kayit" : "giris", insan = null, bekleyen = null, maske = "", sifirlaEposta = "";
+    const deger = { kullanici: LS.get("zm-hesap") || "" };
     const ov = document.createElement("div"); ov.className = "joinov zm-giris";
-    const ciz = () => {
+    const bitir = async r => {
+      const s = await oturumuAc(info, r);
+      ov.remove();
+      if (s === "eposta") return showEposta(info);
+      readyRes();
+    };
+    const ciz = (hataMetni, bilgi) => {
+      const sekme = mod === "giris" || mod === "kayit";
+      const aciklama = {
+        giris: eposta ? "Kullanıcı adın (ya da e-postan) ve şifrenle gir." : "Kullanıcı adın ve şifrenle gir.",
+        kayit: eposta ? "Kullanıcı adı, e-posta ve şifre belirle. E-postana bir doğrulama kodu göndereceğiz." : "Bir kullanıcı adı ve şifre belirle. Başka bilgi gerekmez.",
+        kod: `<b>${kacir(maske)}</b> adresine 6 haneli bir kod gönderdik. Gelen kutunu (ve spam klasörünü) kontrol et.`,
+        unuttum: "Hesabındaki e-posta adresini yaz. Şifreni yenilemen için bir kod göndereceğiz.",
+        yeni: `<b>${kacir(maske)}</b> adresine bu e-postayla açılmış bir hesap varsa kod gönderildi. Kodu ve yeni şifreni yaz.`,
+      }[mod];
+      const dugme = { giris: "Giriş yap", kayit: eposta ? "Devam et" : "Hesabı oluştur", kod: "Doğrula ve hesabı aç", unuttum: "Kod gönder", yeni: "Şifreyi yenile" }[mod];
       ov.innerHTML = `<form class="joincard" autocomplete="on"><h2></h2>
-        <div class="zm-gsek" role="tablist"><button type="button" role="tab" data-gmod="0" aria-selected="${!kayit}">Giriş yap</button><button type="button" role="tab" data-gmod="1" aria-selected="${kayit}">Hesap oluştur</button></div>
-        <p>${kayit ? "Bir kullanıcı adı ve şifre belirle. Başka bilgi gerekmez." : "Kullanıcı adın ve şifrenle gir."}</p>
-        <label><span class="lbl">Kullanıcı adı</span><input class="f" name="kullanici" maxlength="20" required autocomplete="username" autocapitalize="none" spellcheck="false"></label>
-        <label><span class="lbl">Şifre</span><input class="f" name="sifre" type="password" required minlength="${kayit ? 8 : 1}" autocomplete="${kayit ? "new-password" : "current-password"}"></label>
-        ${kayit ? `<label><span class="lbl">Şifre (tekrar)</span><input class="f" name="sifre2" type="password" required autocomplete="new-password"></label>` : ""}
-        ${kayit ? `<p class="hint" style="font-size:12px">Kullanıcı adı 3-20 karakter: harf, rakam, _ . - kullanılabilir. Şifre en az 8 karakter olmalı, kullanıcı adını içermemeli. Şifreni unutma: e-posta olmadığı için sıfırlanamaz.</p>` : ""}
-        <p class="jerr" hidden></p>
-        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}${o.istege ? `<button type="button" class="btn" data-hesapsiz>Hesapsız devam et</button>` : ""}<button class="btn pri">${kayit ? "Hesabı oluştur" : "Giriş yap"}</button></div></form>`;
+        ${sekme ? `<div class="zm-gsek" role="tablist"><button type="button" role="tab" data-gmod="giris" aria-selected="${mod === "giris"}">Giriş yap</button><button type="button" role="tab" data-gmod="kayit" aria-selected="${mod === "kayit"}">Hesap oluştur</button></div>` : `<h3 style="margin:0;font-size:17px">${mod === "kod" ? "E-postanı doğrula" : "Şifremi unuttum"}</h3>`}
+        <p>${aciklama}</p>
+        ${mod === "giris" || mod === "kayit" ? `<label><span class="lbl">${mod === "giris" && eposta ? "Kullanıcı adı ya da e-posta" : "Kullanıcı adı"}</span><input class="f" name="kullanici" maxlength="${mod === "giris" ? 254 : 20}" required autocomplete="username" autocapitalize="none" spellcheck="false"></label>` : ""}
+        ${(mod === "kayit" && eposta) || mod === "unuttum" ? `<label><span class="lbl">E-posta</span><input class="f" name="eposta" type="email" maxlength="254" required autocomplete="email" autocapitalize="none" spellcheck="false"></label>` : ""}
+        ${mod === "kod" || mod === "yeni" ? KOD_ALANI : ""}
+        ${mod === "giris" || mod === "kayit" || mod === "yeni" ? `<label><span class="lbl">${mod === "yeni" ? "Yeni şifre" : "Şifre"}</span><input class="f" name="sifre" type="password" required minlength="${mod === "giris" ? 1 : 8}" autocomplete="${mod === "giris" ? "current-password" : "new-password"}"></label>` : ""}
+        ${mod === "kayit" || mod === "yeni" ? `<label><span class="lbl">Şifre (tekrar)</span><input class="f" name="sifre2" type="password" required autocomplete="new-password"></label>` : ""}
+        ${mod === "kayit" ? `<p class="hint" style="font-size:12px">Kullanıcı adı 3-20 karakter: harf, rakam, _ . - kullanılabilir. Şifre en az 8 karakter olmalı, kullanıcı adını içermemeli.${eposta ? " E-posta adresin kimseye gösterilmez; şifreni unutursan onunla yenilersin." : " Şifreni unutma: e-posta olmadığı için sıfırlanamaz."}</p>` : ""}
+        ${insan && (mod === "kayit" || mod === "unuttum") ? INSAN_ALANI(insan) : ""}
+        <p class="zm-gbilgi" role="status" style="color:var(--good,#2e7d32)" ${bilgi ? "" : "hidden"}></p>
+        <p class="jerr" role="alert" hidden></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+          ${mod === "giris" && eposta ? `<button type="button" class="btn" data-git="unuttum" style="margin-right:auto">Şifremi unuttum</button>` : ""}
+          ${mod === "kod" || mod === "yeni" ? `<button type="button" class="btn" data-yeniden style="margin-right:auto">Kodu yeniden gönder</button>` : ""}
+          ${!sekme ? `<button type="button" class="btn" data-git="${mod === "kod" ? "kayit" : "giris"}">Geri</button>` : ""}
+          ${sekme && desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}${sekme && o.istege ? `<button type="button" class="btn" data-hesapsiz>Hesapsız devam et</button>` : ""}
+          <button class="btn pri">${dugme}</button></div></form>`;
       ov.querySelector("h2").textContent = info.name || "Zar Masası";
-      const f = ov.querySelector("form"), er = ov.querySelector(".jerr");
-      if (o.hata) { er.textContent = o.hata; er.hidden = false; o.hata = null; }
-      f.kullanici.value = LS.get("zm-hesap") || "";
+      const f = ov.querySelector("form"), er = ov.querySelector(".jerr"), bl = ov.querySelector(".zm-gbilgi");
+      // Resim yenilenince ya da hata gösterilince yazılanlar kaybolmasın (şifreler yalnızca bu kart açıkken tutulur).
+      for (const k of ["kullanici", "eposta", "sifre", "sifre2"]) if (f[k] && deger[k]) f[k].value = deger[k];
+      if (hataMetni) { er.textContent = hataMetni; er.hidden = false; }
+      if (bilgi) bl.textContent = bilgi;
+      if (mod === "kod" || mod === "yeni") geriSayim(f.querySelector("[data-yeniden]"), 60);
+      f.addEventListener("submit", async e => {
+        e.preventDefault(); er.hidden = true; bl.hidden = true;
+        const btn = f.querySelector(".btn.pri"); btn.disabled = true;
+        for (const k of ["kullanici", "eposta"]) if (f[k]) deger[k] = f[k].value.trim();
+        for (const k of ["sifre", "sifre2"]) deger[k] = f[k] ? f[k].value : "";
+        const insanCevap = f.insanCevap ? { id: insan.id, cevap: f.insanCevap.value } : undefined;
+        try {
+          if (f.sifre2 && f.sifre.value !== f.sifre2.value) throw err("invalid_argument", "Şifreler aynı değil");
+          if (mod === "giris") return await bitir(await hesapIstek("giris", { kullanici: deger.kullanici, sifre: f.sifre.value }));
+          if (mod === "kayit") {
+            const body = { kullanici: deger.kullanici, sifre: f.sifre.value, eposta: deger.eposta, insan: insanCevap, userId: LS.get("zm-uid"), secret: LS.get("zm-secret") };
+            const r = await hesapIstek("kayit", body);
+            if (!r.dogrulama) return await bitir(r);
+            bekleyen = r.bekleyen; maske = r.eposta; insan = null; mod = "kod"; return ciz();
+          }
+          if (mod === "kod") return await bitir(await hesapIstek("kayitDogrula", { bekleyen, kod: f.kod.value }));
+          if (mod === "unuttum") {
+            const r = await hesapIstek("sifirla", { eposta: deger.eposta, insan: insanCevap });
+            sifirlaEposta = deger.eposta; maske = r.eposta; insan = null; mod = "yeni"; return ciz();
+          }
+          if (mod === "yeni") return await bitir(await hesapIstek("sifirlaTamam", { eposta: sifirlaEposta, kod: f.kod.value, sifre: f.sifre.value }));
+        } catch (x) {
+          if (x.code === "insan_gerekli" || x.code === "insan_yanlis") {
+            try { insan = await (await fetch("/api/hesap/insan")).json(); } catch (y) {}
+            return ciz(x.code === "insan_yanlis" ? x.message : "Bu bağlantıdan art arda kayıt denendi. Devam etmek için resimdeki harfleri yaz.");
+          }
+          if (insan && f.insanCevap) { try { insan = await (await fetch("/api/hesap/insan")).json(); } catch (y) {} return ciz(x.message || "Olmadı"); }
+          er.textContent = x.message || "Olmadı"; er.hidden = false; btn.disabled = false;
+        }
+      });
+      const odak = () => { const g = [...f.querySelectorAll("input")].find(i => !i.value) || f.querySelector("input"); if (g) g.focus(); };
+      if (ov.isConnected) odak(); else setTimeout(odak, 0);
+    };
+    ov.addEventListener("click", async e => {
+      const m = e.target.closest("[data-gmod]") || e.target.closest("[data-git]");
+      if (m) { mod = m.dataset.gmod || m.dataset.git; deger.sifre = deger.sifre2 = ""; ciz(); return; }
+      if (e.target.closest("[data-insan-yeni]")) { try { insan = await (await fetch("/api/hesap/insan")).json(); const img = ov.querySelector(".zm-insan img"); if (img) img.src = insan.resim; const i = ov.querySelector("[name=insanCevap]"); if (i) { i.value = ""; i.focus(); } } catch (x) {} return; }
+      const y = e.target.closest("[data-yeniden]");
+      if (y) {
+        y.disabled = true;
+        try {
+          if (mod === "kod") await hesapIstek("kayitKod", { bekleyen });
+          else await hesapIstek("sifirla", { eposta: sifirlaEposta });
+          ciz(null, "Yeni kod gönderildi.");
+        } catch (x) { if (x.code === "not_found") { mod = "kayit"; return ciz(x.message); } const er = ov.querySelector(".jerr"); er.textContent = x.message; er.hidden = false; y.disabled = false; }
+        return;
+      }
+      if (e.target.closest("[data-back]")) desk.backToLauncher();
+      if (e.target.closest("[data-hesapsiz]")) { ov.remove(); showJoin(info); }
+    });
+    ciz(o.hata);
+    const mount = () => document.body.appendChild(ov);
+    document.body ? mount() : document.addEventListener("DOMContentLoaded", mount);
+  }
+
+  // E-postası olmayan (eski) hesaplar: sunucu e-posta isterse önce adres eklenir ve kodla doğrulanır.
+  function showEposta(info) {
+    const desk = window.zmDesktop;
+    let adim = "adres", maske = "", adres = "";
+    const ov = document.createElement("div"); ov.className = "joinov zm-giris";
+    const kimlik = () => ({ userId: LS.get("zm-uid"), secret: LS.get("zm-secret") });
+    const ciz = (hataMetni, bilgi) => {
+      ov.innerHTML = `<form class="joincard"><h2></h2><h3 style="margin:0;font-size:17px">E-posta adresini ekle</h3>
+        <p>${adim === "adres" ? `Merhaba <b>${kacir(LS.get("zm-hesap") || "")}</b>. Hesabını korumak ve şifreni unutursan geri alabilmen için artık her hesapta doğrulanmış bir e-posta adresi gerekiyor. Adresin kimseye gösterilmez.` : `<b>${kacir(maske)}</b> adresine 6 haneli bir kod gönderdik. Gelen kutunu (ve spam klasörünü) kontrol et.`}</p>
+        ${adim === "adres" ? `<label><span class="lbl">E-posta</span><input class="f" name="eposta" type="email" maxlength="254" required autocomplete="email" autocapitalize="none" spellcheck="false"></label>` : KOD_ALANI}
+        <p class="zm-gbilgi" role="status" style="color:var(--good,#2e7d32)" ${bilgi ? "" : "hidden"}></p>
+        <p class="jerr" role="alert" hidden></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+          ${adim === "kod" ? `<button type="button" class="btn" data-yeniden style="margin-right:auto">Kodu yeniden gönder</button><button type="button" class="btn" data-adres>Adresi değiştir</button>` : `<button type="button" class="btn" data-cikis style="margin-right:auto">Çıkış yap</button>${desk ? `<button type="button" class="btn" data-back>Başka sunucu</button>` : ""}`}
+          <button class="btn pri">${adim === "adres" ? "Kod gönder" : "Doğrula"}</button></div></form>`;
+      ov.querySelector("h2").textContent = info.name || "Zar Masası";
+      const f = ov.querySelector("form"), er = ov.querySelector(".jerr"), bl = ov.querySelector(".zm-gbilgi");
+      if (f.eposta) f.eposta.value = adres;
+      if (hataMetni) { er.textContent = hataMetni; er.hidden = false; }
+      if (bilgi) bl.textContent = bilgi;
+      if (adim === "kod") geriSayim(f.querySelector("[data-yeniden]"), 60);
       f.addEventListener("submit", async e => {
         e.preventDefault(); er.hidden = true;
         const btn = f.querySelector(".btn.pri"); btn.disabled = true;
         try {
-          if (kayit && f.sifre.value !== f.sifre2.value) throw err("invalid_argument", "Şifreler aynı değil");
-          const body = { kullanici: f.kullanici.value.trim(), sifre: f.sifre.value };
-          if (kayit) Object.assign(body, { userId: LS.get("zm-uid"), secret: LS.get("zm-secret") });
-          const r = await hesapIstek(kayit ? "kayit" : "giris", body);
-          LS.set("zm-uid", r.userId); LS.set("zm-secret", r.secret); LS.set("zm-name", r.kullanici); LS.set("zm-hesap", r.kullanici);
-          if (!LS.get("zm-color")) LS.set("zm-color", COLORS[Math.floor(Math.random() * COLORS.length)]);
-          if (ME) { location.reload(); return; } // hesapsız bağlıyken giriş yapıldı: yeni kimlikle baştan aç
-          const x = await new Promise(res => connect({ name: r.kullanici, color: LS.get("zm-color") }, res));
+          if (adim === "adres") { adres = f.eposta.value.trim(); const r = await hesapIstek("epostaEkle", { ...kimlik(), eposta: adres }); maske = r.eposta; adim = "kod"; return ciz(); }
+          await hesapIstek("epostaDogrula", { ...kimlik(), kod: f.kod.value });
+          const x = await new Promise(res => connect({ name: LS.get("zm-name"), color: LS.get("zm-color") }, res));
           if (x) throw x;
           ov.remove(); readyRes();
-        } catch (x) { er.textContent = x.message || "Olmadı"; er.hidden = false; btn.disabled = false; }
+        } catch (x) {
+          if (x.code === "login_required") { ov.remove(); return showGiris(info, { hata: "Oturumun kapanmış, yeniden giriş yap." }); }
+          er.textContent = x.message || "Olmadı"; er.hidden = false; btn.disabled = false;
+        }
       });
-      const odak = () => (f.kullanici.value ? f.sifre : f.kullanici).focus();
-      if (ov.isConnected) odak(); else setTimeout(odak, 0);
+      setTimeout(() => { const i = f.querySelector("input"); if (i) i.focus(); }, 0);
     };
-    ov.addEventListener("click", e => {
-      const m = e.target.closest("[data-gmod]"); if (m) { kayit = m.dataset.gmod === "1"; ciz(); return; }
-      if (e.target.closest("[data-back]")) desk.backToLauncher();
-      if (e.target.closest("[data-hesapsiz]")) { ov.remove(); showJoin(info); }
+    ov.addEventListener("click", async e => {
+      if (e.target.closest("[data-adres]")) { adim = "adres"; return ciz(); }
+      if (e.target.closest("[data-back]")) return desk.backToLauncher();
+      if (e.target.closest("[data-cikis]")) { for (const k of ["zm-uid", "zm-secret"]) try { localStorage.removeItem(k); } catch (x) {} ov.remove(); return showGiris(info); }
+      const y = e.target.closest("[data-yeniden]");
+      if (y) { y.disabled = true; try { await hesapIstek("epostaEkle", { ...kimlik(), eposta: adres }); ciz(null, "Yeni kod gönderildi."); } catch (x) { const er = ov.querySelector(".jerr"); er.textContent = x.message; er.hidden = false; y.disabled = false; } }
     });
     ciz();
     const mount = () => document.body.appendChild(ov);

@@ -10,6 +10,7 @@ const { WebSocketServer } = require("ws");
 const { Store, parentOf } = require("./store");
 const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
 const { kurHesap } = require("./hesap");
+const { smtpAyari, smtpGonderici } = require("./eposta");
 const { kurKartMasa } = require("./kartmasa");
 const { kurRoller } = require("./roller");
 const { kurBotlar } = require("./botlar");
@@ -94,6 +95,8 @@ function dosyaKaydi(f) {
 }
 function surumu(f) { try { return dosyaKaydi(f).etag.slice(1, 11); } catch (e) { return "0"; } }
 
+const hesapModuOf = opts => (opts.hesap === "zorunlu" ? "zorunlu" : "istege-bagli");
+
 function createServer(opts = {}) {
   const dataDir = opts.dataDir || path.join(process.cwd(), "zar-masasi-veri");
   const assetDir = path.join(dataDir, "assets");
@@ -102,7 +105,7 @@ function createServer(opts = {}) {
   const name = opts.name || "Zar Masası";
   // Hesap: "zorunlu" ise herkes kullanıcı adı + şifreyle girer; "istege-bagli" ise hesapsız da oynanabilir
   // (masaüstünden host edilen masalar). Profil, arkadaşlar ve özel mesajlar hesap ister.
-  const hesapModu = opts.hesap === "zorunlu" ? "zorunlu" : "istege-bagli";
+  const hesapModu = hesapModuOf(opts);
   // Ortak masa şifresi yalnızca hesapsız girilebilen masalarda kullanılır. Hesaplı sunucuda herkes kendi
   // kullanıcı adı ve şifresiyle girdiği için ortak şifre yok sayılır.
   const password = hesapModu === "zorunlu" ? "" : (opts.password || "");
@@ -122,7 +125,10 @@ function createServer(opts = {}) {
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
   let bildirim = null;
-  const hesap = kurHesap({ store, conns, arkadasBildir: (tur, kimden, kime) => bildirim && bildirim.arkadas(tur, kimden, kime) });
+  // E-posta: SMTP ayarı (opts.smtp ya da ZM_SMTP_*) varsa doğrulama kodları gönderilir ve e-posta zorunlu olur.
+  // Testler opts.epostaGonder ile kendi göndericisini verir.
+  const epostaGonder = opts.epostaGonder || smtpGonderici(opts.smtp !== undefined ? opts.smtp : (hesapModuOf(opts) === "zorunlu" ? smtpAyari() : null));
+  const hesap = kurHesap({ store, conns, arkadasBildir: (tur, kimden, kime) => bildirim && bildirim.arkadas(tur, kimden, kime), epostaGonder, epostaModu: opts.eposta || process.env.ZM_EPOSTA || "", sunucuAdi: name, ...(opts.insanMi ? { insanMi: opts.insanMi } : {}) });
   // Roller (admin, tester): ilk admin ZM_ADMIN ile ya da sahip bağlantısıyla belirlenir (server/roller.js).
   const roller = kurRoller({ store, conns, adminler: opts.admin || "" });
   // Yükleme sınırları (dosya başına ve kişi başına toplam), "Yüklediklerim" ve profildeki oyunlar (server/dosyalar.js).
@@ -232,7 +238,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, maxDosya: dosyalar.MAX });
+      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, eposta: hesap.epostaAcik, maxDosya: dosyalar.MAX });
       if (hesap.http(req, res, p, send, ipOf)) return;
       // Profil sayfası: /profil (kendi profilin), /profil?kisi=<kimlik> ya da /profil?ad=<kullanıcı adı>
       if (req.method === "GET" && (p === "/profil" || p === "/profil/")) return sunDosya(req, res, path.join(WEB, "profil", "index.html"), "text/html; charset=utf-8");
@@ -430,6 +436,8 @@ function createServer(opts = {}) {
     // Hesabıyla giren kişi sunucu şifresini kayıt olurken zaten vermiştir.
     if (password && !isOwner && !hesapli && !(m.password && same(String(m.password), password))) return fail("bad_password", "Masa şifresi yanlış");
     if (hesapModu === "zorunlu" && !hesapli) return fail("login_required", "Kullanıcı adın ve şifrenle giriş yap");
+    // E-posta zorunluysa, adresini henüz doğrulamamış eski hesaplar önce e-posta ekler (sahip bağlantısı hariç).
+    if (hesapli && !isOwner && hesap.epostaGerekli(uid)) return fail("eposta_gerekli", "Devam etmek için hesabına bir e-posta adresi ekle");
     if (!valid) { uid = "u-" + rid(8); secret = rid(16); }
     const prev = store.get("_sys/users/" + uid) || { created: Date.now() };
     const nm = prev.username || String(m.name || "").trim().slice(0, 40) || "Oyuncu", color = String(m.color || prev.color || "#2f8f86").slice(0, 20);

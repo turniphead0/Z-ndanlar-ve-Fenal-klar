@@ -82,6 +82,8 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
 | Kişi başına yükleme alanı (MB) | `--kota` | `ZM_KOTA` | `200` (admin yönetim panelinden kişiye ayrı kota verebilir) |
 | Dosya başına en büyük boyut (MB) | `--max-dosya` | `ZM_MAX_DOSYA` | `25` |
+| E-posta sunucusu (SMTP) | | `ZM_SMTP_HOST`, `ZM_SMTP_PORT`, `ZM_SMTP_USER`, `ZM_SMTP_PASS`, `ZM_SMTP_FROM` | yok. Verilirse kayıtta e-posta doğrulama kodu istenir, "Şifremi unuttum" açılır ve e-postası olmayan hesaplar bir adres ekler. Port `587` (varsayılan) ya da `465` |
+| E-posta zorunluluğu | | `ZM_EPOSTA` | SMTP varsa `zorunlu`; `kapali` ile e-posta hiç istenmez |
 
 ### HTTPS (önerilir)
 
@@ -102,7 +104,7 @@ Kendi ters vekilini (nginx vb.) kullanırsan `ZM_VEKIL=1` ver ki deneme sınırl
 
 ### Hesaplar, profil, arkadaşlar ve mesajlar
 
-Sunucuda herkes yalnızca bir **kullanıcı adı ve şifre** belirleyerek hesap açar (e-posta ya da başka bilgi istenmez; bu yüzden unutulan şifre sıfırlanamaz). Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
+Sunucuda herkes bir **kullanıcı adı ve şifre** belirleyerek hesap açar. Sunucuya bir SMTP hesabı tanıtılmışsa (`ZM_SMTP_*`) kayıt iki adımlıdır: e-posta adresine 6 haneli bir kod gider, kod girilince hesap açılır; bir adres yalnızca bir hesapta kullanılabilir, girişte kullanıcı adı yerine e-posta da yazılabilir ve "Şifremi unuttum" ile şifre e-postaya gelen kodla yenilenir. E-postası olmayan eski hesaplar giriş yaptıktan sonra bir adres ekleyip doğrulamadan masaya giremez. Aynı bağlantıdan art arda kayıt denenirse (bir saatte 3. deneme ya da aynı gün ikinci hesap) sunucunun kendi çizdiği bir "insan mısın?" resmi sorulur; bir bağlantıdan günde en çok 10 hesap açılır, bütün sunucuya 10 dakikada 20'den fazla kayıt gelirse herkese resim sorulur. Dışarıdan bir hizmet kullanılmaz. Hesaplı kişiler profil fotoğrafı ve kısa bir "hakkımda" yazısı ekleyebilir, birbirini kullanıcı adıyla bulup arkadaş ekleyebilir ve arkadaşlarına oyun dışında özel mesaj (yazı ya da fotoğraf) gönderebilir. Daha önce hesapsız oynayan biri aynı tarayıcıda hesap açınca masaları ve karakterleri yeni hesabına taşınır. Masaüstü uygulamasından "host et" ile açılan masalarda hesap isteğe bağlıdır.
 
 **Güvenlik:** Hesaplı sunucuda ortak bir sunucu şifresi yoktur; herkes kendi kullanıcı adı ve şifresiyle girer. Şifreler scrypt ile özetlenerek saklanır. Yeni şifreler en az 8 karakter olmalı, çok bilinen şifreler ve kullanıcı adını içeren şifreler kabul edilmez. Bir hesaba 15 dakikada 5 yanlış şifre girilirse o hesap 15 dakika kilitlenir; bir adresten de 10 dakikada en çok 10 hatalı deneme yapılabilir. 30 gün kullanılmayan oturumlar kendiliğinden kapanır; profilde "Öteki cihazlardan çıkış yap" ile bütün öteki cihazlar çıkarılabilir, şifre değişince de öteki cihazlar hemen çıkar. Sunucu her yanıta güvenlik başlıkları ekler (başka sitelerin sayfayı çerçeveye alması engellenir) ve yüklenen dosyaları (örneğin SVG) betik çalıştıramayacak biçimde sunar.
 
