@@ -66,7 +66,8 @@
     const yerler = [...document.querySelectorAll("[data-zm-bildirim-yer]")];
     if (SAYFA === "uygulama") {
       const bas = document.querySelector("#lobby .lhead");
-      if (bas && !bas.querySelector(".zb-zil")) { const s = document.createElement("span"); s.dataset.zmBildirimYer = ""; bas.insertBefore(s, bas.querySelector('[data-lobby="new"]') || null); yerler.push(s); }
+      // Ortak üst menü (web/ortak.js) varsa zil orada; lobi başlığına ayrıca konmaz.
+      if (bas && !bas.querySelector(".zb-zil") && !document.querySelector(".zo-ust")) { const s = document.createElement("span"); s.dataset.zmBildirimYer = ""; bas.insertBefore(s, bas.querySelector('[data-lobby="new"]') || null); yerler.push(s); }
       const ray = document.querySelector("#app .rail");
       if (ray && !window.ZM_MOBIL && !ray.querySelector(".zb-zil")) { const s = document.createElement("span"); s.dataset.zmBildirimYer = "ray"; s.style.display = "contents"; ray.appendChild(s); yerler.push(s); }
     }

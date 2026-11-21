@@ -4,7 +4,7 @@
   "use strict";
   function ekle() {
     const bas = document.querySelector("#lobby .lhead");
-    if (!bas || bas.querySelector("[data-masa-oyunlari]")) return;
+    if (!bas || bas.querySelector("[data-masa-oyunlari]") || document.querySelector(".zo-ust")) return; // ortak üst menüde zaten var
     const a = document.createElement("a");
     a.className = "btn"; a.href = "/oyunlar"; a.dataset.masaOyunlari = "1"; a.style.textDecoration = "none"; a.style.color = "var(--ink)";
     a.title = "Mangala, dama, dokuz taş, Ur, Hnefatafl";

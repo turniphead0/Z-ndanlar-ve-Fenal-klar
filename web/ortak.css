@@ -1,0 +1,121 @@
+/* Bütün sayfalarda ortak: üst menü, genel arama (Ctrl+K), kişi kartı, görünüm ayarları (web/ortak.js).
+   Renkler sayfanın kendi değişkenlerinden gelir (--bg, --surface, --ink, --accent…), böylece açık/koyu temaya uyar. */
+
+/* Yazı boyutu: sayfa bütünüyle büyür/küçülür. Ana uygulamada (/) yalnızca menü ve lobi büyür; oyun masası
+   (harita, zar tepsisi, karakter kağıdı) ekrana sığacak biçimde kendi boyutunda kalır. */
+html[data-yazi="kucuk"]{--zo-zoom:.9}
+html[data-yazi="buyuk"]{--zo-zoom:1.12}
+html[data-yazi="cokbuyuk"]{--zo-zoom:1.25}
+html[data-yazi]:not(.zo-uygulama):not(.zo-mobil) body{zoom:var(--zo-zoom)}
+html.zo-uygulama[data-yazi] .zo-ust,html.zo-uygulama[data-yazi] #lobby,html.zo-uygulama[data-yazi] .zo-perde,html.zo-uygulama[data-yazi] .zo-kart,html.zo-uygulama[data-yazi] .zo-pano{zoom:var(--zo-zoom)}
+
+/* ---------- Üst menü ---------- */
+.zo-ust{--zo-h:52px;position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:6px;min-height:var(--zo-h);padding:0 12px;padding-top:env(safe-area-inset-top,0px);
+  background:var(--surface,#F7F9F6);color:var(--ink,#1B2226);border-bottom:1px solid var(--line,#C8D0CB);font-family:var(--f-body,system-ui,sans-serif);font-size:15px;line-height:1.3;box-sizing:border-box}
+.zo-ust *{box-sizing:border-box}
+.zo-ust a{text-decoration:none}
+.zo-marka{display:inline-flex;align-items:center;gap:8px;color:var(--ink,#1B2226);font-family:var(--f-display,Georgia,serif);font-weight:700;font-size:19px;padding:4px 8px 4px 2px;margin-right:4px;white-space:nowrap}
+.zo-marka svg{color:var(--accent,#1F6F6B);flex:none}
+.zo-nav{display:flex;align-items:center;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.zo-nav::-webkit-scrollbar{display:none}
+.zo-nav a,.zo-nav button,.zo-ara,.zo-benbtn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 11px;border:0;border-radius:8px;background:none;color:var(--muted,#5A666A);
+  font:inherit;font-size:15px;cursor:pointer;white-space:nowrap;position:relative}
+.zo-nav a:hover,.zo-nav button:hover,.zo-ara:hover,.zo-benbtn:hover{background:var(--surface-2,#EEF2EE);color:var(--ink,#1B2226)}
+.zo-nav [aria-current="page"]{color:var(--accent,#1F6F6B);background:var(--accent-soft,#D3E6E2);font-weight:700}
+.zo-nav svg,.zo-ara svg{flex:none}
+.zo-sp{flex:1;min-width:4px}
+.zo-ara{border:1px solid var(--line,#C8D0CB);background:var(--bg,#E7EBE7);min-width:190px;justify-content:flex-start;color:var(--muted,#5A666A)}
+.zo-ara span{flex:1;text-align:left}
+.zo-ara kbd,.zo-modal kbd{font-family:var(--f-num,ui-monospace,monospace);font-size:11px;border:1px solid var(--line,#C8D0CB);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--muted,#5A666A);background:var(--surface,#fff)}
+.zo-rozet{position:absolute;top:2px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--bad,#B3261E);color:#fff;font-size:11px;font-weight:700;line-height:17px;text-align:center;font-style:normal}
+.zo-rozet:empty{display:none}
+.zo-ust [data-zm-bildirim-yer] .btn{height:36px}
+.zo-ben{position:relative}
+.zo-benbtn{color:var(--ink,#1B2226);padding:0 8px 0 4px}
+.zo-av{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;flex:none;overflow:hidden;background:var(--av,#2f8f86);color:#fff;font-weight:700;font-size:13px}
+.zo-av img{width:100%;height:100%;object-fit:cover;display:block}
+.zo-benbtn .zo-ad{max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.zo-acilir{position:absolute;right:0;top:calc(100% + 6px);width:290px;background:var(--surface,#fff);color:var(--ink,#1B2226);border:1px solid var(--line,#C8D0CB);border-radius:12px;
+  box-shadow:0 14px 40px rgba(0,0,0,.22);padding:6px;z-index:70;display:grid;gap:2px}
+.zo-acilir a,.zo-acilir button.zo-oge{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink,#1B2226);background:none;border:0;font:inherit;font-size:15px;cursor:pointer;text-align:left;width:100%}
+.zo-acilir a:hover,.zo-acilir button.zo-oge:hover,.zo-acilir a:focus-visible,.zo-acilir button.zo-oge:focus-visible{background:var(--surface-2,#EEF2EE)}
+.zo-acilir hr{border:0;border-top:1px solid var(--line,#C8D0CB);margin:4px 2px}
+.zo-acilir .zo-kotu{color:var(--bad,#B3261E)}
+.zo-gor{padding:6px 8px 8px;display:grid;gap:8px}
+.zo-gor .zo-lbl{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#5A666A);font-weight:700}
+.zo-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line,#C8D0CB);border-radius:8px;overflow:hidden;background:var(--bg,#E7EBE7)}
+.zo-seg button{border:0;background:none;padding:7px 4px;font:inherit;font-size:14px;color:var(--ink,#1B2226);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.zo-seg button+button{border-left:1px solid var(--line,#C8D0CB)}
+.zo-seg button[aria-pressed="true"]{background:var(--accent,#1F6F6B);color:var(--accent-ink,#fff);font-weight:700}
+.zo-seg button:hover:not([aria-pressed="true"]){background:var(--surface-2,#EEF2EE)}
+.zo-ust :focus-visible,.zo-modal :focus-visible,.zo-kart :focus-visible{outline:2px solid var(--accent,#1F6F6B);outline-offset:2px}
+
+/* Ana uygulamada (/) menü lobinin üstünde durur; oyun masasına girilince gizlenir. */
+html.zo-uygulama.zo-menulu body{display:flex;flex-direction:column}
+html.zo-uygulama.zo-menulu #lobby{flex:1;min-height:0;height:auto}
+html.zo-uygulama.zo-menulu #app{flex:1;min-height:0}
+html.zo-oyunda .zo-ust{display:none}
+
+/* Dar ekranlar: yazılar gizlenir, simgeler kalır. */
+@media (max-width:980px){.zo-ara{min-width:0}.zo-ara span,.zo-ara kbd{display:none}.zo-benbtn .zo-ad{display:none}}
+@media (max-width:760px){.zo-ust .zb-zil span{display:none}.zo-ust{gap:2px;padding:0 6px}.zo-nav a span,.zo-nav button span{display:none}.zo-marka span{display:none}.zo-nav a,.zo-nav button{padding:0 10px}}
+
+/* ---------- Mesajlar penceresi ---------- */
+.zo-pano{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px}
+.zo-pano iframe{width:min(480px,100%);height:min(760px,100%);border:1px solid var(--line,#C8D0CB);border-radius:14px;background:var(--surface,#fff);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+
+/* ---------- Genel arama (Ctrl+K) ---------- */
+.zo-perde{position:fixed;inset:0;z-index:100;background:rgba(10,14,16,.45);display:flex;justify-content:center;align-items:flex-start;padding:10vh 16px 16px}
+.zo-modal{width:min(640px,100%);max-height:78vh;display:flex;flex-direction:column;background:var(--surface,#fff);color:var(--ink,#1B2226);border:1px solid var(--line,#C8D0CB);border-radius:14px;
+  box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;font-family:var(--f-body,system-ui,sans-serif);font-size:15px;line-height:1.35}
+.zo-kutu{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line,#C8D0CB)}
+.zo-kutu svg{color:var(--muted,#5A666A);flex:none}
+.zo-kutu input{flex:1;border:0;background:none;font:inherit;font-size:18px;color:inherit;outline:none!important;min-width:0}
+.zo-kutu input::-webkit-search-cancel-button{display:none}
+.zo-sonuc{overflow:auto;padding:6px}
+.zo-grup{padding:8px 10px 4px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#5A666A);font-weight:700}
+.zo-satir{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:inherit;text-decoration:none;cursor:pointer}
+.zo-satir[aria-selected="true"]{background:var(--accent-soft,#D3E6E2)}
+.zo-satir .zo-ic{flex:1;min-width:0;display:grid}
+.zo-satir b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zo-satir small{color:var(--muted,#5A666A);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.zo-satir mark{background:var(--gold-soft,#F1E3C2);color:inherit;border-radius:2px;padding:0 1px}
+.zo-simge{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2,#EEF2EE);flex:none;font-size:16px}
+.zo-etiket{font-size:12px;border:1px solid var(--line,#C8D0CB);border-radius:99px;padding:1px 8px;color:var(--muted,#5A666A);white-space:nowrap}
+.zo-etiket.on{color:var(--good,#2E7D32);border-color:currentColor}
+.zo-bos{padding:22px 14px;text-align:center;color:var(--muted,#5A666A)}
+.zo-alt{display:flex;gap:14px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--line,#C8D0CB);color:var(--muted,#5A666A);font-size:12px}
+
+/* ---------- Kişi kartı (kullanıcı adının üstüne gelince) ---------- */
+.zo-kart{position:fixed;z-index:110;width:300px;background:var(--surface,#fff);color:var(--ink,#1B2226);border:1px solid var(--line,#C8D0CB);border-radius:14px;
+  box-shadow:0 16px 44px rgba(0,0,0,.25);overflow:hidden;font-family:var(--f-body,system-ui,sans-serif);font-size:14px;line-height:1.4;text-align:left}
+.zo-kart .zo-kserit{height:44px;background:var(--kr,#2f8f86);opacity:.85}
+.zo-kart .zo-kic{padding:0 14px 14px;display:grid;gap:8px}
+.zo-kart .zo-kust{display:flex;align-items:flex-end;gap:10px;margin-top:-30px}
+.zo-kart .zo-kust > div:last-child{padding-top:34px}
+.zo-kart .zo-kav{position:relative}
+.zo-kart .zo-kust > div:last-child{padding-bottom:4px}
+.zo-kart .zo-av{width:60px;height:60px;font-size:24px;border:3px solid var(--surface,#fff)}
+.zo-kart .zo-nokta{position:absolute;right:2px;bottom:3px;width:14px;height:14px;border-radius:50%;background:#8a9599;border:2px solid var(--surface,#fff)}
+.zo-kart .zo-nokta.on{background:#3BA55D}
+.zo-kart .zo-kad{font-weight:700;font-size:17px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zo-kart .zo-kdurum{color:var(--muted,#5A666A);font-size:13px}
+.zo-kart .zo-kdurum.on{color:var(--good,#2E7D32)}
+.zo-kart .zo-khak{margin:0;color:var(--ink,#1B2226);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.zo-kart .zo-knot{margin:0;font-size:13px;color:var(--muted,#5A666A)}
+.zo-kart .zo-kbtn{display:flex;gap:6px;flex-wrap:wrap}
+.zo-dug{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line,#C8D0CB);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#1B2226);font:inherit;font-size:14px;cursor:pointer;text-decoration:none}
+.zo-dug:hover{background:var(--surface-2,#EEF2EE)}
+.zo-dug.pri{background:var(--accent,#1F6F6B);border-color:var(--accent,#1F6F6B);color:var(--accent-ink,#fff)}
+.zo-dug:disabled{opacity:.55;cursor:default}
+
+/* ---------- Görünüm ayarları (profil > Ayarlar) ---------- */
+.zo-gorunum{display:grid;gap:12px}
+.zo-gorunum .zo-seg{max-width:420px}
+.zo-gorunum .zo-onizle{font-size:14px;color:var(--muted,#5A666A);margin:0}
+
+@media (prefers-reduced-motion:no-preference){.zo-kart,.zo-modal,.zo-acilir{animation:zo-gel .12s ease-out}}
+@keyframes zo-gel{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* Lobi başlığında menüde zaten olanlar (Masa oyunları, Mesajlar, Arkadaşlar, profil) tekrarlanmaz. */
+html.zo-menulu #lobby .lhead [data-masa-oyunlari],html.zo-menulu #lobby .lhead .lme{display:none}

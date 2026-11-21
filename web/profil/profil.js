@@ -14,7 +14,7 @@
   const UYGULAMA = /ZarMasasiApp/.test(navigator.userAgent); // Android uygulaması
   const q = new URLSearchParams(location.search);
 
-  const st = { uid: null, ben: false, p: null, cevrimici: false, oyun: null, forum: null, sekme: "oyunlar", oyunSuz: "hepsi", oyunHata: null, forumHata: null };
+  const st = { uid: null, ben: false, p: null, cevrimici: false, oyun: null, forum: null, sekme: "oyunlar", oyunSuz: "hepsi", oyunHata: null, forumHata: null, rozet: null };
   let ME = null;
 
   /* ---------------- Yardımcılar ---------------- */
@@ -42,8 +42,8 @@
     const eski = btn.textContent; btn.dataset.onay = "1"; btn.textContent = "Emin misin?";
     setTimeout(() => { if (btn.isConnected && btn.dataset.onay === "1") { btn.dataset.onay = ""; btn.textContent = eski; } }, 3000);
   }
-  // Forum başlığının adresi: bilgisayarda ana ekrandaki forum, telefonda mobil forum.
-  const konuAdresi = id => (TELEFON ? "/mobil#forum-konu/" : "/?forum=") + encodeURIComponent(id);
+  // Forum başlığının adresi: forum sayfasındaki konu (paylaşılabilir bağlantı).
+  const konuAdresi = id => "/forum/" + encodeURIComponent(id);
   const masaAdresi = id => "/oyunlar#" + encodeURIComponent(id);
   const frpAdresi = id => (TELEFON ? "/?mobil=1#" : "/#") + encodeURIComponent(id);
 
@@ -145,7 +145,7 @@
     const f = st.forum;
     if (st.forumHata && !f) return `<div class="bos"><h2>Forum yüklenemedi</h2><p>${esc(st.forumHata)}</p></div>`;
     if (!f) return `<div class="bos">Yükleniyor…</div>`;
-    if (!f.konular.length) return `<div class="bos"><h2>Henüz konu açmamış</h2><p>${st.ben ? `Oyuncu aramak, kural sormak ya da hazırladığın bir haritayı paylaşmak için <a href="${TELEFON ? "/mobil#forum-yeni" : "/"}">forumda bir konu aç</a>.` : "Bu oyuncu forumda henüz konu açmadı."}</p></div>`;
+    if (!f.konular.length) return `<div class="bos"><h2>Henüz konu açmamış</h2><p>${st.ben ? `Oyuncu aramak, kural sormak ya da hazırladığın bir haritayı paylaşmak için <a href="/forum/yeni">forumda bir konu aç</a>.` : "Bu oyuncu forumda henüz konu açmadı."}</p></div>`;
     return `${f.sayi.konu > f.konular.length ? `<p class="ipucu">En yeni ${f.konular.length} konu gösteriliyor.</p>` : ""}<ul class="fliste">${f.konular.map(t => `<li class="fkart">
       <a class="fbaslik" href="${konuAdresi(t.id)}" data-noi18n>${t.sabit ? `<span class="rozet altin">Sabit</span> ` : ""}${esc(t.baslik)}</a>
       ${t.ozet ? `<p class="fozet" data-noi18n>${esc(t.ozet)}</p>` : ""}
@@ -173,6 +173,7 @@
         <div class="dugmeler"><button class="btn pri">Kaydet</button><span class="ipucu" id="haksay"></span></div></form></section>
       <section class="kutu"><h2>Rengim</h2><p class="ipucu">Masada imlecin, zar sonuçların ve profil kapağın bu renkte görünür.</p>
         <div class="renkler">${RENKLER.map(c => `<button class="renk" type="button" data-a="renk" data-c="${c}" style="background:${c}" aria-label="Renk ${c}" aria-pressed="${c.toLowerCase() === String(st.p.renk || "").toLowerCase()}"></button>`).join("")}</div></section>
+      ${window.zmOrtak ? `<section class="kutu"><h2>Görünüm</h2>${window.zmOrtak.gorunumBolumu()}</section>` : ""}
       <section class="kutu"><h2>Şifre değiştir</h2>
         <form class="form" id="sifref"><input class="f" type="password" name="eski" placeholder="Şu anki şifre" autocomplete="current-password" required aria-label="Şu anki şifre">
           <input class="f" type="password" name="yeni" placeholder="Yeni şifre (en az 8 karakter)" minlength="8" autocomplete="new-password" required aria-label="Yeni şifre">
@@ -210,10 +211,12 @@
       $(".kapak").outerHTML = kapak(); $(".sekmeler").outerHTML = sekmeler(); return;
     }
     const panel = st.sekme === "konular" ? konularPanel() : st.sekme === "yanitlar" ? yanitlarPanel() : st.sekme === "ayarlar" ? ayarlarPanel() : oyunlarPanel();
-    ana.innerHTML = kapak() + sekmeler() + `<section class="panel" id="panel" role="tabpanel" aria-labelledby="sek-${st.sekme}">${panel}</section>`;
+    ana.innerHTML = kapak() + (window.zmRozetler ? window.zmRozetler.html(st.rozet, st.ben) : "") + sekmeler() + `<section class="panel" id="panel" role="tabpanel" aria-labelledby="sek-${st.sekme}">${panel}</section>`;
     if (st.sekme === "ayarlar") ayarlarBagla();
   }
   function benAvatar() {
+    if (window.zmOrtak) window.zmOrtak.menuYenile(); // ortak üst menüdeki fotoğraf
+    if (!$("#ben")) return;
     const me = Z.me() || {};
     $("#ben").innerHTML = me.kullanici ? av({ renk: me.color, foto: me.foto, kullanici: me.kullanici }, "k") : "";
     $("#ben").hidden = !me.kullanici;
@@ -322,7 +325,7 @@
       return;
     }
     sekmeOku(); ciz();
-    await Promise.all([oyunYukle(), forumYukle()]); ciz();
+    await Promise.all([oyunYukle(), forumYukle(), Z.call("rozetler", { kisi: st.uid }).then(r => { st.rozet = r; }).catch(() => {})]); ciz();
     // Açıkken oyunlar ve çevrimiçi durumu ara ara tazelenir.
     setInterval(async () => {
       if (document.hidden) return;

@@ -42,7 +42,9 @@
   if (typeof _renderLobby === "function") window.renderLobby = function () { const r = _renderLobby.apply(this, arguments); ciz(); return r; };
   function ciz() {
     const lme = document.querySelector("#lobby .lme");
-    if (lme) {
+    // Ortak üst menü (web/ortak.js) varsa Mesajlar, Arkadaşlar ve Profil oradadır; lobi başlığında tekrarlanmaz.
+    if (lme && document.querySelector(".zo-ust")) lme.hidden = true;
+    else if (lme) {
       const me = Z.me() || {};
       if (!lme.querySelector("[data-zm-sosyal]")) {
         lme.classList.add("zm-slme");

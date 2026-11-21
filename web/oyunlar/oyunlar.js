@@ -22,7 +22,7 @@
   async function basla() {
     await Z.ready;
     ME = Z.me(); IS_OWNER = Z.isOwner();
-    $("#ben").textContent = ME.kullanici || ME.name;
+    if ($("#ben")) $("#ben").textContent = ME.kullanici || ME.name; // ortak üst menü (web/ortak.js) varsa başlık onun
     const baglam = { call, Z, esc, me: () => ME, isOwner: () => IS_OWNER, tahtalar, kartOyunlari, ciz, odaAdiSor, odaBaslik };
     if (window.ZM_KARTUI) ZM_KARTUI.kur(baglam);
     if (window.ZM_ATOLYE) ZM_ATOLYE.kur(baglam);
