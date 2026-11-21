@@ -31,7 +31,7 @@ const TUR_GRUBU = { "arkadas-istek": "arkadas", "arkadas-kabul": "arkadas", "kat
 const metin = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").replace(/\r\n?/g, "\n").trim().slice(0, n);
 const insan = id => typeof id === "string" && !id.startsWith("bot-");
 
-function kurBildirim({ store, conns, dosyalar }) {
+function kurBildirim({ store, conns, dosyalar, kurallar = null }) {
   const OPS = new Set(["bildirimOkundu", "bildirimSil", "bildirimGonder", "bildirimKisiler"]);
   const adOf = uid => { const u = store.get("_sys/users/" + uid); return (u && (u.username || u.name)) || "Biri"; };
   const col = uid => `data/users/${uid}/bildirim`;
@@ -43,7 +43,9 @@ function kurBildirim({ store, conns, dosyalar }) {
   }
   // Bildirim yaz. id verilirse aynı belgenin üstüne yazar (tekrar eden durumlar için).
   function gonder(uid, b, id) {
-    if (!insan(uid) || !KISI_ID.test(uid) || !store.get("_sys/users/" + uid)) return null;
+    const alan = insan(uid) && KISI_ID.test(uid) && store.get("_sys/users/" + uid);
+    if (!alan || alan.silindi) return null;
+    if (b.kimden && kurallar && kurallar.engelVar(uid, b.kimden)) return null; // engellenen kişiden bildirim gelmez
     if (kapaliMi(uid, b.tur)) return null;
     const t = Date.now(); id = id || "n" + t.toString(36) + rid(3);
     const doc = { id, t, tur: b.tur, baslik: metin(b.baslik, 140), metin: metin(b.metin, 400), hedef: b.hedef || null, kimden: b.kimden || null, okundu: false };
@@ -145,6 +147,7 @@ function kurBildirim({ store, conns, dosyalar }) {
     const { frp, masa } = dosyalar.oyunlari(uid);
     for (const g of frp) { const x = store.get("games/" + g.id) || {}; for (const u of [...acik(x.dms), ...acik(x.players)]) if (u !== uid && insan(u) && !out.has(u)) out.set(u, { neden: g.ad }); }
     for (const b of masa) for (const k of b.oyuncular) if (k.id !== uid && !k.bot && !out.has(k.id)) out.set(k.id, { neden: b.ad || b.oyunAd });
+    if (kurallar) for (const u of [...out.keys()]) if (kurallar.engelVar(uid, u)) out.delete(u);
     return out;
   }
   const hizlar = new Map(); // gönderen -> zamanlar

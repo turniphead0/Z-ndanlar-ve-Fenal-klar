@@ -18,6 +18,7 @@ const { kurDosyalar } = require("./dosyalar");
 const { kurBildirim } = require("./bildirim");
 const { kurYedek } = require("./yedek");
 const { kurProfil } = require("./profil");
+const { kurGizlilik, gizlilikKurallari } = require("./gizlilik");
 
 const WEB = path.join(__dirname, "..", "web");
 const ASSET_TYPES = /^(image\/|audio\/|video\/|application\/pdf$)/;
@@ -52,7 +53,7 @@ function canAccess(uid, p) {
 // Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*), forum (forum/*),
 // arkadaşlıklar ve özel mesajlar (data/users/<kişi>/{arkadas,konusma,dm}/*) yalnızca sunucu tarafından yazılır:
 // tahtada kurallara uygun hamleler, sohbette, forumda ve mesajlarda gönderen damgalı iletiler.
-const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup", "kartmasa", "bildirim"]);
+const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup", "kartmasa", "bildirim", "engel"]);
 function canWrite(uid, p) {
   const s = String(p).split("/");
   return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && s[0] !== "kartoyun" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
@@ -128,15 +129,18 @@ function createServer(opts = {}) {
   // E-posta: SMTP ayarı (opts.smtp ya da ZM_SMTP_*) varsa doğrulama kodları gönderilir ve e-posta zorunlu olur.
   // Testler opts.epostaGonder ile kendi göndericisini verir.
   const epostaGonder = opts.epostaGonder || smtpGonderici(opts.smtp !== undefined ? opts.smtp : (hesapModuOf(opts) === "zorunlu" ? smtpAyari() : null));
-  const hesap = kurHesap({ store, conns, arkadasBildir: (tur, kimden, kime) => bildirim && bildirim.arkadas(tur, kimden, kime), epostaGonder, epostaModu: opts.eposta || process.env.ZM_EPOSTA || "", sunucuAdi: name, ...(opts.insanMi ? { insanMi: opts.insanMi } : {}) });
+  // Gizlilik kuralları (profil görünürlüğü, engelleme): hesap, profil, dosyalar ve bildirimler kullanır (server/gizlilik.js).
+  let roller = null;
+  const kurallar = gizlilikKurallari({ store, adminMi: c => roller.admin(c) });
+  const hesap = kurHesap({ kurallar,  store, conns, arkadasBildir: (tur, kimden, kime) => bildirim && bildirim.arkadas(tur, kimden, kime), epostaGonder, epostaModu: opts.eposta || process.env.ZM_EPOSTA || "", sunucuAdi: name, ...(opts.insanMi ? { insanMi: opts.insanMi } : {}) });
   // Roller (admin, tester): ilk admin ZM_ADMIN ile ya da sahip bağlantısıyla belirlenir (server/roller.js).
-  const roller = kurRoller({ store, conns, adminler: opts.admin || "" });
+  roller = kurRoller({ store, conns, adminler: opts.admin || "" });
   // Yükleme sınırları (dosya başına ve kişi başına toplam), "Yüklediklerim" ve profildeki oyunlar (server/dosyalar.js).
-  const dosyalar = kurDosyalar({ store, roller, conns, maxDosya: opts.maxDosya || process.env.ZM_MAX_DOSYA, kota: opts.kota || process.env.ZM_KOTA });
+  const dosyalar = kurDosyalar({ store, roller, conns, kurallar, maxDosya: opts.maxDosya || process.env.ZM_MAX_DOSYA, kota: opts.kota || process.env.ZM_KOTA });
   // Bildirimler: sıra sende, oyun bitti, katılma istekleri, arkadaşlık ve kişiden kişiye (server/bildirim.js).
-  bildirim = kurBildirim({ store, conns, dosyalar });
+  bildirim = kurBildirim({ store, conns, dosyalar, kurallar });
   // Profil sayfası: kişinin forumda yazdıkları (server/profil.js).
-  const profil = kurProfil({ store });
+  const profil = kurProfil({ store, kurallar });
   let botlar = null;
   const kartMasa = kurKartMasa({ store, botKisi: (c, d, id) => botlar.kartBotKisi(c, d, id) });
   // Sohbette anılan bot için kısa yanıt (yalnızca yapay zekâ açıksa).
@@ -147,6 +151,8 @@ function createServer(opts = {}) {
   // Oyun yedekleri: tek .zip olarak indir, sunucudan kaldır, geri yükle (server/yedek.js).
   const yedek = kurYedek({ store, dosyalar, kartMasa, assetDir, ASSET_TYPES, EXT, guvenlik: GUVENLIK, surum: require("../package.json").version });
   dosyalar.yerSusle = (uid, yer, y) => Object.assign(y, yedek.izin(uid, yer));
+  // Gizlilik, engelleme, şikâyet, verilerimi indir, hesap silme (server/gizlilik.js).
+  const gizlilik = kurGizlilik({ store, conns, roller, hesap, kurallar, dosyalar, bildirim, assetDir, dataDir, guvenlik: GUVENLIK, surum: require("../package.json").version });
   botlar = kurBotlar({ store, conns, roller, kartMasa, sohbeteYaz: (gid, by, text) => sohbeteYaz(gid, by, text), yapayZeka, gecikme: opts.botGecikme });
 
   /* ---------------- HTTP ---------------- */
@@ -256,6 +262,7 @@ function createServer(opts = {}) {
       }
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
       if (yedek.http(req, res, p, send, authed)) return;
+      if (gizlilik.http(req, res, p, send)) return;
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);
       if (req.method === "DELETE" && p.startsWith("/api/assets/")) {
         const uid = authed(req); if (!uid) return send(res, 401, { code: "unauthorized" });
@@ -375,7 +382,7 @@ function createServer(opts = {}) {
           case "profiles": {
             const out = {};
             const on = new Set([...conns].map(x => x.uid));
-            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: on.has(id) || !!u.bot, ...(u.bot ? { bot: true } : {}), ...(roller.rolu(id) ? { rol: roller.rolu(id) } : {}) }; }
+            for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: (on.has(id) && kurallar.gorebilir(c, id)) || !!u.bot, ...(u.bot ? { bot: true } : {}), ...(roller.rolu(id) ? { rol: roller.rolu(id) } : {}) }; }
             return reply(out);
           }
           case "presence": {
@@ -417,6 +424,7 @@ function createServer(opts = {}) {
             if (bildirim.OPS.has(m.op)) return reply(bildirim.op(c, m)); // bildirimler (server/bildirim.js)
             if (yedek.OPS.has(m.op)) return reply(yedek.op(c, m)); // oyun yedekleri (server/yedek.js)
             if (profil.OPS.has(m.op)) return reply(profil.op(c, m)); // profil sayfası (server/profil.js)
+            if (gizlilik.OPS.has(m.op)) return reply(gizlilik.op(c, m)); // gizlilik, engel, şikâyet, KVKK (server/gizlilik.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }

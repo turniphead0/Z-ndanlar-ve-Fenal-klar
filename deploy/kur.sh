@@ -48,6 +48,25 @@ sudo docker run -d --name caddy --restart unless-stopped --network zm-ag --log-o
   caddy:2 >/dev/null
 sudo docker image prune -f >/dev/null 2>&1 || true # eski derlemeler diski doldurmasın
 
+# Otomatik yedek: her gece sunucu saatiyle 01:17'de (Türkiye saatiyle 04:17) deploy/yedek.sh çalışır. Yedekler
+# şifreli olarak ~/zm-yedekler/ klasörüne yazılır ve ~/zm-yedek.env'de ayarlandıysa sunucunun dışına kopyalanır.
+YENI_AYAR=0; [ -s "$HOME/zm-yedek.env" ] || YENI_AYAR=1
+mkdir -p "$HOME/zm-yedekler"
+printf '# Zar Masası otomatik yedek (deploy/kur.sh yazdı; değiştirmek için kur.sh yeniden çalıştırılır)\nSHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n17 1 * * * %s bash %s/deploy/yedek.sh >> %s/zm-yedekler/yedek.log 2>&1\n' \
+  "$(id -un)" "$KOK" "$HOME" | sudo tee /etc/cron.d/zar-masasi-yedek >/dev/null
+sudo chmod 644 /etc/cron.d/zar-masasi-yedek
+if ! ls "$HOME"/zm-yedekler/zar-masasi-*.tar.gz.enc >/dev/null 2>&1; then
+  echo "    İlk yedek alınıyor…"
+  bash "$KOK/deploy/yedek.sh" >> "$HOME/zm-yedekler/yedek.log" 2>&1 && echo "    İlk yedek hazır: ~/zm-yedekler/" || echo "    İlk yedek alınamadı; ayrıntı: tail ~/zm-yedekler/yedek.log"
+fi
+if [ "$YENI_AYAR" = 1 ]; then
+  echo
+  echo "ÖNEMLİ: Yedekler şifreli. Şifreyi bilgisayarına kaydet (sunucu kaybolursa yedeği yalnızca bununla açabilirsin):"
+  grep '^ZM_YEDEK_SIFRE=' "$HOME/zm-yedek.env"
+  echo "Yedekleri ücretsiz olarak sunucunun dışına da kopyalamak için: ~/zm-yedek.env (otomatik-yedek/kurulum.md)"
+  echo
+fi
+
 echo "4/4 Sertifika alınıyor ve deneniyor (en fazla 2 dakika)…"
 for _ in $(seq 1 24); do
   if curl -fsS --max-time 5 "https://$ALAN/api/info" >/dev/null 2>&1; then
