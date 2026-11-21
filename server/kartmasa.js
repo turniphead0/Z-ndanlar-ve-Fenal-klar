@@ -42,7 +42,8 @@ function kurKartMasa({ store, botKisi }) {
         const tanim = KM.tanimDuzelt(t), d = KM.yeni(tanim), bid = "b" + Date.now().toString(36) + rid(3);
         const k = ben(c); d.koltuk[0] = { ...k, renk: KM.RENKLER[0] };
         store.set("_sys/kartmasa/" + bid, d);
-        yayinla(bid, d, { tanim, ...kaynak, olusturan: c.uid, created: Date.now() });
+        const ad = String(m.ad == null ? "" : m.ad).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+        yayinla(bid, d, { tanim, ...kaynak, ...(ad ? { ad } : {}), olusturan: c.uid, created: Date.now() });
         return { id: bid };
       }
       case "kmSit": {

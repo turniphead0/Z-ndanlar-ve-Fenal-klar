@@ -22,7 +22,7 @@
     await Z.ready;
     ME = Z.me(); IS_OWNER = Z.isOwner();
     $("#ben").textContent = ME.kullanici || ME.name;
-    const baglam = { call, Z, esc, me: () => ME, isOwner: () => IS_OWNER, tahtalar, kartOyunlari, ciz };
+    const baglam = { call, Z, esc, me: () => ME, isOwner: () => IS_OWNER, tahtalar, kartOyunlari, ciz, odaAdiSor, odaBaslik };
     if (window.ZM_KARTUI) ZM_KARTUI.kur(baglam);
     if (window.ZM_ATOLYE) ZM_ATOLYE.kur(baglam);
     abone("col", "boards", m => {
@@ -39,9 +39,13 @@
 
   /* ---------------- Durum ---------------- */
   const tahtalar = new Map(), kartOyunlari = new Map();
-  let secim = [], hataMetni = "", sonId = null;
+  let secim = [], hataMetni = "", sonId = null, oneri = null;
   const acikId = () => (location.hash.match(/^#(b[a-z0-9]+|atolye(?:\/[a-z0-9-]+)?)$/) || [])[1];
-  window.addEventListener("hashchange", () => { secim = []; hataMetni = ""; ciz(); });
+  // Lobi iki sayfa: açık oyunlar (#acik, varsayılan) ve oyun seçenekleri (#secenekler).
+  const lobiSayfasi = () => (location.hash === "#secenekler" ? "secenekler" : "acik");
+  window.addEventListener("hashchange", () => { secim = []; hataMetni = ""; oneri = null; ciz(); });
+  // Yüklenen dosya hangi oyuna ait (Yüklediklerim sayfası için): açık masa ya da atölyedeki oyun.
+  window.ZM_YUKLEME_YERI = () => { const id = acikId(); if (!id) return null; if (id.startsWith("atolye")) { const k = id.slice(7); return k ? "kartoyun/" + k : "atolye"; } return "boards/" + id; };
 
   const RENK_GENEL = ["Açık taşlar", "Koyu taşlar"];
   const koltukAdi = (b, k) => (b.koltuk[k] ? b.koltuk[k].name : "boş");
@@ -64,15 +68,158 @@
     cizLobi();
   }
 
+  /* ---------------- Lobi: açık oyunlar ve oyun seçenekleri ---------------- */
+  // Süzgeçler oturum boyunca kalır (ana ekrandaki RPG masa listesi gibi).
+  const F = { q: "", tur: "", oyun: "", durum: "", benim: false, q2: "", tur2: "", oyuncu: "", benim2: false };
+  try { Object.assign(F, JSON.parse(sessionStorage.getItem("zm-oyun-suzgec") || "{}")); } catch (e) {}
+  const sakla = () => { try { sessionStorage.setItem("zm-oyun-suzgec", JSON.stringify(F)); } catch (e) {} };
+  // "Dokuz taş" ile "dokuz tas" aynı sonucu versin: küçük harf, Türkçe işaretsiz.
+  const sade = s => String(s || "").toLocaleLowerCase("tr").replace(/[ıîİ]/g, "i").replace(/ş/g, "s").replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ö/g, "o").replace(/[üû]/g, "u").replace(/â/g, "a").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const uyar = (q, ...alan) => { const w = sade(q).split(/\s+/).filter(Boolean); if (!w.length) return true; const t = sade(alan.join(" ")); return w.every(x => t.includes(x)); };
+  const HAZIR = () => (window.ZM_HAZIR && ZM_HAZIR.HAZIR) || {};
+
+  // Açık bir odanın (tahta ya da kart masası) listede kullanılan özeti.
+  function oda(id, b) {
+    const kart = b.oyun === "kart", d = b.durum || {}, koltuk = (kart ? d.koltuk : b.koltuk) || [];
+    const oyunAd = kart ? (b.tanim && b.tanim.ad) || "Kart oyunu" : (OYUNLAR[b.oyun] || {}).ad || b.oyun;
+    const oyunAnahtar = kart ? (b.hazir ? "hazir:" + b.hazir : b.kartoyun ? "kartoyun:" + b.kartoyun : "kart:" + oyunAd) : "tahta:" + b.oyun;
+    const benim = !!ME && koltuk.some(k => k && k.id === ME.id), acan = !!ME && b.olusturan === ME.id;
+    const bos = koltuk.includes(null);
+    const durum = !kart && d.bitti ? "bitti" : kart ? (d.basladi ? "oynaniyor" : "bekliyor") : bos ? "bekliyor" : "oynaniyor";
+    const siradaki = durum !== "bitti" && (!kart || d.basladi) ? koltuk[d.sira] : null;
+    return { id, b, kart, oyunAd, oyunAnahtar, ad: b.ad || oyunAd, ozelAd: !!b.ad, koltuk, benim, acan, bos, durum, siraSende: !!(siraSende(b)), siradaki, updated: b.updated || 0 };
+  }
+  function siraSende(b) {
+    if (!ME) return false;
+    if (b.oyun === "kart") { const d = b.durum || {}; return !!(d.basladi && d.koltuk[d.sira] && d.koltuk[d.sira].id === ME.id); }
+    return !b.durum.bitti && oynadigimKoltuklar(b).includes(b.durum.sira);
+  }
+  // Seçenekler sayfasındaki oyunlar: tahta oyunları, hazır kart oyunları ve atölyede yapılanlar.
+  function secenekler() {
+    const out = Object.entries(OYUNLAR).map(([k, g]) => ({ anahtar: "tahta:" + k, tur: "tahta", ad: g.ad, aciklama: g.kisa, min: 2, max: 2, dugme: `<button class="btn pri" data-yeni="${k}">Oda aç</button>` }));
+    for (const [k, t] of Object.entries(HAZIR())) out.push({ anahtar: "hazir:" + k, tur: "kart", ad: t.ad + (t.surum ? " · " + t.surum : ""), aciklama: t.aciklama || "", min: t.oyuncu.min, max: t.oyuncu.max, dugme: `<button class="btn pri" data-km-yeni="${esc(k)}">Oda aç</button>` });
+    for (const [id, o] of [...kartOyunlari.entries()].sort((a, b) => b[1].updated - a[1].updated)) {
+      const t = o.tanim || {}, oy = t.oyuncu || { min: 1, max: 8 }, kendi = !!ME && o.sahip === ME.id;
+      out.push({ anahtar: "kartoyun:" + id, tur: "atolye", ad: t.ad || "Adsız oyun", aciklama: t.aciklama || "", min: oy.min, max: oy.max, yapan: o.sahipAd, kendi,
+        dugme: `<button class="btn pri" data-km-oyun="${esc(id)}">Oda aç</button>${kendi || IS_OWNER ? `<a class="btn" href="#atolye/${esc(id)}">Düzenle</a>` : ""}` });
+    }
+    return out;
+  }
+  const odalar = () => [...tahtalar.entries()].filter(([, b]) => b.oyun === "kart" ? b.tanim && b.durum && b.durum.koltuk : OYUNLAR[b.oyun]).map(([id, b]) => oda(id, b));
+  const DURUM_AD = { bekliyor: "Oyuncu bekliyor", oynaniyor: "Oynanıyor", bitti: "Bitti" };
+  const TUR_AD = { tahta: "Tahta", kart: "Kart", atolye: "Atölye" };
+
+  function odaUyar(o) {
+    if (F.tur && (o.kart ? "kart" : "tahta") !== F.tur) return false;
+    if (F.oyun && o.oyunAnahtar !== F.oyun) return false;
+    if (F.durum === "sirada" ? !o.siraSende : F.durum && o.durum !== F.durum) return false;
+    if (F.benim && !o.benim && !o.acan) return false;
+    return uyar(F.q, o.ad, o.oyunAd, o.koltuk.filter(Boolean).map(k => k.name).join(" "), DURUM_AD[o.durum]);
+  }
+  const secenekUyar = s => (!F.tur2 || s.tur === F.tur2) && (!F.benim2 || s.kendi)
+    && (!F.oyuncu || (F.oyuncu === "2" ? s.min <= 2 && s.max >= 2 : F.oyuncu === "34" ? s.max >= 3 && s.min <= 4 : s.max >= 5))
+    && uyar(F.q2, s.ad, s.aciklama, s.yapan, TUR_AD[s.tur]);
+
+  const secenek = (v, cur, l) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
+  function aracHtml(sayfa) {
+    if (sayfa === "acik") {
+      const oyunlar = new Map(); for (const o of odalar()) oyunlar.set(o.oyunAnahtar, o.oyunAd);
+      for (const s of secenekler()) if (!oyunlar.has(s.anahtar)) oyunlar.set(s.anahtar, s.ad);
+      const dolu = F.q || F.tur || F.oyun || F.durum || F.benim;
+      return `<div class="arac" role="search"><label class="ara"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="oAra" placeholder="Oda adı, oyun ya da oyuncu ara" aria-label="Açık oyunlarda ara" value="${esc(F.q)}" autocomplete="off"></label>
+        <select data-f="tur" aria-label="Oyun türü">${secenek("", F.tur, "Bütün türler")}${secenek("tahta", F.tur, "Tahta oyunları")}${secenek("kart", F.tur, "Kart ve taş oyunları")}</select>
+        <select data-f="oyun" aria-label="Oyun">${secenek("", F.oyun, "Bütün oyunlar")}${[...oyunlar].sort((a, b) => a[1].localeCompare(b[1], "tr")).map(([k, ad]) => secenek(k, F.oyun, ad)).join("")}</select>
+        <select data-f="durum" aria-label="Durum">${secenek("", F.durum, "Her durum")}${secenek("bekliyor", F.durum, "Oyuncu bekliyor")}${secenek("oynaniyor", F.durum, "Oynanıyor")}${secenek("sirada", F.durum, "Sıra bende")}${secenek("bitti", F.durum, "Bitti")}</select>
+        <button type="button" class="cip" data-f-benim aria-pressed="${!!F.benim}">Yalnızca benim odalarım</button>
+        ${dolu ? `<button type="button" class="btn" data-f-temizle>Süzgeçleri temizle</button>` : ""}</div>`;
+    }
+    const dolu = F.q2 || F.tur2 || F.oyuncu || F.benim2;
+    return `<div class="arac" role="search"><label class="ara"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="oAra2" placeholder="Oyun adı ya da açıklama ara" aria-label="Oyun seçeneklerinde ara" value="${esc(F.q2)}" autocomplete="off"></label>
+      <select data-f="tur2" aria-label="Oyun türü">${secenek("", F.tur2, "Bütün türler")}${secenek("tahta", F.tur2, "Tahta oyunları")}${secenek("kart", F.tur2, "Hazır kart oyunları")}${secenek("atolye", F.tur2, "Atölyede yapılanlar")}</select>
+      <select data-f="oyuncu" aria-label="Oyuncu sayısı">${secenek("", F.oyuncu, "Her oyuncu sayısı")}${secenek("2", F.oyuncu, "2 kişilik")}${secenek("34", F.oyuncu, "3–4 kişilik")}${secenek("5", F.oyuncu, "5 ve üstü")}</select>
+      <button type="button" class="cip" data-f-benim2 aria-pressed="${!!F.benim2}">Benim yaptıklarım</button>
+      ${dolu ? `<button type="button" class="btn" data-f-temizle2>Süzgeçleri temizle</button>` : ""}</div>`;
+  }
+
+  function acikSonucHtml() {
+    const tum = odalar();
+    if (!tum.length) return `<div class="bos-kutu"><h2>Şu an açık oda yok</h2><p>Bir oyun seç, kendi odanı aç ve adını sen koy. Arkadaşların bu listeden katılır ya da onlara bildirimle davet gönderirsin.</p><a class="btn pri" href="#secenekler">Oyun seçeneklerine git</a></div>`;
+    const l = tum.filter(odaUyar).sort((a, b) => (b.siraSende - a.siraSende) || ((b.benim || b.acan) - (a.benim || a.acan)) || ((a.durum === "bitti") - (b.durum === "bitti")) || b.updated - a.updated);
+    if (!l.length) return `<div class="bos-kutu"><h2>Aramana uyan oda yok</h2><p>Başka bir kelime dene ya da süzgeçleri temizle.</p><button class="btn" data-f-temizle>Süzgeçleri temizle</button></div>`;
+    return `<p class="sayac">${l.length === tum.length ? `${tum.length} oda` : `${tum.length} odadan ${l.length} tanesi`}</p><div class="liste">${l.map(o => {
+      const oyuncular = o.koltuk.map(k => (k ? esc(k.name) : "<i>boş</i>")).join(", ");
+      const dug = o.benim || (!o.kart && benimKoltuklarim(o.b).length) ? "Devam et" : o.bos && o.durum !== "bitti" ? "Katıl" : "İzle";
+      return `<div class="satir oda${o.siraSende ? " sirada" : ""}"><span class="tur-rozet ${o.kart ? "kart" : "tahta"}">${o.kart ? "Kart" : "Tahta"}</span>
+        <span class="oda-ad"><span class="ad" data-noi18n>${esc(o.ad)}</span>${o.ozelAd ? `<small>${esc(o.oyunAd)}</small>` : ""}</span>
+        <span class="bilgi" data-noi18n>${oyuncular || "kimse oturmadı"}</span>
+        <span class="durum-rozet ${o.durum}">${o.siraSende ? "Sıra sende" : DURUM_AD[o.durum]}</span><span class="sp"></span>
+        <a class="btn${o.siraSende ? " pri" : ""}" href="#${o.id}">${dug}</a></div>`;
+    }).join("")}</div>`;
+  }
+
+  function seceneklerSonucHtml() {
+    const tum = secenekler(), l = tum.filter(secenekUyar), sayi = new Map();
+    for (const o of odalar()) if (o.durum !== "bitti") sayi.set(o.oyunAnahtar, (sayi.get(o.oyunAnahtar) || 0) + 1);
+    const atolye = !F.tur2 || F.tur2 === "atolye";
+    const kartlar = l.map(s => `<div class="kart"><span class="tur-rozet ${s.tur}">${TUR_AD[s.tur]}</span><b>${esc(s.ad)}</b><p>${esc(s.aciklama)}</p>
+      <p class="km-oy">${s.min === s.max ? s.max : s.min + "–" + s.max} oyuncu${s.yapan ? ` · ${esc(s.yapan)} yaptı` : ""}</p>
+      <div class="km-dug">${s.dugme}${sayi.get(s.anahtar) ? `<button class="btn" data-acik-oyun="${esc(s.anahtar)}">${sayi.get(s.anahtar)} açık oda</button>` : ""}</div></div>`).join("");
+    if (!l.length && !atolye) return `<div class="bos-kutu"><h2>Aramana uyan oyun yok</h2><p>Başka bir kelime dene ya da süzgeçleri temizle.</p><button class="btn" data-f-temizle2>Süzgeçleri temizle</button></div>`;
+    return `<p class="sayac">${l.length === tum.length ? `${tum.length} oyun` : `${tum.length} oyundan ${l.length} tanesi`}</p><div class="kartlar">${kartlar}
+      ${atolye ? `<a class="kart km-atolye" href="#atolye"><b>+ Kendi oyununu yap</b><p>Oyun atölyesi: kartlar ve desteler, taşlar, sayaçlar, masa alanları ve kurallar. Kart resimlerini yükleyebilirsin.</p></a>` : ""}</div>`;
+  }
+
   function cizLobi() {
-    const liste = [...tahtalar.entries()].filter(([, b]) => b.oyun !== "kart" && OYUNLAR[b.oyun]).sort((a, b) => b[1].updated - a[1].updated);
-    $("#ana").innerHTML = (window.ZM_KARTUI ? ZM_KARTUI.lobiHtml() : "") + `
-      <h2>Tahta oyunları</h2>
-      <div class="kartlar">${Object.entries(OYUNLAR).map(([k, g]) => `<div class="kart"><b>${esc(g.ad)}</b><p>${esc(g.kisa)}</p><div><button class="btn pri" data-yeni="${k}">Tahta aç</button></div></div>`).join("")}</div>
-      <h2>Açık tahtalar</h2>
-      <div class="liste">${liste.length ? liste.map(([id, b]) => `<div class="satir"><span class="ad">${esc(OYUNLAR[b.oyun]?.ad || b.oyun)}</span>
-        <span class="bilgi">${esc(koltukAdi(b, 0))} – ${esc(koltukAdi(b, 1))} · ${b.durum.bitti ? "bitti" : b.durum.n + ". hamle"}</span><span class="sp"></span>
-        <a class="btn" href="#${id}">${benimKoltuklarim(b).length ? "Devam et" : b.koltuk.includes(null) ? "Katıl" : "İzle"}</a></div>`).join("") : `<p class="bos">Henüz açık tahta yok. Yukarıdan bir oyun seç; tahtayı açınca bağlantıyı masadaki arkadaşlarına söyle ya da onlar bu listeden katılsın.</p>`}</div>`;
+    const sayfa = lobiSayfasi(), ana = $("#ana");
+    const acikSayi = odalar().filter(o => o.durum !== "bitti").length, sirada = odalar().filter(o => o.siraSende).length;
+    const sek = `<nav class="lsek" aria-label="Masa oyunları bölümleri"><a href="#acik" aria-current="${sayfa === "acik" ? "page" : "false"}">Açık oyunlar <b>${acikSayi}</b>${sirada ? `<i class="sira-sayi" title="Sıra sende">${sirada}</i>` : ""}</a><a href="#secenekler" aria-current="${sayfa === "secenekler" ? "page" : "false"}">Oyun seçenekleri</a></nav>`;
+    // Arama kutusunda yazarken odak kaybolmasın: sayfa aynıysa yalnızca sekmeleri ve sonuçları yenile.
+    if (ana.dataset.lobi === sayfa && $("#lsonuc")) {
+      $(".lsek").outerHTML = sek;
+      $("#lsonuc").innerHTML = sayfa === "acik" ? acikSonucHtml() : seceneklerSonucHtml();
+      return;
+    }
+    ana.dataset.lobi = sayfa;
+    ana.innerHTML = sek + aracHtml(sayfa) + `<div id="lsonuc">${sayfa === "acik" ? acikSonucHtml() : seceneklerSonucHtml()}</div>`;
+  }
+  function lobiYenile(tam) {
+    const ana = $("#ana");
+    if (tam) { const odak = document.activeElement && document.activeElement.id, poz = odak && document.activeElement.selectionStart; ana.dataset.lobi = ""; cizLobi(); if (odak && $("#" + odak)) { const el = $("#" + odak); el.focus(); try { el.setSelectionRange(poz, poz); } catch (e) {} } }
+    else cizLobi();
+  }
+  document.addEventListener("input", e => {
+    if (e.target.id === "oAra") { F.q = e.target.value; sakla(); lobiYenile(!!F.q !== !!$("[data-f-temizle]")); }
+    if (e.target.id === "oAra2") { F.q2 = e.target.value; sakla(); lobiYenile(!!F.q2 !== !!$("[data-f-temizle2]")); }
+  });
+  document.addEventListener("change", e => { const f = e.target.closest && e.target.closest("[data-f]"); if (!f) return; F[f.dataset.f] = f.value; sakla(); lobiYenile(true); });
+
+  /* ---------------- Oda adı ---------------- */
+  // Küçük bir pencere: oda adını sorar. Boş bırakılırsa oyunun adı kullanılır. Vazgeçilirse null.
+  function odaAdiSor(oyunAd, mevcut, baslik) {
+    return new Promise(res => {
+      const p = document.createElement("div"); p.className = "pencere";
+      p.innerHTML = `<form class="pencere-ic" role="dialog" aria-modal="true" aria-labelledby="odaBaslik"><h2 id="odaBaslik">${esc(baslik || "Odanı aç")}</h2>
+        <label for="odaAdi">Odanın adı</label><input id="odaAdi" maxlength="60" placeholder="ör. Cuma akşamı ${esc(oyunAd)}" value="${esc(mevcut || "")}" autocomplete="off">
+        <p class="bos" style="margin:0;font-size:13px">Listede bu adla görünür; boş bırakırsan “${esc(oyunAd)}” yazar. Sonra da değiştirebilirsin.</p>
+        <div class="pencere-dug"><button type="button" class="btn" data-vazgec>Vazgeç</button><button class="btn pri">${mevcut != null ? "Kaydet" : "Odayı aç"}</button></div></form>`;
+      const bitir = v => { p.remove(); document.removeEventListener("keydown", esc_); res(v); };
+      const esc_ = e => { if (e.key === "Escape") bitir(null); };
+      p.addEventListener("click", e => { if (e.target === p || e.target.closest("[data-vazgec]")) bitir(null); });
+      p.querySelector("form").addEventListener("submit", e => { e.preventDefault(); bitir(p.querySelector("#odaAdi").value.trim()); });
+      document.addEventListener("keydown", esc_);
+      document.body.appendChild(p); p.querySelector("#odaAdi").focus();
+    });
+  }
+  // Masa ekranlarının başlığı: oda adı, oyunun adı, ad değiştirme ve davet düğmeleri.
+  function odaBaslik(id, b) {
+    const kart = b.oyun === "kart", oyunAd = kart ? (b.tanim && b.tanim.ad) || "Kart oyunu" : (OYUNLAR[b.oyun] || {}).ad;
+    const koltuk = (kart ? (b.durum || {}).koltuk : b.koltuk) || [];
+    const yetkili = !!ME && (b.olusturan === ME.id || IS_OWNER || koltuk.some(k => k && k.id === ME.id));
+    return `<div class="oda-bas"><a href="#acik">← Açık oyunlar</a><span class="oda-baslik"><b data-noi18n>${esc(b.ad || oyunAd)}</b>${b.ad ? `<small>${esc(oyunAd)}</small>` : ""}</span><span class="sp"></span>
+      ${yetkili ? `<button class="btn" data-oda-ad="${esc(id)}" title="Odanın adını değiştir">✎ Adını değiştir</button>` : ""}
+      ${window.ZM_BILDIRIM ? `<button class="btn" data-zb-davet="tahta:${esc(id)}" title="Arkadaşlarına bu oda için davet gönder">📨 Davet et</button>` : ""}</div>`;
   }
 
   function cizTahta(id, b) {
@@ -82,7 +229,8 @@
     const oynayabilir = !d.bitti && benim.includes(d.sira);
     const yasal = oynayabilir ? g.hamleler(d) : [];
     const uyan = yasal.filter(h => ayni(h.slice(0, secim.length), secim));
-    const ipucu = new Set(uyan.map(h => h[secim.length]));
+    if (oneri && !uyan.some(h => ayni(h, oneri))) oneri = null;
+    const ipucu = new Set(oneri ? [oneri[secim.length]] : uyan.map(h => h[secim.length]));
     const cevir = benimKoltuklarim(b).length === 1 && benimKoltuklarim(b)[0] === 1; // yalnızca ikinci koltuktaysan tahtayı kendi tarafından gör
     const siradaki = b.koltuk[d.sira];
     const durumMetni = d.bitti
@@ -100,7 +248,8 @@
       return `<div class="koltuk${x && x.bot ? " bot" : ""}" data-sira="${!d.bitti && d.sira === k ? 1 : 0}"><span class="tas k${renk(k)}"></span><span>${esc(RENK[k])}: ${x ? esc(x.name) : "<i>boş</i>"}</span><span class="sp"></span>
         ${mine ? `<button class="btn" data-kalk="${k}">Kalk</button>` : x ? "" : `<button class="btn pri" data-otur="${k}">Otur</button>${botDug}`}</div>${botAyar}`;
     };
-    $("#ana").innerHTML = `<p><a href="#">← Bütün oyunlar</a></p>
+    $("#ana").dataset.lobi = "";
+    $("#ana").innerHTML = odaBaslik(id, b) + `
       <div class="oyun" data-oyun="${esc(b.oyun)}"><div class="tahta">${CIZICI[b.oyun](d, { ipucu, secim, cevir }).replace(/^<svg([^>]*)>/, "<svg$1>" + TAS_DEFS)}</div>
       <div class="yan">
         <div class="kutu"><h3>${esc(g.ad)}</h3>${koltukHtml(0)}${koltukHtml(1)}
@@ -108,10 +257,34 @@
           ${b.oyun === "ur" ? urZarHtml(b) : ""}
           <div class="hata" role="alert">${esc(hataMetni)}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-sifirla>Yeniden başlat</button><button class="btn tehlike" data-sil>Tahtayı kapat</button></div></div>
+        ${rehberHtml(b, oynayabilir)}
         <div class="kutu"><h3>Kurallar</h3><ul class="kurallar">${g.kurallar.map(k => `<li>${esc(k)}</li>`).join("")}</ul>
           <p class="bos" style="margin:0;font-size:13px">Tek bilgisayarda iki kişi oynayacaksanız iki koltuğa da oturabilirsin. Rakip yoksa boş koltuğa bir bot oturt.</p></div>
       </div></div>`;
   }
+
+  // Sıra sende: yapman gerekenler, öne çıkan hamleler ve ipuçları (web/oyunlar/rehber.js).
+  const rehberKapali = () => LS.get("zm-rehber") === "0";
+  function rehberHtml(b, oynayabilir) {
+    if (!window.ZM_REHBER) return "";
+    const d = b.durum;
+    if (rehberKapali()) return `<div class="kutu rehber kapali"><button class="btn" data-rehber-ac>💡 Sıra rehberini göster</button></div>`;
+    if (d.bitti) return "";
+    if (!oynayabilir) {
+      const k = b.koltuk[d.sira];
+      return `<div class="kutu rehber"><div class="rehber-bas"><h3>💡 Sıra rehberi</h3><button class="btn ince" data-rehber-kapat title="Rehberi gizle">Gizle</button></div>
+        <p class="bos" style="margin:0">${k ? `Sıra ${esc(k.name)} oyuncusunda.` : "Sıradaki koltuk boş."} Sıra sana gelince burada yapman gerekenler, öne çıkan hamleler ve ipuçları görünür.</p></div>`;
+    }
+    const a = ZM_REHBER.analiz(b.oyun, d, { cevir: benimKoltuklarim(b).length === 1 && benimKoltuklarim(b)[0] === 1 }); if (!a) return "";
+    rehberSecenekleri = a.secenekler;
+    return `<div class="kutu rehber sende"><div class="rehber-bas"><h3>💡 Sıra sende${a.baslik ? ": " + esc(a.baslik) : ""}</h3><button class="btn ince" data-rehber-kapat title="Rehberi gizle">Gizle</button></div>
+      ${a.yapmalisin.length ? `<div class="rehber-bolum"><b>Yapman gereken</b><ul>${a.yapmalisin.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      ${a.uyarilar.length ? `<div class="rehber-uyari" role="alert">${a.uyarilar.map(esc).join("<br>")}</div>` : ""}
+      ${a.secenekler.length ? `<div class="rehber-bolum"><b>Yapabileceklerin</b> <small>${a.toplam} yasal hamle</small><ul class="rehber-hamleler">${a.secenekler.map((s, i) => `<li><span>${esc(s.aciklama)}</span>
+        <span class="etiketler">${s.etiketler.map(e => `<i class="et ${e.tur}">${esc(e.metin)}</i>`).join("")}</span><button class="btn ince" data-rehber-goster="${i}"${oneri && ayni(oneri, s.hamle) ? ' aria-pressed="true"' : ""}>Göster</button></li>`).join("")}</ul></div>` : ""}
+      ${a.ipuclari.length ? `<div class="rehber-bolum"><b>İpuçları</b><ul class="ipuclari">${a.ipuclari.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}</div>`;
+  }
+  let rehberSecenekleri = [];
 
   function urZarHtml(b) {
     const d = b.durum; if (d.bitti) return "";
@@ -124,7 +297,27 @@
     const id = acikId(), b = id && tahtalar.get(id);
     const yeni = e.target.closest("[data-yeni]");
     try {
-      if (yeni) { const r = await call("bgNew", { oyun: yeni.dataset.yeni }); await call("bgSit", { board: r.id, koltuk: 0 }); location.hash = r.id; return; }
+      if (yeni) {
+        const ad = await odaAdiSor(OYUNLAR[yeni.dataset.yeni].ad); if (ad == null) return;
+        const r = await call("bgNew", { oyun: yeni.dataset.yeni, ad }); await call("bgSit", { board: r.id, koltuk: 0 }); location.hash = r.id; return;
+      }
+      const adDeg = e.target.closest("[data-oda-ad]");
+      if (adDeg) {
+        const bb = tahtalar.get(adDeg.dataset.odaAd); if (!bb) return;
+        const oyunAd = bb.oyun === "kart" ? (bb.tanim || {}).ad : OYUNLAR[bb.oyun].ad;
+        const ad = await odaAdiSor(oyunAd, bb.ad || "", "Odanın adı"); if (ad == null) return;
+        await call("bgAd", { board: adDeg.dataset.odaAd, ad }); return;
+      }
+      if (e.target.closest("[data-f-benim]")) { F.benim = !F.benim; sakla(); return lobiYenile(true); }
+      if (e.target.closest("[data-f-benim2]")) { F.benim2 = !F.benim2; sakla(); return lobiYenile(true); }
+      if (e.target.closest("[data-f-temizle]")) { Object.assign(F, { q: "", tur: "", oyun: "", durum: "", benim: false }); sakla(); return lobiYenile(true); }
+      if (e.target.closest("[data-f-temizle2]")) { Object.assign(F, { q2: "", tur2: "", oyuncu: "", benim2: false }); sakla(); return lobiYenile(true); }
+      const acikOyun = e.target.closest("[data-acik-oyun]");
+      if (acikOyun) { Object.assign(F, { q: "", tur: "", durum: "", benim: false, oyun: acikOyun.dataset.acikOyun }); sakla(); location.hash = "acik"; return; }
+      if (e.target.closest("[data-rehber-kapat]")) { LS.set("zm-rehber", "0"); oneri = null; return ciz(); }
+      if (e.target.closest("[data-rehber-ac]")) { LS.set("zm-rehber", "1"); return ciz(); }
+      const goster = e.target.closest("[data-rehber-goster]");
+      if (goster) { const s = rehberSecenekleri[+goster.dataset.rehberGoster]; if (s) { oneri = oneri && ayni(oneri, s.hamle) ? null : s.hamle; secim = oneri ? oneri.slice(0, -1) : []; } return ciz(); }
       if (!b || b.oyun === "kart") return;
       const o = e.target.closest("[data-otur]"), k = e.target.closest("[data-kalk]");
       if (o) return await call("bgSit", { board: id, koltuk: +o.dataset.otur });
@@ -147,6 +340,7 @@
     if (d.bitti || !oynadigimKoltuklar(b).includes(d.sira)) return;
     const yasal = g.hamleler(d), yeni = secim.concat(k);
     let uyan = yasal.filter(h => ayni(h.slice(0, yeni.length), yeni));
+    oneri = null;
     if (!uyan.length) { secim = yasal.some(h => h[0] === k) ? [k] : []; hataMetni = ""; return ciz(); }
     secim = yeni; hataMetni = "";
     const tam = uyan.find(h => h.length === secim.length);
@@ -173,6 +367,9 @@
   const TAS_DEFS = `<defs>${[0, 1].map(p => `<radialGradient id="tg${p}" cx="38%" cy="32%" r="70%"><stop offset="0" style="stop-color:var(--p${p}-isik,var(--p${p}))"/><stop offset=".7" style="stop-color:var(--p${p})"/><stop offset="1" style="stop-color:var(--p${p}-line)"/></radialGradient>`).join("")}
     <filter id="tgolge" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-opacity=".45"/></filter></defs>`;
   const tas = (x, y, r, p, ek = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#tg${p})" stroke="var(--p${p}-line)" stroke-width="2" filter="url(#tgolge)" ${ek}/><circle cx="${x}" cy="${y}" r="${r * 0.62}" fill="none" stroke="var(--p${p}-line)" stroke-opacity=".35" stroke-width="1.5"/>`;
+  // Izgaralı tahtaların kenarında harf (alt sıra) ve rakam (sol sütun): rehberdeki "c3 → c4" gibi adlar bunlarla okunur.
+  const SUTUN = "abcdefghijk";
+  const koordinat = (x, y, S, n) => (y / S === n - 1 ? `<text class="koord" x="${x + S - 4}" y="${y + S - 4}" text-anchor="end">${SUTUN[x / S]}</text>` : "") + (x === 0 ? `<text class="koord" x="${x + 3}" y="${y + 12}">${n - y / S}</text>` : "");
   const ipucuDaire = (x, y, r) => `<circle class="ipucu" cx="${x}" cy="${y}" r="${r}" opacity=".55"/>`;
 
   const CIZICI = {
@@ -214,7 +411,7 @@
         }
         if (secim.includes(i)) out.push(`<rect class="secili" x="${x + 2}" y="${y + 2}" width="${S - 4}" height="${S - 4}"/>`);
         if (ipucu.has(i)) out.push(v && secim.length === 0 ? `<circle class="secili" cx="${x + S / 2}" cy="${y + S / 2}" r="${S * 0.43}" opacity=".6"/>` : ipucuDaire(x + S / 2, y + S / 2, S * 0.16));
-        out.push("</g>");
+        out.push(koordinat(x, y, S, 8), "</g>");
       }
       return out.join("") + "</svg>";
     },
@@ -233,7 +430,7 @@
         if (v >= 0) out.push(tas(x, y, 22, v));
         if (secim.includes(i)) out.push(`<circle class="secili" cx="${x}" cy="${y}" r="26"/>`);
         if (ipucu.has(i)) out.push(v >= 0 ? `<circle class="secili" cx="${x}" cy="${y}" r="26" opacity=".6"/>` : ipucuDaire(x, y, 12));
-        out.push("</g>");
+        out.push(`<text class="koord" x="${x + 11}" y="${y - 10}">${i + 1}</text></g>`);
       }
       // Eldeki taşlar
       for (const p of [0, 1]) for (let t = 0; t < d.elde[p]; t++) out.push(tas(p === 0 ? 24 + t * 24 : W - 24 - t * 24, W + 30, 10, p));
@@ -254,7 +451,7 @@
         if (v === 3) out.push(tas(x + S / 2, y + S / 2, S * 0.42, 0) + `<path d="M${x + S / 2 - 11} ${y + S / 2 + 7}l-3-14 8 6 6-10 6 10 8-6-3 14z" fill="var(--gold)" stroke="var(--wood-ink)" stroke-width="1.2"/>`);
         if (secim.includes(i)) out.push(`<rect class="secili" x="${x + 2}" y="${y + 2}" width="${S - 4}" height="${S - 4}"/>`);
         if (ipucu.has(i)) out.push(v && secim.length === 0 ? `<circle class="secili" cx="${x + S / 2}" cy="${y + S / 2}" r="${S * 0.42}" opacity=".6"/>` : ipucuDaire(x + S / 2, y + S / 2, S * 0.14));
-        out.push("</g>");
+        out.push(koordinat(x, y, S, N), "</g>");
       }
       return out.join("") + "</svg>";
     },

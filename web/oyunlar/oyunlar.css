@@ -231,3 +231,74 @@ code{font-family:var(--f-num);font-size:12.5px;background:var(--surface-2);paddi
 .km-bot-ayar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;margin:4px 0;color:var(--muted)}
 .km-bot-ayar label{display:inline-flex;gap:4px;align-items:center}
 .km-bot-el{outline:2px dashed var(--accent);outline-offset:-2px}
+
+/* ---------- Lobi: sekmeler, arama ve süzgeçler ---------- */
+.ust .ben{text-decoration:none}
+.lsek{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 14px}
+.lsek a{padding:10px 16px;text-decoration:none;color:var(--muted);font-weight:700;border-bottom:3px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:8px}
+.lsek a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.lsek a b{font-family:var(--f-num);font-size:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:0 7px}
+.lsek .sira-sayi{font-style:normal;font-size:12px;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:0 7px}
+.arac{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.arac .ara{flex:1 1 260px;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:0 10px;color:var(--muted)}
+.arac .ara input{flex:1;border:0;background:transparent;padding:8px 0;outline:none;min-width:0}
+.arac select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.cip{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:6px 12px;cursor:pointer}
+.cip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sayac{color:var(--muted);font-size:13px;margin:0 0 8px}
+.bos-kutu{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:22px;text-align:center;display:grid;gap:8px;justify-items:center}
+.bos-kutu h2{margin:0}.bos-kutu p{margin:0;color:var(--muted)}
+.tur-rozet{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);justify-self:start}
+.tur-rozet.kart{background:var(--gold-soft);color:var(--gold);border-color:transparent}
+.tur-rozet.atolye{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.satir.oda .oda-ad{display:grid;line-height:1.2}
+.satir.oda .oda-ad small{color:var(--muted);font-size:12px}
+.satir.oda.sirada{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
+.durum-rozet{font-size:12px;padding:2px 8px;border-radius:10px;background:var(--surface-2);color:var(--muted)}
+.durum-rozet.bekliyor{background:var(--gold-soft);color:var(--gold)}
+.satir.oda.sirada .durum-rozet{background:var(--accent);color:var(--accent-ink)}
+.kart .km-dug{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.kart .km-oy{font-size:13px}
+/* ---------- Oda başlığı ve ad penceresi ---------- */
+.oda-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.oda-bas .oda-baslik{display:grid;line-height:1.2}
+.oda-bas .oda-baslik b{font-family:var(--f-display);font-size:20px;font-weight:500}
+.oda-bas .oda-baslik small{color:var(--muted);font-size:13px}
+.pencere{position:fixed;inset:0;z-index:200;background:rgba(10,14,16,.5);display:grid;place-items:center;padding:16px}
+.pencere-ic{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(420px,100%);display:grid;gap:8px}
+.pencere-ic h2{margin:0}
+.pencere-ic input{padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.pencere-dug{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+/* ---------- Sıra rehberi ---------- */
+.rehber.sende{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.rehber-bas{display:flex;align-items:center;gap:8px}.rehber-bas h3{flex:1}
+.btn.ince{padding:2px 8px;font-size:12.5px}
+.btn.ince[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rehber-bolum{display:grid;gap:4px;font-size:14px}
+.rehber-bolum small{color:var(--muted)}
+.rehber-bolum ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.rehber-bolum ul.rehber-hamleler{list-style:none;padding:0;gap:6px}
+.rehber-hamleler li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;background:var(--surface-2);border-radius:8px;padding:6px 8px}
+.rehber-hamleler .etiketler{grid-column:1;display:flex;flex-wrap:wrap;gap:4px}
+.rehber-hamleler button{grid-column:2;grid-row:1/span 2}
+.et{font-style:normal;font-size:11.5px;padding:1px 6px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.et.kazan{background:var(--gold);color:#fff;border-color:transparent}
+.et.al,.et.cik{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.et.tekrar{background:var(--gold-soft);color:var(--gold);border-color:transparent}
+.et.guvenli{color:var(--accent)}
+.et.tehlike{color:var(--bad);border-color:var(--bad)}
+.rehber-uyari{background:var(--gold-soft);color:var(--ink);border-left:4px solid var(--gold);padding:6px 8px;border-radius:6px;font-size:14px}
+.ipuclari{color:var(--muted)}
+.km-sira-bant{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:0 0 10px;font-size:14px}
+.km-sira-bant.sende{border-color:var(--accent);background:var(--accent-soft)}
+@media (max-width:600px){.arac select,.arac .cip{flex:1 1 45%}.satir.oda .durum-rozet{order:5}}
+.oda-bas a{color:var(--accent)}
+.koord{font:700 10px var(--f-num);fill:var(--wood-ink);opacity:.7;pointer-events:none}
+.zb-tost{top:64px!important}
+@media (max-width:640px){
+  .ust{flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .ust h1{font-size:19px;flex:1 1 auto}
+  .ust .sp{display:none}
+  .ust .zb-zil span{display:none}
+  main{padding:12px}
+}

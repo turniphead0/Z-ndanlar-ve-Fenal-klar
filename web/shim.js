@@ -270,10 +270,20 @@
   const db = { collection: c => query(c), doc: docRef };
 
   /* ---------------- assets ---------------- */
+  // Yüklenen dosyanın hangi oyuna ait olduğu ("Yüklediklerim" sayfası için): çağıran söylerse o, yoksa sayfanın
+  // söylediği (window.ZM_YUKLEME_YERI), yoksa ana uygulamada açık olan oyun (G.id).
+  function yuklemeYeri(o) {
+    if (o && o.yer) return String(o.yer);
+    try { if (typeof window.ZM_YUKLEME_YERI === "function") { const y = window.ZM_YUKLEME_YERI(); if (y) return y; } } catch (e) {}
+    try { if (typeof G !== "undefined" && G && G.id) return "games/" + G.id; } catch (e) {}
+    return null;
+  }
   const assets = {
     async upload(file, o) {
       const type = (o && o.type) || file.type || "application/octet-stream";
-      const r = await fetch("/api/assets", { method: "POST", headers: { "Content-Type": type, "x-zm-token": TOKEN, "x-filename": encodeURIComponent(file.name || "") }, body: file });
+      const yer = yuklemeYeri(o), head = { "Content-Type": type, "x-zm-token": TOKEN, "x-filename": encodeURIComponent(file.name || "") };
+      if (yer) head["x-zm-yer"] = yer;
+      const r = await fetch("/api/assets", { method: "POST", headers: head, body: file });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw err(j.code || "upload_failed", j.message || "Dosya yüklenemedi");
       return { id: j.id, url: j.url, type: j.type, size: j.size };
@@ -351,6 +361,7 @@
     isOwner: () => IS_OWNER,
     db: () => db,
     upload: (file, o) => ready.then(() => assets.upload(file, o)),
+    sil: id => ready.then(() => assets.delete(id)),
     girisEkrani: (o) => fetch("/api/info").then(r => r.json()).catch(() => ({})).then(info => showGiris(info, Object.assign({ istege: HESAP !== "zorunlu" }, o))),
     async cikis() {
       try { await call("cikis", {}); } catch (e) {}

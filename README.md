@@ -19,6 +19,12 @@ Arayüz yan menüdeki, lobideki ya da masaüstü başlangıç ekranındaki düny
 
 **Kart ve taş oyunları:** Aynı sayfada desteli, taşlı, gizli elli oyunlar için bir kart masası var. Oyuncular kartları sürükler, desteden çeker, kapalı kartlara gizlice bakar, can gibi sayaçları değiştirir. Eller ve kapalı kartlar yalnızca görmesi gerekenlere gönderilir ve her hareket günlüğe yazılır; kuralları masadaki gibi oyuncular uygular. Hazır gelen oyun: **Kazan ya da Katlet** (Orijinal ve Claude Versiyonu). **Oyun atölyesi** ("+ Kendi oyununu yap") ile herkes kendi oyununu yapabilir: desteler ve kartlar (resim yüklenebilir ya da yazıyla), taşlar, oyuncu sayaçları, masadaki alanlar, başlangıç dağıtımı, sürükleyerek masa düzeni ve kurallar.
 
+**Odalar, arama ve sıra rehberi:** Masa oyunları sayfası iki bölümdür: **Açık oyunlar** (şu an açık bütün tahta ve kart odaları) ve **Oyun seçenekleri** (açılabilecek oyunlar ve atölyede yapılanlar). İkisinde de ana ekrandaki masa listesi gibi arama ve süzgeçler var (tür, oyun, durum, "sıra bende", oyuncu sayısı, yalnızca benimkiler). Oda açarken ona istediğin adı verirsin; adı sonra **✎ Adını değiştir** ile değiştirebilirsin. Tahta oyunlarında sıra sendeyken yan paneldeki **Sıra rehberi** yapman gerekeni (ör. "alma zorunlu", "koyma aşaması"), öne çıkan hamleleri (kazandıran, taş alan, bir kez daha oynatan, güvenli ya da rakibe taş veren) ve ipuçlarını gösterir; **Göster** hamleyi tahtada işaretler.
+
+**Bildirimler:** başlıktaki zil sıra sana geldiğinde, oyun bittiğinde, masana biri oturduğunda, arkadaşlık isteğinde ve FRP masana katılma isteği geldiğinde haber verir. **Gönder / davet et** sekmesinden arkadaşlarına ve aynı oyunda olduğun kişilere kısa bir not ya da bir oyuna davet gönderebilirsin. **Ayarlar** sekmesinden hangi bildirimleri alacağını seçer, sekme arka plandayken masaüstü bildirimini açarsın.
+
+**Profil ve yüklenenler:** profil sayfası içinde olduğun oyunları **Masa oyunları** ve **FRP'ler** olarak ayrı gösterir (sıra sende, kazandı, yönetici/oyuncu gibi rozetlerle, açıkken kendiliğinden yenilenir); başkalarının profilinde de onların oyunları görünür. **Yüklediklerim** sayfası bütün oyunlarına yüklediğin dosyaları oyun oyun listeler; arayıp süzebilir, açabilir ve silebilirsin. Her kişinin bir yükleme alanı (kota) ve dosya başına bir boyut sınırı var; sayfanın üstünde ne kadarını kullandığın görünür.
+
 **Sohbet:** oyun masasının sağ altındaki **Sohbet** düğmesi masadakilerin yazıştığı kutuyu açar. Zar atışları da sohbete düşer (**Zarlar** kutusuyla gizlenebilir; `/r 1d20+5` yazmak da zar atar). **Kime** listesinden bir oyuncu seçilirse (ya da `/w Ad mesaj`) mesaj fısıltı olur: yalnızca gönderen ve alan görür, DM bile göremez. 😀 düğmesi emoji seçer, **GIF** düğmesiyle bir GIF adresi yapıştırılır (Giphy ya da Tenor'da GIF'e sağ tık > Resim adresini kopyala) ya da bilgisayardan GIF yüklenir; hiçbir API anahtarı gerekmez. DM **Temizle** ile ortak sohbeti silebilir.
 
 Masaya katılanların uygulamayı kurması da şart değil: sunucunun adresini tarayıcıda açan herkes aynı masaya oturabilir.
@@ -72,6 +78,8 @@ Açılışta konsolda bir **sahip bağlantısı** (`/?owner=…`) yazılır. Bun
 | Hesap | `--hesap` | `ZM_HESAP` | `zorunlu` (herkes kullanıcı adı + şifreyle girer); `istege-bagli` hesapsız girişe de izin verir |
 | Claude API anahtarı | | `ANTHROPIC_API_KEY` | yok (yapay zekâ kapalı) |
 | Claude modeli | | `ZM_AI_MODEL` | `claude-opus-5-5` |
+| Kişi başına yükleme alanı (MB) | `--kota` | `ZM_KOTA` | `200` (admin yönetim panelinden kişiye ayrı kota verebilir) |
+| Dosya başına en büyük boyut (MB) | `--max-dosya` | `ZM_MAX_DOSYA` | `25` |
 
 ### HTTPS (önerilir)
 

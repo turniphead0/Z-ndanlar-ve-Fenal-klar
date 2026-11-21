@@ -75,7 +75,7 @@
     const ana = $("#ana"); ana.classList.add("genis");
     const t = b.tanim, d = b.durum, me = ben(), benKoltuk = d.koltuk.findIndex(k => k && k.id === me.id);
     const kaydir = { masa: ($(".km-yan") || {}).scrollTop };
-    ana.innerHTML = `<p class="km-ust"><a href="#">← Bütün oyunlar</a><span class="sp"></span><b>${esc(t.ad)}</b>${t.surum ? `<span class="km-surum">${esc(t.surum)}</span>` : ""}</p>
+    ana.innerHTML = (X.odaBaslik ? X.odaBaslik(id, b) : `<p class="km-ust"><a href="#">← Bütün oyunlar</a><span class="sp"></span><b>${esc(t.ad)}</b></p>`) + `${siraBandi(t, d, me)}
       <div class="km-oyun">
         <div class="km-sol">${d.basladi ? masaHtml(t, d) + elHtml(t, d, benKoltuk >= 0) : lobiMasaHtml(t, d, benKoltuk)}</div>
         <aside class="km-yan">${yanHtml(t, b, d, benKoltuk)}</aside>
@@ -83,6 +83,16 @@
     if (kaydir.masa) $(".km-yan").scrollTop = kaydir.masa;
     olcekle();
   }
+  // Sıra bandı: kart masasında kuralları oyuncular uygular; sıra kimdeyse ona yapabileceklerini hatırlat.
+  function siraBandi(t, d, me) {
+    if (!d.basladi) return "";
+    const k = d.koltuk[d.sira];
+    if (!k || k.id !== me.id) return k ? `<div class="km-sira-bant">Sıra <b>${esc(k.name)}</b> oyuncusunda. Kendi sıran gelince yapabileceklerin burada görünür.</div>` : "";
+    const desteVar = Object.keys(d.desteler || {}).length > 0;
+    const yapabilir = [desteVar ? "Desteye dokunup kart çekebilirsin" : null, "Elindeki bir kartı masaya sürükleyerek oynayabilirsin", "Kapalı bir karta dokunup gizlice bakabilirsin", (t.sayaclar || []).length ? "Sayaçlarını (ör. can) yan panelden değiştirebilirsin" : null, "İşin bitince sıradaki oyuncunun satırındaki Sıra düğmesiyle sırayı devret"].filter(Boolean);
+    return `<div class="km-sira-bant sende" role="status"><b>💡 Sıra sende.</b> ${yapabilir.map(esc).join(" · ")}. Kuralları masadakiler uygular; emin değilsen yan paneldeki Kurallar sekmesine bak.</div>`;
+  }
+
   // Botun yerine oynarken onun elini ve baktığı kartları sunucudan iste (yalnızca yöneticilere açık).
   async function botGorunumYenile() {
     const id = st.id, bot = st.olarak, b = st.b; if (!id || !bot || !b) return;
@@ -332,7 +342,12 @@
   document.addEventListener("click", async e => {
     const yeni = e.target.closest("[data-km-yeni],[data-km-oyun]");
     if (yeni) {
-      try { const r = await X.call("kmNew", yeni.dataset.kmYeni ? { hazir: yeni.dataset.kmYeni } : { oyun: yeni.dataset.kmOyun }); location.hash = r.id; } catch (err) { tost(err.message); }
+      try {
+        const t = yeni.dataset.kmYeni ? HAZIR[yeni.dataset.kmYeni] : (X.kartOyunlari.get(yeni.dataset.kmOyun) || {}).tanim;
+        const ad = X.odaAdiSor ? await X.odaAdiSor((t && t.ad) || "Kart oyunu") : "";
+        if (ad == null) return;
+        const r = await X.call("kmNew", { ...(yeni.dataset.kmYeni ? { hazir: yeni.dataset.kmYeni } : { oyun: yeni.dataset.kmOyun }), ad }); location.hash = r.id;
+      } catch (err) { tost(err.message); }
       return;
     }
     const b = e.target.closest("[data-km]"); if (!b || !st.id) return;

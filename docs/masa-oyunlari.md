@@ -60,6 +60,13 @@ Zar (Ur'da) da sunucuda atılır. Böylece oyunculardan biri tarayıcısının k
 
 Koltuklar: herkes boş bir koltuğa oturabilir; aynı kişi iki koltuğa da oturabilir (tek bilgisayarda iki kişi). Koltuğu olmayanlar izleyici olarak tahtayı canlı görür.
 
+## Lobi, oda adları ve sıra rehberi
+
+- `/oyunlar#acik` açık odaları, `/oyunlar#secenekler` açılabilecek oyunları gösterir. Arama ve süzgeçler (tür, oyun, durum, sıra bende, oyuncu sayısı, benimkiler) oturum boyunca kalır.
+- Oda adı `boards/<id>.ad` alanındadır. `bgNew` ve `kmNew` isteğe bağlı `ad` alır; `bgAd { board, ad }` adı değiştirir (masayı açan, oturan ya da sunucu sahibi). Ad tek satır, en çok 60 karakterdir; boşsa oyunun adı gösterilir.
+- `web/oyunlar/rehber.js` sıradaki oyuncu için `analiz(oyun, durum)` döndürür: zorunlu olan (`yapmalisin`), öne çıkan hamleler (`secenekler`: kazandırır, taş alır, bir kez daha oynarsın, güvenli, rakibe taş verir) ve ipuçları. Bunu kuralların kendi `hamleler`/`uygula` işlevleriyle hesaplar, yani yeni bir oyun eklenince rehber de çalışır (oyuna özel metinler `OZEL` içinde).
+- Bildirimler (`server/bildirim.js`): sıra geçince, oyun bitince ve masaya biri oturunca sunucu `data/users/<kişi>/bildirim/*` altına yazar.
+
 ## Basitleştirmeler
 
 - Türk daması: taş son sıraya alma sırasında ulaşırsa hamlenin sonunda dama olur. 40 tur taş alınmazsa berabere.

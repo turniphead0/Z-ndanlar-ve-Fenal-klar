@@ -29,6 +29,7 @@
     } else { pano.hidden = false; pano.querySelector("iframe").contentWindow.location.hash = rota || "mesajlar"; }
   }
   function kapat() { if (pano) pano.hidden = true; }
+  window.ZM_SOSYAL_AC = ac; // bildirimler (web/ext/bildirim.js) kişi profilini buradan açar
   document.addEventListener("keydown", e => { if (e.key === "Escape" && pano && !pano.hidden) kapat(); });
   window.addEventListener("message", e => {
     if (e.origin !== location.origin || !e.data) return;
@@ -47,6 +48,7 @@
         lme.classList.add("zm-slme");
         lme.innerHTML = `<button class="btn zm-sbtn" data-zm-sosyal="mesajlar" title="Özel mesajlar ve sohbet grupları">${IKON.mesajlar}<span>Mesajlar</span><i data-r="mesaj"></i></button>`
           + `<button class="btn zm-sbtn" data-zm-sosyal="arkadaslar" title="Arkadaşlar ve arkadaşlık istekleri">${IKON.arkadaslar}<span>Arkadaşlar</span><i data-r="istek"></i></button>`
+          + `<button class="btn zm-sbtn" data-zm-sosyal="dosyalar" title="Bütün oyunlara yüklediğin dosyalar ve yükleme alanın">📁 <span>Yüklediklerim</span></button>`
           + `<button class="btn zm-sbtn" data-zm-sosyal="profil" title="Profilin">${avatar()}<span data-noi18n>${esc(me.kullanici || me.name || "")}</span></button>`
           + (/Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) ? `<a class="btn zm-sbtn" href="/mobil">📱 <span>Mobil görünüm</span></a>` : "");
       }

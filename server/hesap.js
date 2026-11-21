@@ -48,7 +48,7 @@ function sifreDogru(h, sifre) {
 }
 const hata = (code, message) => Object.assign(new Error(message), { code });
 
-function kurHesap({ store, conns }) {
+function kurHesap({ store, conns, arkadasBildir = () => {} }) {
   const hesapOf = ad => store.get("_sys/hesap/" + anahtar(ad));
   const kisi = uid => (/^u-[0-9a-f]{8,}$/.test(String(uid || "")) && store.get("_sys/users/" + uid)) || null;
   const herkeseAcik = (uid, u) => ({ id: uid, kullanici: u.username || null, ad: u.name || u.username || "Oyuncu", renk: u.color || "#2f8f86", foto: u.foto || null });
@@ -268,8 +268,9 @@ function kurHesap({ store, conns }) {
         if (uid === c.uid) throw hata("invalid_argument", "Kendini arkadaş ekleyemezsin");
         const d = durum(c.uid, uid), t = Date.now();
         if (d === "arkadas") return "arkadas";
-        if (d === "gelen") { store.set(arkadasYol(c.uid, uid), { durum: "arkadas", t }); store.set(arkadasYol(uid, c.uid), { durum: "arkadas", t }); return "arkadas"; }
+        if (d === "gelen") { store.set(arkadasYol(c.uid, uid), { durum: "arkadas", t }); store.set(arkadasYol(uid, c.uid), { durum: "arkadas", t }); arkadasBildir("kabul", c.uid, uid); return "arkadas"; }
         store.set(arkadasYol(c.uid, uid), { durum: "giden", t }); store.set(arkadasYol(uid, c.uid), { durum: "gelen", t });
+        if (d !== "giden") arkadasBildir("istek", c.uid, uid);
         return "giden";
       }
       case "arkadasKabul": {
@@ -277,6 +278,7 @@ function kurHesap({ store, conns }) {
         if (durum(c.uid, uid) !== "gelen") throw hata("not_found", "Böyle bir istek yok");
         const t = Date.now();
         store.set(arkadasYol(c.uid, uid), { durum: "arkadas", t }); store.set(arkadasYol(uid, c.uid), { durum: "arkadas", t });
+        arkadasBildir("kabul", c.uid, uid);
         return "arkadas";
       }
       case "arkadasSil": { // isteği reddet, geri çek ya da arkadaşlıktan çıkar

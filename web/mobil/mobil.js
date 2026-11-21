@@ -88,7 +88,7 @@
   const SEKMELER = GOMULU ? ["mesajlar", "arkadaslar"] : ["forum", "mesajlar", "arkadaslar", "masalar", "zar"];
   const ANA = GOMULU ? "mesajlar" : "forum";
   function rota() { const h = decodeURIComponent(location.hash.slice(1)); const [ad, ...rest] = h.split("/"); return { ad: ad || ANA, arg: rest.join("/") }; }
-  const ALT = { "forum-konu": "forum", "forum-yeni": "forum", mesaj: "mesajlar", grup: "mesajlar", "grup-yeni": "mesajlar", "grup-bilgi": "mesajlar", kisi: null, profil: null };
+  const ALT = { "forum-konu": "forum", "forum-yeni": "forum", mesaj: "mesajlar", grup: "mesajlar", "grup-yeni": "mesajlar", "grup-bilgi": "mesajlar", kisi: null, profil: null, dosyalar: null };
   let sonRota = "";
   function git(force) {
     const r = rota(), key = r.ad + "/" + r.arg;
@@ -352,18 +352,103 @@
     baslik(p.kullanici || p.ad);
     const d = (st.arkadas.get(uid) || {}).durum || null;
     el.innerHTML = `<div class="profil">${av(uid, "b")}<h2>${esc(p.kullanici || p.ad)}</h2>
+
       ${st.prof[uid].cevrimici ? `<span class="rozetk">Çevrimiçi</span>` : ""}
       ${p.hakkinda ? `<p class="hak">${esc(p.hakkinda)}</p>` : ""}
       ${p.katildi ? `<p class="ipucu">Üyelik: ${new Date(p.katildi).toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</p>` : ""}
-      ${p.kullanici ? `<div class="dugmeler" style="justify-content:center">${d === "arkadas" ? `<a class="btn pri" href="#mesaj/${esc(uid)}">Mesaj gönder</a><button class="btn kotu" data-a="cikar" data-k="${esc(uid)}">Arkadaşlıktan çıkar</button>` : d === "gelen" ? `<button class="btn pri" data-a="kabul" data-k="${esc(uid)}">İsteği kabul et</button><button class="btn" data-a="reddet" data-k="${esc(uid)}">Reddet</button>` : d === "giden" ? `<button class="btn" data-a="reddet" data-k="${esc(uid)}">İsteği geri çek</button>` : `<button class="btn pri" data-a="ekle" data-k="${esc(uid)}">+ Arkadaş ekle</button>`}</div>` : `<p class="ipucu">Bu kişinin hesabı yok (hesapsız oynuyor).</p>`}</div>`;
+      ${p.kullanici ? `<div class="dugmeler" style="justify-content:center">${d === "arkadas" ? `<a class="btn pri" href="#mesaj/${esc(uid)}">Mesaj gönder</a><button class="btn kotu" data-a="cikar" data-k="${esc(uid)}">Arkadaşlıktan çıkar</button>` : d === "gelen" ? `<button class="btn pri" data-a="kabul" data-k="${esc(uid)}">İsteği kabul et</button><button class="btn" data-a="reddet" data-k="${esc(uid)}">Reddet</button>` : d === "giden" ? `<button class="btn" data-a="reddet" data-k="${esc(uid)}">İsteği geri çek</button>` : `<button class="btn pri" data-a="ekle" data-k="${esc(uid)}">+ Arkadaş ekle</button>`}</div>` : `<p class="ipucu">Bu kişinin hesabı yok (hesapsız oynuyor).</p>`}</div>
+      <div id="koyunlar">${oyunHtml[uid] || `<p class="ipucu">Oyunları yükleniyor…</p>`}</div>`;
+    if (ilk) oyunlariIzle(uid, "koyunlar", false);
   };
+
+  // ---- Profildeki oyunlar: masa oyunları ve FRP'ler ayrı gruplarda, açıkken canlı yenilenir ----
+  const DURUM_AD = { bekliyor: "Oyuncu bekliyor", oynaniyor: "Oynanıyor", bitti: "Bitti" };
+  const hedefSayfa = yol => (GOMULU ? ` href="${yol}" target="_top"` : ` href="${yol}"`);
+  function oyunlarHtml(v, ben) {
+    const sende = v.masa.filter(b => b.siraSende).length;
+    const masa = v.masa.map(b => {
+      const rakip = b.oyuncular.filter(o => !ben || o.id !== ME.id).map(o => esc(o.ad)).join(", ");
+      const rozet = b.siraSende && ben ? `<span class="rozetk">Sıra sende</span>` : b.durum === "bitti" ? `<span class="rozetk ${b.kazandi ? "altin" : ""}">${b.kazandi === true ? "Kazandı" : b.kazandi === false ? "Bitti" : "Berabere"}</span>` : `<span class="rozetk altin">${DURUM_AD[b.durum]}</span>`;
+      return `<li><a class="satir"${hedefSayfa("/oyunlar#" + encodeURIComponent(b.id))}><span class="poyun ${b.tur}">${b.tur === "kart" ? "🃏" : "♟"}</span><span class="ic"><b>${esc(b.ad || b.oyunAd)}</b><small>${b.ad ? esc(b.oyunAd) + " · " : ""}${rakip ? (ben ? "Rakip: " : "") + rakip : "kimse yok"}</small></span>${rozet}</a></li>`;
+    }).join("");
+    const frp = v.frp.map(g => `<li><a class="satir"${hedefSayfa((GOMULU ? "/#" : "/?mobil=1#") + encodeURIComponent(g.id))}><span class="poyun frp">🎲</span><span class="ic"><b>${esc(g.ad)}</b><small>${esc(g.sistemAd || "")} · ${g.oyuncu} oyuncu${g.masada ? ` · şu an masada ${g.masada} kişi` : ""}</small></span><span class="rozetk${g.rol === "dm" ? " altin" : ""}">${g.rol === "dm" ? "Yönetici" : "Oyuncu"}</span></a></li>`).join("");
+    return `<div class="pistat"><span><b>${v.masa.length}</b> masa oyunu</span><span><b>${v.frp.length}</b> FRP</span>${ben && sende ? `<span class="vurgu"><b>${sende}</b> oyunda sıra sende</span>` : ""}${v.masa.some(b => b.kazandi) ? `<span><b>${v.masa.filter(b => b.kazandi).length}</b> galibiyet</span>` : ""}</div>
+      <h2 class="bolum">Masa oyunları <small>(${v.masa.length})</small></h2>${masa ? `<ul class="liste">${masa}</ul>` : `<p class="ipucu">${ben ? "Henüz bir masa oyununda değilsin. Masa oyunları sayfasından bir oda açabilir ya da açık bir odaya katılabilirsin." : "Şu an bir masa oyununda değil."}</p>`}
+      <h2 class="bolum">FRP'ler <small>(${v.frp.length})</small></h2>${frp ? `<ul class="liste">${frp}</ul>` : `<p class="ipucu">${ben ? "Henüz bir FRP masasında değilsin." : "Şu an bir FRP masasında değil."}</p>`}`;
+  }
+  const oyunHtml = {}; // kişi -> son çizilen oyun listesi (ekran yeniden çizilince kaybolmasın)
+  function oyunlariIzle(uid, elId, ben) {
+    let son = "";
+    const yukle = async () => {
+      let v; try { v = await Z.call("profilOyunlar", { kisi: uid }); } catch (e) { const el = $("#" + elId); if (el && !son) el.innerHTML = `<p class="ipucu">${esc(e.message)}</p>`; return; }
+      const el = $("#" + elId); if (!el) return;
+      const html = oyunlarHtml(v, ben); oyunHtml[uid] = html; if (html !== son || !el.querySelector(".pistat")) { son = html; el.innerHTML = html; }
+    };
+    yukle();
+    const t = setInterval(() => { if (!document.hidden) yukle(); }, 15000);
+    ekranKapat.push(() => clearInterval(t));
+    return yukle;
+  }
+
+  // ---- Yüklediklerim: kişinin bütün oyunlara yüklediği dosyalar ve kotası ----
+  const boyut = b => (b >= 1048576 ? (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB");
+  const dosyaTuru = t => (/^image\//.test(t) ? "resim" : /^audio\//.test(t) ? "ses" : /^video\//.test(t) ? "video" : t === "application/pdf" ? "pdf" : "diger");
+  const TUR_AD = { resim: "Resim", ses: "Ses", video: "Video", pdf: "PDF", diger: "Diğer" };
+  const YER_TUR = { frp: "FRP", masa: "Masa oyunu", atolye: "Oyun atölyesi", profil: "Profil", mesaj: "Mesajlar", diger: "Diğer" };
+  const df = { q: "", tur: "", yer: "", sira: "yeni", veri: null };
+  EKRAN.dosyalar = async (arg, ilk) => {
+    baslik("Yüklediklerim");
+    if (ilk) {
+      ekran(`<div id="dkota" class="kota"></div>
+        <div class="ara"><input class="f" type="search" id="dq" placeholder="Dosya adı ya da oyun ara" value="${esc(df.q)}" aria-label="Dosyalarda ara"></div>
+        <div class="dsuz"><select class="f" id="dtur" aria-label="Dosya türü"><option value="">Bütün türler</option>${Object.entries(TUR_AD).map(([k, v]) => `<option value="${k}"${df.tur === k ? " selected" : ""}>${v}</option>`).join("")}</select>
+          <select class="f" id="dyer" aria-label="Oyun"><option value="">Bütün oyunlar</option></select>
+          <select class="f" id="dsira" aria-label="Sırala"><option value="yeni">En yeni</option><option value="buyuk"${df.sira === "buyuk" ? " selected" : ""}>En büyük</option><option value="ad"${df.sira === "ad" ? " selected" : ""}>Ada göre</option></select></div>
+        <div id="dliste"><div class="bos">Yükleniyor…</div></div>`);
+      $("#dq").addEventListener("input", e => { df.q = e.target.value; dosyaListe(); });
+      for (const [id, k] of [["dtur", "tur"], ["dyer", "yer"], ["dsira", "sira"]]) $("#" + id).addEventListener("change", e => { df[k] = e.target.value; dosyaListe(); });
+      try { df.veri = await Z.call("dosyalarim", {}); } catch (e) { $("#dliste").innerHTML = `<div class="bos"><h2>Yüklenemedi</h2><p>${esc(e.message)}</p></div>`; return; }
+    }
+    if (!df.veri) return;
+    const v = df.veri, oran = Math.min(100, Math.round(v.kullanilan / Math.max(1, v.kota) * 100));
+    $("#dkota").innerHTML = `<div class="kota-ust"><b>${boyut(v.kullanilan)}</b> / ${boyut(v.kota)} kullanılıyor<span class="sp"></span><small>Bir dosya en çok ${boyut(v.maxDosya)}</small></div>
+      <div class="kota-bar${oran >= 90 ? " dolu" : ""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${oran}" aria-label="Yükleme alanı"><i style="width:${oran}%"></i></div>
+      ${oran >= 90 ? `<p class="ipucu" style="margin:6px 0 0">Yükleme alanın dolmak üzere. Artık kullanmadığın dosyaları silerek yer açabilirsin.</p>` : ""}`;
+    const sel = $("#dyer");
+    if (sel && document.activeElement !== sel) {
+      const yerler = Object.entries(v.yerler).sort((a, b) => (YER_TUR[a[1].tur] || "").localeCompare(YER_TUR[b[1].tur] || "", "tr") || String(a[1].ad).localeCompare(String(b[1].ad), "tr"));
+      sel.innerHTML = `<option value="">Bütün oyunlar</option>` + yerler.map(([k, y]) => `<option value="${esc(k)}"${df.yer === k ? " selected" : ""}>${esc(YER_TUR[y.tur] || "")}: ${esc(y.ad)}</option>`).join("");
+    }
+    dosyaListe();
+  };
+  function dosyaListe() {
+    const el = $("#dliste"), v = df.veri; if (!el || !v) return;
+    const q = kucukHarf(df.q.trim());
+    const yerAdi = d => { const y = v.yerler[String(d.yer)] || {}; return y.ad || ""; };
+    let l = v.dosyalar.filter(d => (!df.tur || dosyaTuru(d.type) === df.tur) && (!df.yer || String(d.yer) === df.yer) && (!q || kucukHarf(d.name + " " + yerAdi(d)).includes(q)));
+    l.sort(df.sira === "buyuk" ? (a, b) => b.size - a.size : df.sira === "ad" ? (a, b) => String(a.name).localeCompare(String(b.name), "tr") : (a, b) => b.created - a.created);
+    if (!v.dosyalar.length) { el.innerHTML = `<div class="bos"><h2>Henüz dosya yüklemedin</h2><p>Haritalar, jeton ve kart resimleri, PDF'ler, sesler, profil ve mesaj fotoğrafları yükledikçe burada oyun oyun görünür.</p></div>`; return; }
+    if (!l.length) { el.innerHTML = `<div class="bos"><h2>Aramana uyan dosya yok</h2><p>Başka bir kelime dene ya da süzgeçleri değiştir.</p></div>`; return; }
+    // Oyuna göre grupla; grup sırası: içindeki en yeni dosya.
+    const gruplar = new Map();
+    for (const d of l) { const k = String(d.yer); if (!gruplar.has(k)) gruplar.set(k, []); gruplar.get(k).push(d); }
+    const bos = df.yer || df.q || df.tur ? [] : Object.entries(v.yerler).filter(([k, y]) => (y.tur === "frp" || y.tur === "masa") && !gruplar.has(k));
+    el.innerHTML = [...gruplar.entries()].map(([k, ds]) => {
+      const y = v.yerler[k] || { tur: "diger", ad: "Diğer" }, top = ds.reduce((a, d) => a + d.size, 0);
+      return `<h3 class="dgrup"><span class="rozetk${y.tur === "masa" || y.tur === "atolye" ? " altin" : ""}">${esc(YER_TUR[y.tur] || "")}</span> ${esc(y.ad)}${y.sistem ? ` <small>${esc(y.sistem)}</small>` : ""}<span class="sp"></span><small>${ds.length} dosya · ${boyut(top)}</small></h3>
+        <ul class="liste dosyalar">${ds.map(d => { const tur = dosyaTuru(d.type); return `<li class="satir dosya">${tur === "resim" ? `<img class="donizle" src="${esc(d.url)}" alt="" loading="lazy">` : `<span class="donizle simge">${{ ses: "🎵", video: "🎬", pdf: "📄" }[tur] || "📁"}</span>`}
+          <span class="ic"><b>${esc(d.name || d.id)}</b><small>${TUR_AD[tur]} · ${boyut(d.size)} · ${esc(zaman(d.created))}</small></span>
+          <a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">Aç</a><button class="btn sm kotu" data-a="dsil" data-d="${esc(d.id)}">Sil</button></li>`; }).join("")}</ul>`;
+    }).join("") + (bos.length ? `<p class="ipucu" style="margin-top:16px">Dosya yüklemediğin oyunların: ${bos.map(([, y]) => esc(y.ad)).join(", ")}.</p>` : "");
+  }
 
   // ---- Kendi profilim ----
   EKRAN.profil = (arg, ilk) => {
     baslik("Profilim");
     if (!ilk) { const a = $("#benav"); if (a) a.innerHTML = av(ME.id, "b"); return; }
     ekran(`<div class="profil"><span id="benav">${av(ME.id, "b")}</span><h2>${esc(ME.kullanici)}</h2>
-        <div class="dugmeler" style="justify-content:center"><button class="btn sm" data-a="foto">Fotoğraf ${ME.foto ? "değiştir" : "ekle"}</button>${ME.foto ? `<button class="btn sm" data-a="fotosil">Kaldır</button>` : ""}</div></div>
+        <div class="dugmeler" style="justify-content:center"><button class="btn sm" data-a="foto">Fotoğraf ${ME.foto ? "değiştir" : "ekle"}</button>${ME.foto ? `<button class="btn sm" data-a="fotosil">Kaldır</button>` : ""}<a class="btn sm" href="#dosyalar">Yüklediklerim</a></div></div>
+      <div id="poyunlar"><p class="ipucu">Oyunların yükleniyor…</p></div>
       <h2 class="bolum">Hakkımda</h2>
       <form class="form" id="hakf"><textarea class="f" name="h" maxlength="500" rows="3" placeholder="Hangi oyunları seversin, ne zaman oynarsın?" aria-label="Hakkımda"></textarea><button class="btn">Kaydet</button></form>
       <h2 class="bolum">Rengim</h2>
@@ -375,6 +460,7 @@
       <h2 class="bolum">Hesap</h2>
       <div class="form">${GOMULU ? "" : `<a class="btn" href="/?masaustu=1">Bilgisayar görünümünü aç</a>`}${UYGULAMA ? `<a class="btn" href="http://localhost/?degistir=1">Sunucuyu değiştir</a>` : ""}<button class="btn" data-a="tumcikis">Öteki cihazlardan çıkış yap</button><button class="btn kotu" data-a="cikis">Çıkış yap</button></div>
       <p class="ipucu" id="oturumsay"></p>`);
+    oyunlariIzle(ME.id, "poyunlar", true);
     Z.call("oturumlar", {}).then(r => { const p = $("#oturumsay"); if (p) p.textContent = r.sayi > 1 ? `Hesabın ${r.sayi} cihazda açık. 30 gün kullanılmayan cihazlarda oturum kendiliğinden kapanır.` : "Hesabın yalnızca bu cihazda açık."; }).catch(() => {});
     Z.call("kisi", { kisi: ME.id }).then(p => { const f = $("#hakf"); if (f) f.h.value = p.hakkinda || ""; }).catch(() => {});
     $("#hakf").addEventListener("submit", async e => { e.preventDefault(); try { await cagir("profilYaz", { hakkinda: e.target.h.value }); tost("Kaydedildi"); } catch (x) {} });
@@ -478,15 +564,20 @@
         case "dmfoto": {
           const f = await dosyaSec(); if (!f) return;
           tost("Fotoğraf gönderiliyor…");
-          const up = await Z.upload(await kucult(f, 1280, false));
+          const up = await Z.upload(await kucult(f, 1280, false), { yer: "mesaj" });
           await sohbetKur.gonder({ resim: up.url }); return;
         }
         case "foto": {
           const f = await dosyaSec(); if (!f) return;
           b.disabled = true; tost("Yükleniyor…");
-          const up = await Z.upload(await kucult(f, 384, true));
+          const up = await Z.upload(await kucult(f, 384, true), { yer: "profil" });
           const p = await cagir("profilYaz", { foto: up.id }); ME.foto = p.foto; rozetler(); git(true); tost("Profil fotoğrafın güncellendi"); return;
         }
+        case "dsil": return onayli(b, async () => {
+          try { await Z.sil(b.dataset.d); } catch (x) { return tost(x.message); }
+          if (df.veri) { const d = df.veri.dosyalar.find(x => x.id === b.dataset.d); df.veri.dosyalar = df.veri.dosyalar.filter(x => x.id !== b.dataset.d); if (d) df.veri.kullanilan = Math.max(0, df.veri.kullanilan - d.size); }
+          tost("Dosya silindi. Bu dosyayı kullanan harita, jeton ya da kart resmi artık görünmez."); EKRAN.dosyalar("", false);
+        });
         case "fotosil": { await cagir("profilYaz", { foto: null }); ME.foto = null; rozetler(); git(true); return; }
         case "renk": { const p = await cagir("profilYaz", { renk: b.dataset.c }); ME.color = p.renk; try { localStorage.setItem("zm-color", p.renk); } catch (x) {} document.querySelectorAll("[data-a=renk]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); rozetler(); yenile(); return; }
         case "cikis": return onayli(b, () => Z.cikis());
