@@ -18,6 +18,8 @@ const { kurDosyalar } = require("./dosyalar");
 const { kurBildirim } = require("./bildirim");
 const { kurYedek } = require("./yedek");
 const { kurProfil } = require("./profil");
+const { kurRozetler } = require("./rozetler");
+const { kurArama } = require("./arama");
 const { kurGizlilik, gizlilikKurallari } = require("./gizlilik");
 
 const WEB = path.join(__dirname, "..", "web");
@@ -71,6 +73,8 @@ function chatGif(u) {
   if (u.length <= 600 && /^https:\/\/[^\s"'<>]+$/.test(u)) { try { new URL(u); return u; } catch (e) {} }
   return null;
 }
+const SISTEM_AD = { dnd5e: "D&D 5e", coc7: "Call of Cthulhu", yze: "Year Zero", pf2e: "Pathfinder 2e", motw: "Monster of the Week" };
+const escAttr = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const FORUM_KATEGORI = ["Genel sohbet", "Oyuncu arıyorum", "Masa arıyorum", "Kurallar", "Paylaşım"];
 const metin = (v, n) => String(v == null ? "" : v).replace(/\r\n/g, "\n").trim().slice(0, n);
 // Masa oyunu odasının adı: kişinin verdiği ad (tek satır, en çok 60 karakter).
@@ -141,6 +145,9 @@ function createServer(opts = {}) {
   bildirim = kurBildirim({ store, conns, dosyalar, kurallar });
   // Profil sayfası: kişinin forumda yazdıkları (server/profil.js).
   const profil = kurProfil({ store, kurallar });
+  // Profil rozetleri ("İlk galibiyet", "10 oturum yönetti") ve genel arama (Ctrl+K).
+  const rozetler = kurRozetler({ store, conns, dosyalar, forumu: profil.forumu, kurallar });
+  const arama = kurArama({ store, conns, hesap, masaOzeti: dosyalar.masaOzeti, kurallar });
   let botlar = null;
   const kartMasa = kurKartMasa({ store, botKisi: (c, d, id) => botlar.kartBotKisi(c, d, id) });
   // Sohbette anılan bot için kısa yanıt (yalnızca yapay zekâ açıksa).
@@ -161,7 +168,7 @@ function createServer(opts = {}) {
   const v = rel => `/${rel}?v=${surumu(path.join(WEB, rel))}`;
   let appOnbellek = { anahtar: "", kayit: null };
   const appHtml = () => {
-    const dosyalar = ["app.html", "i18n.js", "shim.js", "ext/ext.css", "ext/temalar.css", "gorsel/katalog.js", "gorsel/secici.js", ...EXT_SCRIPTS.map(n => `ext/${n}.js`)];
+    const dosyalar = ["app.html", "i18n.js", "shim.js", "ortak.js", "ortak.css", "ext/ext.css", "ext/temalar.css", "gorsel/katalog.js", "gorsel/secici.js", ...EXT_SCRIPTS.map(n => `ext/${n}.js`)];
     const anahtar = dosyalar.map(surumu).join(",");
     if (appOnbellek.anahtar === anahtar) return appOnbellek.kayit;
     const html = fs.readFileSync(path.join(WEB, "app.html"), "utf8");
@@ -169,9 +176,20 @@ function createServer(opts = {}) {
     const ext = `<link rel="stylesheet" href="${v("ext/ext.css")}"><link rel="stylesheet" href="${v("ext/temalar.css")}"><script src="${v("gorsel/katalog.js")}"></script><script src="${v("gorsel/secici.js")}"></script>` + EXT_SCRIPTS.map(n => `<script src="${v(`ext/${n}.js`)}"></script>`).join("");
     const i = html.lastIndexOf("</body>");
     const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
-    const son = withExt.replace("<body>", `<body><script src="${v("i18n.js")}"></script><script src="${v("shim.js")}"></script>`);
+    // Ortak üst menü, tema ve yazı boyutu (web/ortak.js) <head>'de: tema sayfa çizilmeden uygulanır.
+    const son = withExt.replace("</head>", `<link rel="stylesheet" href="${v("ortak.css")}"><script src="${v("ortak.js")}"></script></head>`)
+      .replace("<body>", `<body><script src="${v("i18n.js")}"></script><script src="${v("shim.js")}"></script>`);
     appOnbellek = { anahtar, kayit: kayit(son) };
     return appOnbellek.kayit;
+  };
+  // Forum sayfası: bir konunun bağlantısı paylaşılınca (WhatsApp, Discord) önizlemede konunun başlığı görünsün.
+  const forumHtml = konu => {
+    const t = /^t[0-9a-z]{1,40}$/.test(konu) && store.get("forum/" + konu);
+    const html = dosyaKaydi(path.join(WEB, "forum", "index.html")).buf.toString("utf8");
+    if (!t) return kayit(html);
+    const ac = String(t.govde || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    const meta = `<meta property="og:title" content="${escAttr(t.baslik)}"><meta property="og:description" content="${escAttr(ac)}"><meta property="og:site_name" content="${escAttr(name)}">`;
+    return kayit(html.replace(/<title>[^<]*<\/title>/, `<title>${escAttr(t.baslik)} · Forum · ${escAttr(name)}</title>${meta}`));
   };
   // Dil sözlüğü betiği (web/i18n/<dil>.json'dan üretilir), dosya değişene kadar bellekte.
   const dilOnbellek = new Map();
@@ -224,6 +242,16 @@ function createServer(opts = {}) {
       }
       if (req.method === "GET" && p === "/zip.js") return sunDosya(req, res, path.join(WEB, "zip.js"), "text/javascript; charset=utf-8");
       if (req.method === "GET" && p === "/shim.js") return sunDosya(req, res, path.join(WEB, "shim.js"), "text/javascript; charset=utf-8");
+      // Bütün sayfalarda aynı üst menü, genel arama (Ctrl+K), profil kartı, tema ve yazı boyutu.
+      if (req.method === "GET" && p === "/ortak.js") return sunDosya(req, res, path.join(WEB, "ortak.js"), "text/javascript; charset=utf-8");
+      if (req.method === "GET" && p === "/ortak.css") return sunDosya(req, res, path.join(WEB, "ortak.css"), "text/css; charset=utf-8");
+      // Forum sayfası: /forum (konular), /forum/yeni (yeni konu), /forum/<konu> (paylaşılabilir konu bağlantısı).
+      if (req.method === "GET" && (p === "/forum" || p === "/forum/" || p === "/forum/yeni" || /^\/forum\/t[0-9a-z]{1,40}$/.test(p))) return sunKayit(req, res, forumHtml(p.slice(7)), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/forum\/[a-z0-9-]+\.(js|css)$/.test(p)) {
+        const f = path.join(WEB, p);
+        if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
+        return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
+      }
       if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
@@ -244,7 +272,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, eposta: hesap.epostaAcik, maxDosya: dosyalar.MAX });
+      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, sistemler: SISTEM_AD, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, eposta: hesap.epostaAcik, maxDosya: dosyalar.MAX });
       if (hesap.http(req, res, p, send, ipOf)) return;
       // Profil sayfası: /profil (kendi profilin), /profil?kisi=<kimlik> ya da /profil?ad=<kullanıcı adı>
       if (req.method === "GET" && (p === "/profil" || p === "/profil/")) return sunDosya(req, res, path.join(WEB, "profil", "index.html"), "text/html; charset=utf-8");
@@ -387,7 +415,9 @@ function createServer(opts = {}) {
           }
           case "presence": {
             const d = m.data && typeof m.data === "object" ? m.data : {};
+            const oncekiMasa = c.presence.g;
             c.presence = { ...c.presence, ...d };
+            if (d.g && d.g !== oncekiMasa) rozetler.masayaGirdi(d.g); // DM ile oyuncu buluştuysa oturum sayılır
             // Fare imleci saniyede ~8 kez gelir. Eskiden her seferinde herkesin listesi sunucudaki herkese
             // gönderiliyordu (kişi sayısının karesiyle büyür). Artık yalnızca bu kişinin değişikliği ve
             // yalnızca aynı oyundakilere gider; görünüm/oyun değişikliği gibi seyrek olanlar herkese.
@@ -424,6 +454,8 @@ function createServer(opts = {}) {
             if (bildirim.OPS.has(m.op)) return reply(bildirim.op(c, m)); // bildirimler (server/bildirim.js)
             if (yedek.OPS.has(m.op)) return reply(yedek.op(c, m)); // oyun yedekleri (server/yedek.js)
             if (profil.OPS.has(m.op)) return reply(profil.op(c, m)); // profil sayfası (server/profil.js)
+            if (rozetler.OPS.has(m.op)) return reply(rozetler.op(c, m)); // profil rozetleri (server/rozetler.js)
+            if (arama.OPS.has(m.op)) return reply(arama.op(c, m)); // genel arama, Ctrl+K (server/arama.js)
             if (gizlilik.OPS.has(m.op)) return reply(gizlilik.op(c, m)); // gizlilik, engel, şikâyet, KVKK (server/gizlilik.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }

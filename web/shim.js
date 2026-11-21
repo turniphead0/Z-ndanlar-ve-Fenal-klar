@@ -11,6 +11,8 @@
   // "Bilgisayar görünümü" seçilirse (?masaustu=1) bu tarayıcıda hatırlanır; /mobil açılınca tercih silinir.
   try {
     const u = new URL(location.href), q = u.searchParams;
+    // Eski forum bağlantıları (/?forum=<konu>) artık forum sayfasında açılır.
+    if (location.pathname === "/" && /^t[0-9a-z]{1,40}$/.test(q.get("forum") || "")) { location.replace("/forum/" + q.get("forum")); return; }
     if (q.get("masaustu") === "1") { LS.set("zm-gorunum", "masaustu"); q.delete("masaustu"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
     const telefon = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia("(pointer:coarse)").matches && Math.min(screen.width, screen.height) < 600);
     if (location.pathname === "/" && telefon && !/Electron/.test(navigator.userAgent) && !q.has("pop") && !q.has("mobil") && LS.get("zm-gorunum") !== "masaustu") {
