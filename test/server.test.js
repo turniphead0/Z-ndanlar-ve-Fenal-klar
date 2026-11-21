@@ -64,7 +64,7 @@ test("eklentiler sayfaya eklenir ve sunulur", async () => {
   const srv = createServer({ dataDir: dir });
   const port = await srv.listen(0, "127.0.0.1");
   const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
-  const scripts = [...html.matchAll(/<script src="\/ext\/([a-z0-9-]+)\.js"><\/script>/g)].map(m => m[1]);
+  const scripts = [...html.matchAll(/<script src="\/ext\/([a-z0-9-]+)\.js(?:\?v=[A-Za-z0-9_-]+)?"><\/script>/g)].map(m => m[1]);
   assert.ok(scripts.indexOf("veri-5e") < scripts.indexOf("sihirbaz"), "veri dosyası önce yüklenmeli");
   for (const n of scripts) assert.equal((await fetch(`http://127.0.0.1:${port}/ext/${n}.js`)).status, 200, n);
   await srv.close();
