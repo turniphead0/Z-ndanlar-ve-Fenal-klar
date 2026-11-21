@@ -395,11 +395,15 @@
   const dosyaTuru = t => (/^image\//.test(t) ? "resim" : /^audio\//.test(t) ? "ses" : /^video\//.test(t) ? "video" : t === "application/pdf" ? "pdf" : "diger");
   const TUR_AD = { resim: "Resim", ses: "Ses", video: "Video", pdf: "PDF", diger: "Diğer" };
   const YER_TUR = { frp: "FRP", masa: "Masa oyunu", atolye: "Oyun atölyesi", profil: "Profil", mesaj: "Mesajlar", diger: "Diğer" };
-  const df = { q: "", tur: "", yer: "", sira: "yeni", veri: null };
+  const df = { q: "", tur: "", yer: "", sira: "yeni", veri: null, indirildi: new Set() };
   EKRAN.dosyalar = async (arg, ilk) => {
     baslik("Yüklediklerim");
     if (ilk) {
       ekran(`<div id="dkota" class="kota"></div>
+        <div class="kota yedekk"><b>Oyun yedekleri</b>
+          <p class="ipucu">Bir oyunun her şeyini (karakterler, haritalar, jetonlar, kartlar ve yüklediğin dosyalar) tek bir .zip olarak bilgisayarına indirebilirsin. Sonra oyunu sunucudan kaldırıp yer açar, istediğin zaman yedekten geri yüklersin.</p>
+          <div class="dugmeler"><button class="btn sm" data-a="ygeri">⬆ Yedekten geri yükle (.zip)</button><button class="btn sm" data-a="ygeriklasor" title="Zip'i açtıysan klasörün kendisini seç">📂 Yedek klasörünü seç</button></div>
+          <div id="ysonuc" aria-live="polite"></div></div>
         <div class="ara"><input class="f" type="search" id="dq" placeholder="Dosya adı ya da oyun ara" value="${esc(df.q)}" aria-label="Dosyalarda ara"></div>
         <div class="dsuz"><select class="f" id="dtur" aria-label="Dosya türü"><option value="">Bütün türler</option>${Object.entries(TUR_AD).map(([k, v]) => `<option value="${k}"${df.tur === k ? " selected" : ""}>${v}</option>`).join("")}</select>
           <select class="f" id="dyer" aria-label="Oyun"><option value="">Bütün oyunlar</option></select>
@@ -432,14 +436,48 @@
     // Oyuna göre grupla; grup sırası: içindeki en yeni dosya.
     const gruplar = new Map();
     for (const d of l) { const k = String(d.yer); if (!gruplar.has(k)) gruplar.set(k, []); gruplar.get(k).push(d); }
-    const bos = df.yer || df.q || df.tur ? [] : Object.entries(v.yerler).filter(([k, y]) => (y.tur === "frp" || y.tur === "masa") && !gruplar.has(k));
+    // Dosya yüklemediğin oyunlar da yedeklenebilir (karakterler, harita ve tahta durumu).
+    const bos = df.yer || df.q || df.tur ? [] : Object.entries(v.yerler).filter(([k, y]) => (y.tur === "frp" || y.tur === "masa" || y.tur === "atolye") && !gruplar.has(k));
     el.innerHTML = [...gruplar.entries()].map(([k, ds]) => {
       const y = v.yerler[k] || { tur: "diger", ad: "Diğer" }, top = ds.reduce((a, d) => a + d.size, 0);
-      return `<h3 class="dgrup"><span class="rozetk${y.tur === "masa" || y.tur === "atolye" ? " altin" : ""}">${esc(YER_TUR[y.tur] || "")}</span> ${esc(y.ad)}${y.sistem ? ` <small>${esc(y.sistem)}</small>` : ""}<span class="sp"></span><small>${ds.length} dosya · ${boyut(top)}</small></h3>
+      return `<h3 class="dgrup"><span class="rozetk${y.tur === "masa" || y.tur === "atolye" ? " altin" : ""}">${esc(YER_TUR[y.tur] || "")}</span> ${esc(y.ad)}${y.sistem ? ` <small>${esc(y.sistem)}</small>` : ""}<span class="sp"></span><small>${ds.length} dosya · ${boyut(top)}</small>${yedekDugmeleri(k, y)}</h3>
         <ul class="liste dosyalar">${ds.map(d => { const tur = dosyaTuru(d.type); return `<li class="satir dosya">${tur === "resim" ? `<img class="donizle" src="${esc(d.url)}" alt="" loading="lazy">` : `<span class="donizle simge">${{ ses: "🎵", video: "🎬", pdf: "📄" }[tur] || "📁"}</span>`}
           <span class="ic"><b>${esc(d.name || d.id)}</b><small>${TUR_AD[tur]} · ${boyut(d.size)} · ${esc(zaman(d.created))}</small></span>
           <a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">Aç</a><button class="btn sm kotu" data-a="dsil" data-d="${esc(d.id)}">Sil</button></li>`; }).join("")}</ul>`;
-    }).join("") + (bos.length ? `<p class="ipucu" style="margin-top:16px">Dosya yüklemediğin oyunların: ${bos.map(([, y]) => esc(y.ad)).join(", ")}.</p>` : "");
+    }).join("") + (bos.length ? `<h3 class="dgrup" style="margin-top:22px">Dosya yüklemediğin oyunların</h3><ul class="liste">${bos.map(([k, y]) => `<li class="satir yoyun"><span class="rozetk${y.tur === "frp" ? "" : " altin"}">${esc(YER_TUR[y.tur] || "")}</span><span class="ic"><b>${esc(y.ad)}</b>${y.sistem ? `<small>${esc(y.sistem)}</small>` : ""}</span>${yedekDugmeleri(k, y)}</li>`).join("")}</ul>` : "");
+  }
+  // Oyunun yanındaki "Yedek al" ve "Sunucudan kaldır" düğmeleri (izin sunucudan gelir).
+  function yedekDugmeleri(k, y) {
+    if (!y || !y.var) return "";
+    return `<span class="ydug">${y.yedek ? `<button class="btn sm" data-a="yedek" data-y="${esc(k)}" title="Bu oyunun her şeyini tek bir .zip olarak bilgisayarına indir">⬇ Yedek al</button>` : ""}`
+      + `${y.kaldir ? `<button class="btn sm kotu" data-a="ykaldir" data-y="${esc(k)}" title="Yedeği indirdikten sonra oyunu ve bu oyuna yüklediğin dosyaları sunucudan sil">Sunucudan kaldır</button>` : ""}</span>`;
+  }
+  // Yedeği indir: sunucu kısa ömürlü bir bağlantı verir, tarayıcı dosyayı kaydeder.
+  async function yedekIndir(yer) {
+    const r = await cagir("yedekBileti", { yer });
+    const a = document.createElement("a"); a.href = r.url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    df.indirildi.add(yer);
+    const y = (df.veri && df.veri.yerler[yer]) || {};
+    $("#ysonuc").innerHTML = `<p class="ipucu ok">⬇ <b>${esc(r.ad)}</b> yedeği iniyor: ${r.dosya} dosya, ${boyut(r.boyut)}.${y.kaldir ? " İndirme bitip dosya bilgisayarında görününce “Sunucudan kaldır” ile yer açabilirsin." : ""}</p>`
+      + (r.uyarilar || []).map(u => `<p class="ipucu">⚠ ${esc(u)}</p>`).join("");
+  }
+  async function yedekGonder(dosya) {
+    const kutu = $("#ysonuc");
+    kutu.innerHTML = `<p class="ipucu">Yedek yükleniyor (${boyut(dosya.size)})…</p>`;
+    let r;
+    try { r = await Z.yedekYukle(dosya); } catch (e) { kutu.innerHTML = `<p class="ipucu hata">⚠ ${esc(e.message)}</p>`; return; }
+    const link = r.tur === "frp" ? "/#" + r.id : r.tur === "masa" ? "/oyunlar#" + r.id : "/oyunlar#atolye/" + r.id;
+    kutu.innerHTML = `<p class="ipucu ok">✓ <b>${esc(r.ad)}</b> geri yüklendi${r.dosya ? `: ${r.dosya} dosya, ${boyut(r.boyut)}` : ""}. <a href="${esc(link)}" target="_top">Oyunu aç</a></p>`
+      + (r.uyarilar || []).map(u => `<p class="ipucu">⚠ ${esc(u)}</p>`).join("");
+    try { df.veri = await Z.call("dosyalarim", {}); EKRAN.dosyalar("", false); } catch (e) {}
+  }
+  // Açılmış yedek klasörü: içindeki dosyalar tarayıcıda tek bir zip'e konup gönderilir.
+  async function klasordenYedek(files) {
+    const l = [...files].filter(f => !/(^|\/)(__MACOSX|\.DS_Store)/.test(f.webkitRelativePath || f.name));
+    if (!l.some(f => f.name === "zarmasasi-yedek.json")) { $("#ysonuc").innerHTML = `<p class="ipucu hata">⚠ Bu klasörde zarmasasi-yedek.json yok. Zar Masası'ndan indirdiğin yedeği açtığın klasörü seç.</p>`; return; }
+    const parcalar = [];
+    for (const f of l) parcalar.push({ ad: f.webkitRelativePath || f.name, veri: new Uint8Array(await f.arrayBuffer()), zaman: f.lastModified });
+    yedekGonder(new Blob(window.ZM_ZIP.olustur(parcalar), { type: "application/zip" }));
   }
 
   // ---- Kendi profilim ----
@@ -578,6 +616,23 @@
           if (df.veri) { const d = df.veri.dosyalar.find(x => x.id === b.dataset.d); df.veri.dosyalar = df.veri.dosyalar.filter(x => x.id !== b.dataset.d); if (d) df.veri.kullanilan = Math.max(0, df.veri.kullanilan - d.size); }
           tost("Dosya silindi. Bu dosyayı kullanan harita, jeton ya da kart resmi artık görünmez."); EKRAN.dosyalar("", false);
         });
+        case "yedek": b.disabled = true; try { await yedekIndir(b.dataset.y); } finally { b.disabled = false; } return;
+        case "ykaldir": {
+          const yer = b.dataset.y, y = (df.veri && df.veri.yerler[yer]) || {};
+          if (!df.indirildi.has(yer)) return tost("Önce bu oyunun yedeğini al (⬇ Yedek al)");
+          return onayli(b, async () => {
+            const r = await cagir("oyunKaldir", { yer });
+            df.indirildi.delete(yer);
+            $("#ysonuc").innerHTML = `<p class="ipucu ok">✓ <b>${esc(y.ad || "Oyun")}</b> sunucudan kaldırıldı, ${boyut(r.bosalan)} boşaldı. Yedekten istediğin zaman geri yükleyebilirsin.</p>`;
+            df.veri = await Z.call("dosyalarim", {}); EKRAN.dosyalar("", false);
+          });
+        }
+        case "ygeri": case "ygeriklasor": {
+          const i = document.createElement("input"); i.type = "file";
+          if (a === "ygeri") i.accept = ".zip,application/zip"; else { i.webkitdirectory = true; i.multiple = true; }
+          i.onchange = () => { if (!i.files.length) return; if (a === "ygeri") yedekGonder(i.files[0]); else klasordenYedek(i.files); };
+          i.click(); return;
+        }
         case "fotosil": { await cagir("profilYaz", { foto: null }); ME.foto = null; rozetler(); git(true); return; }
         case "renk": { const p = await cagir("profilYaz", { renk: b.dataset.c }); ME.color = p.renk; try { localStorage.setItem("zm-color", p.renk); } catch (x) {} document.querySelectorAll("[data-a=renk]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); rozetler(); yenile(); return; }
         case "cikis": return onayli(b, () => Z.cikis());
