@@ -5,6 +5,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const zlib = require("zlib");
 const { WebSocketServer } = require("ws");
 const { Store, parentOf } = require("./store");
 const { OYUNLAR, yasal } = require("../web/oyunlar/kurallar");
@@ -68,6 +69,26 @@ function chatGif(u) {
 const FORUM_KATEGORI = ["Genel sohbet", "Oyuncu arıyorum", "Masa arıyorum", "Kurallar", "Paylaşım"];
 const metin = (v, n) => String(v == null ? "" : v).replace(/\r\n/g, "\n").trim().slice(0, n);
 
+// Statik dosyalar (uygulama, eklentiler, görseller) bellekte tutulur ve sıkıştırılmış hâlleri bir kez
+// hazırlanır. Tarayıcı ETag ile "değişti mi?" diye sorar; değişmediyse 304 ile boş yanıt döner. Sayfadaki
+// betik adreslerine ?v=<sürüm> eklendiği için tarayıcı onları bir yıl önbellekte tutar ve dosya değişince
+// adres de değiştiği için yenisini indirir. Eskiden her sayfa açılışında ~1,5 MB yeniden okunup gönderiliyordu.
+const SIKISTIR = /^(text\/|application\/(json|javascript|manifest\+json)|image\/svg)/;
+function kayit(buf) {
+  if (!Buffer.isBuffer(buf)) buf = Buffer.from(buf);
+  return { buf, etag: '"' + crypto.createHash("sha1").update(buf).digest("base64url").slice(0, 20) + '"', br: null, gz: null };
+}
+const statik = new Map(); // dosya yolu -> { mtime, size, kayit }
+function dosyaKaydi(f) {
+  const st = fs.statSync(f);
+  const e = statik.get(f);
+  if (e && e.mtime === st.mtimeMs && e.size === st.size) return e.kayit;
+  const k = kayit(fs.readFileSync(f));
+  statik.set(f, { mtime: st.mtimeMs, size: st.size, kayit: k });
+  return k;
+}
+function surumu(f) { try { return dosyaKaydi(f).etag.slice(1, 11); } catch (e) { return "0"; } }
+
 function createServer(opts = {}) {
   const dataDir = opts.dataDir || path.join(process.cwd(), "zar-masasi-veri");
   const assetDir = path.join(dataDir, "assets");
@@ -108,14 +129,52 @@ function createServer(opts = {}) {
   botlar = kurBotlar({ store, conns, roller, kartMasa, sohbeteYaz: (gid, by, text) => sohbeteYaz(gid, by, text), yapayZeka, gecikme: opts.botGecikme });
 
   /* ---------------- HTTP ---------------- */
+  // Uygulama sayfası: app.html + köprü + eklentiler. Her betiğin adresine içeriğinden çıkan bir sürüm eklenir
+  // (?v=…); sayfa bir kez üretilir, dosyalardan biri değişince yeniden üretilir.
+  const v = rel => `/${rel}?v=${surumu(path.join(WEB, rel))}`;
+  let appOnbellek = { anahtar: "", kayit: null };
   const appHtml = () => {
+    const dosyalar = ["app.html", "i18n.js", "shim.js", "ext/ext.css", "ext/temalar.css", "gorsel/katalog.js", "gorsel/secici.js", ...EXT_SCRIPTS.map(n => `ext/${n}.js`)];
+    const anahtar = dosyalar.map(surumu).join(",");
+    if (appOnbellek.anahtar === anahtar) return appOnbellek.kayit;
     const html = fs.readFileSync(path.join(WEB, "app.html"), "utf8");
     // Köprü uygulamadan önce, eklentiler (web/ext) uygulamadan sonra yüklenir.
-    const ext = '<link rel="stylesheet" href="/ext/ext.css"><link rel="stylesheet" href="/ext/temalar.css"><script src="/gorsel/katalog.js"></script><script src="/gorsel/secici.js"></script>' + EXT_SCRIPTS.map(n => `<script src="/ext/${n}.js"></script>`).join("");
+    const ext = `<link rel="stylesheet" href="${v("ext/ext.css")}"><link rel="stylesheet" href="${v("ext/temalar.css")}"><script src="${v("gorsel/katalog.js")}"></script><script src="${v("gorsel/secici.js")}"></script>` + EXT_SCRIPTS.map(n => `<script src="${v(`ext/${n}.js`)}"></script>`).join("");
     const i = html.lastIndexOf("</body>");
     const withExt = i >= 0 ? html.slice(0, i) + ext + html.slice(i) : html + ext;
-    return withExt.replace("<body>", '<body><script src="/i18n.js"></script><script src="/shim.js"></script>');
+    const son = withExt.replace("<body>", `<body><script src="${v("i18n.js")}"></script><script src="${v("shim.js")}"></script>`);
+    appOnbellek = { anahtar, kayit: kayit(son) };
+    return appOnbellek.kayit;
   };
+  // Dil sözlüğü betiği (web/i18n/<dil>.json'dan üretilir), dosya değişene kadar bellekte.
+  const dilOnbellek = new Map();
+  const dilBetigi = dil => {
+    const f = path.join(WEB, "i18n", dil + ".json");
+    const ham = fs.existsSync(f) ? dosyaKaydi(f) : null, anahtar = ham ? ham.etag : "-";
+    const e = dilOnbellek.get(dil);
+    if (e && e.anahtar === anahtar) return e.kayit;
+    const body = ham ? ham.buf.toString("utf8") : "{}";
+    const k = kayit(`window.ZM_EN=${body};window.I18N&&I18N.ready(window.ZM_EN);`);
+    dilOnbellek.set(dil, { anahtar, kayit: k });
+    return k;
+  };
+  // Statik yanıt: ETag/304, sıkıştırma (brotli ya da gzip, bir kez hazırlanır) ve önbellek başlıkları.
+  function sunKayit(req, res, k, type, cache) {
+    const url = req.url || "";
+    const cc = cache || (/[?&]v=/.test(url) ? "public, max-age=31536000, immutable" : "no-cache");
+    const head = { ...GUVENLIK, "Content-Type": type, "Cache-Control": cc, ETag: k.etag, Vary: "Accept-Encoding" };
+    if (req.headers["if-none-match"] === k.etag) { res.writeHead(304, head); return res.end(); }
+    let body = k.buf;
+    if (k.buf.length > 1024 && SIKISTIR.test(type)) {
+      const ae = String(req.headers["accept-encoding"] || "");
+      if (/\bbr\b/.test(ae)) { k.br = k.br || zlib.brotliCompressSync(k.buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: k.buf.length } }); body = k.br; head["Content-Encoding"] = "br"; }
+      else if (/\bgzip\b/.test(ae)) { k.gz = k.gz || zlib.gzipSync(k.buf, { level: 9 }); body = k.gz; head["Content-Encoding"] = "gzip"; }
+    }
+    head["Content-Length"] = body.length;
+    res.writeHead(200, head);
+    res.end(req.method === "HEAD" ? undefined : body);
+  }
+  const sunDosya = (req, res, f, type, cache) => sunKayit(req, res, dosyaKaydi(f), type, cache);
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
   const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
@@ -130,43 +189,41 @@ function createServer(opts = {}) {
     const url = new URL(req.url, "http://x");
     const p = url.pathname;
     try {
-      if (req.method === "GET" && (p === "/" || p === "/index.html")) return send(res, 200, appHtml(), "text/html; charset=utf-8");
-      if (req.method === "GET" && p === "/i18n.js") return send(res, 200, fs.readFileSync(path.join(WEB, "i18n.js")), "text/javascript; charset=utf-8");
+      if (req.method === "GET" && (p === "/" || p === "/index.html")) return sunKayit(req, res, appHtml(), "text/html; charset=utf-8");
+      if (req.method === "GET" && p === "/i18n.js") return sunDosya(req, res, path.join(WEB, "i18n.js"), "text/javascript; charset=utf-8");
       // Dil sözlüğü: web/i18n/<dil>.json, sayfaya eşzamanlı yüklenen bir betik olarak.
       if (req.method === "GET" && /^\/i18n\/[a-z]{2}\.js$/.test(p)) {
-        const f = path.join(WEB, "i18n", path.basename(p, ".js") + ".json");
-        const body = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "{}";
-        return send(res, 200, `window.ZM_EN=${body};window.I18N&&I18N.ready(window.ZM_EN);`, "text/javascript; charset=utf-8");
+        return sunKayit(req, res, dilBetigi(path.basename(p, ".js")), "text/javascript; charset=utf-8");
       }
-      if (req.method === "GET" && p === "/shim.js") return send(res, 200, fs.readFileSync(path.join(WEB, "shim.js")), "text/javascript; charset=utf-8");
+      if (req.method === "GET" && p === "/shim.js") return sunDosya(req, res, path.join(WEB, "shim.js"), "text/javascript; charset=utf-8");
       if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
-        return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
+        return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
       // Hazır masa arka planları ve jetonlar (web/gorsel): RPG haritaları, kart ve tahta oyunları kullanır.
       if (req.method === "GET" && /^\/gorsel\/[a-z0-9-]+\.svg$/.test(p)) {
         const f = path.join(WEB, "gorsel", path.basename(p));
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
-        return send(res, 200, fs.readFileSync(f), "image/svg+xml", { "Cache-Control": "public, max-age=86400" });
+        return sunDosya(req, res, f, "image/svg+xml", /[?&]v=/.test(req.url) ? null : "public, max-age=86400");
       }
-      if (req.method === "GET" && (p === "/gorsel/katalog.js" || p === "/gorsel/secici.js")) return send(res, 200, fs.readFileSync(path.join(WEB, "gorsel", path.basename(p))), "text/javascript; charset=utf-8");
+      if (req.method === "GET" && (p === "/gorsel/katalog.js" || p === "/gorsel/secici.js")) return sunDosya(req, res, path.join(WEB, "gorsel", path.basename(p)), "text/javascript; charset=utf-8");
       // Masa oyunları sayfası
-      if (req.method === "GET" && (p === "/oyunlar" || p === "/oyunlar/")) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "index.html")), "text/html; charset=utf-8");
-      if (req.method === "GET" && /^\/oyunlar\/kk\/[a-z0-9-]+\.png$/.test(p) && fs.existsSync(path.join(WEB, "oyunlar", "kk", path.basename(p)))) return send(res, 200, fs.readFileSync(path.join(WEB, "oyunlar", "kk", path.basename(p))), "image/png");
+      if (req.method === "GET" && (p === "/oyunlar" || p === "/oyunlar/")) return sunDosya(req, res, path.join(WEB, "oyunlar", "index.html"), "text/html; charset=utf-8");
+      if (req.method === "GET" && /^\/oyunlar\/kk\/[a-z0-9-]+\.png$/.test(p) && fs.existsSync(path.join(WEB, "oyunlar", "kk", path.basename(p)))) return sunDosya(req, res, path.join(WEB, "oyunlar", "kk", path.basename(p)), "image/png");
       if (req.method === "GET" && /^\/oyunlar\/[a-z0-9-]+\.(js|css)$/.test(p)) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
-        return send(res, 200, fs.readFileSync(f), EXT_TYPES[path.extname(f)]);
+        return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
       if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu });
       if (hesap.http(req, res, p, send, ipOf)) return;
       // Mobil uygulama (telefon tarayıcısı ya da Android uygulaması): /mobil
-      if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return send(res, 200, fs.readFileSync(path.join(WEB, "mobil", "index.html")), "text/html; charset=utf-8");
+      if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return sunDosya(req, res, path.join(WEB, "mobil", "index.html"), "text/html; charset=utf-8");
       if (req.method === "GET" && /^\/mobil\/[a-z0-9-]+\.(js|css|json|svg|png|webmanifest)$/.test(p)) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
-        return send(res, 200, fs.readFileSync(f), MOBIL_TYPES[path.extname(f)] || EXT_TYPES[path.extname(f)]);
+        return sunDosya(req, res, f, MOBIL_TYPES[path.extname(f)] || EXT_TYPES[path.extname(f)]);
       }
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);
@@ -221,14 +278,22 @@ function createServer(opts = {}) {
     for (const c of conns) if (c.uid) c.send({ ev: "peers", peers, joined, left });
   };
 
-  // Her yazımda ilgili abonelere değişikliği gönder.
-  store.listeners.add((type, p, data) => {
+  // Her yazımda ilgili abonelere değişikliği gönder. Belgenin JSON metni depodan hazır gelir ve mesajın
+  // gövdesi bir kez kurulur; abone başına yalnızca küçük bir önek eklenir (eskiden her abone için baştan
+  // JSON'a çevriliyordu).
+  store.listeners.add((type, p, data, json) => {
     const col = parentOf(p), id = p.split("/").pop();
+    let colGovde = null, docGovde = null;
     for (const c of conns) {
-      if (!c.uid || !canAccess(c.uid, p)) continue;
+      if (!c.uid || !c.subs.size || !canAccess(c.uid, p)) continue;
       for (const [sid, s] of c.subs) {
-        if (s.kind === "col" && s.path === col) c.send({ ev: "snap", sid, changes: [{ type, id, data: type === "removed" ? null : data }] });
-        else if (s.kind === "doc" && s.path === p) c.send({ ev: "snap", sid, doc: { id, exists: type !== "removed", data: type === "removed" ? null : data } });
+        if (s.kind === "col" && s.path === col) {
+          colGovde = colGovde || `,"changes":[{"type":"${type}","id":${JSON.stringify(id)},"data":${type === "removed" ? "null" : json}}]}`;
+          c.sendRaw(`{"ev":"snap","sid":${JSON.stringify(sid)}${colGovde}`);
+        } else if (s.kind === "doc" && s.path === p) {
+          docGovde = docGovde || `,"doc":{"id":${JSON.stringify(id)},"exists":${type !== "removed"},"data":${type === "removed" ? "null" : json}}}`;
+          c.sendRaw(`{"ev":"snap","sid":${JSON.stringify(sid)}${docGovde}`);
+        }
       }
     }
   });
@@ -239,7 +304,7 @@ function createServer(opts = {}) {
     if (n > BAGLANTI_SINIRI) return ws.close(1008, "Bu adresten çok fazla bağlantı var");
     ipSayac.set(ip, n);
     ws.once("close", () => { const k = (ipSayac.get(ip) || 1) - 1; if (k > 0) ipSayac.set(ip, k); else ipSayac.delete(ip); });
-    const c = { ws, uid: null, peer: rid(6), presence: {}, subs: new Map(), ai: new Map(), send: m => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); } };
+    const c = { ws, uid: null, peer: rid(6), presence: {}, subs: new Map(), ai: new Map(), send: m => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); }, sendRaw: t => { if (ws.readyState === 1) ws.send(t); } };
     conns.add(c);
     ws.on("message", async raw => {
       let m; try { m = JSON.parse(raw); } catch { return; }
@@ -276,10 +341,23 @@ function createServer(opts = {}) {
             for (const id of (m.ids || []).slice(0, 200)) { const u = store.get("_sys/users/" + id); if (u) out[id] = { name: u.name, color: u.color, foto: u.foto || null, kullanici: u.username || null, cevrimici: on.has(id) || !!u.bot, ...(u.bot ? { bot: true } : {}), ...(roller.rolu(id) ? { rol: roller.rolu(id) } : {}) }; }
             return reply(out);
           }
-          case "presence": c.presence = { ...c.presence, ...(m.data || {}) }; broadcastPeers([], []); return reply(true);
+          case "presence": {
+            const d = m.data && typeof m.data === "object" ? m.data : {};
+            c.presence = { ...c.presence, ...d };
+            // Fare imleci saniyede ~8 kez gelir. Eskiden her seferinde herkesin listesi sunucudaki herkese
+            // gönderiliyordu (kişi sayısının karesiyle büyür). Artık yalnızca bu kişinin değişikliği ve
+            // yalnızca aynı oyundakilere gider; görünüm/oyun değişikliği gibi seyrek olanlar herkese.
+            const keys = Object.keys(d);
+            if (keys.length && keys.every(k => k === "cur")) {
+              const g = c.presence.g, msg = JSON.stringify({ ev: "pres", peer: c.peer, by: c.uid, presence: c.presence });
+              for (const o of conns) if (o.uid && (o === c || (g && o.presence.g === g))) o.sendRaw(msg);
+            } else broadcastPeers([], []);
+            return reply(true);
+          }
           case "emit": {
-            const msg = { ev: "msg", topic: String(m.topic), data: m.data, peer: c.peer, by: c.uid };
-            for (const o of conns) if (o !== c && o.uid) o.send(msg);
+            // Oda mesajları (sürüklenen jeton, işaret, ses efekti) yalnızca aynı oyundakilere gider.
+            const g = c.presence.g, msg = JSON.stringify({ ev: "msg", topic: String(m.topic), data: m.data, peer: c.peer, by: c.uid });
+            for (const o of conns) if (o !== c && o.uid && (!g || o.presence.g === g)) o.sendRaw(msg);
             return reply(true);
           }
           case "profile": { // ad / renk değişikliği (hesabı olanın adı kullanıcı adıdır)
@@ -333,7 +411,6 @@ function createServer(opts = {}) {
     if (!g) return fail("not_found", "Böyle bir oyun yok");
     const isMember = id => !!((g.dms && g.dms[id]) || (g.players && g.players[id]));
     if (!isMember(c.uid)) return fail("permission_denied", "Bu oyunun üyesi değilsin");
-    const trim = col => { const all = store.list(col); if (all.length <= CHAT_KEEP) return; all.sort((a, b) => (a.data?.t || 0) - (b.data?.t || 0)); for (const d of all.slice(0, all.length - CHAT_KEEP)) store.delete(col + "/" + d.id); };
     if (m.op === "chatClear") {
       if (!(g.dms && g.dms[c.uid])) return fail("permission_denied", "Sohbeti yalnızca DM temizleyebilir");
       for (const d of store.list("chat/" + gid)) store.delete("chat/" + gid + "/" + d.id);
@@ -355,7 +432,8 @@ function createServer(opts = {}) {
   // Sohbete ileti yaz (fısıltıysa iki tarafın kutusuna). Botlar da bunu kullanır.
   function sohbeteYaz(gid, by, text, gif, to) {
     const now = Date.now(), id = "m" + now.toString(36) + rid(3);
-    const trim = col => { const all = store.list(col); if (all.length <= CHAT_KEEP) return; all.sort((a, b) => (a.data?.t || 0) - (b.data?.t || 0)); for (const d of all.slice(0, all.length - CHAT_KEEP)) store.delete(col + "/" + d.id); };
+    // Belgeleri kopyalamadan önce say: sınırın altındaysa (çoğu zaman) hiçbir şey yapma.
+    const trim = col => { if (store.count(col) <= CHAT_KEEP) return; const all = store.list(col); all.sort((a, b) => (a.data?.t || 0) - (b.data?.t || 0)); for (const d of all.slice(0, all.length - CHAT_KEEP)) store.delete(col + "/" + d.id); };
     const msg = { id, t: now, by, text, ...(gif ? { gif } : {}), ...(to ? { to } : {}) };
     if (to) for (const u of [by, to]) { const col = `data/users/${u}/chat/${gid}`; store.set(col + "/" + id, msg); trim(col); }
     else { store.set(`chat/${gid}/${id}`, msg); trim("chat/" + gid); }

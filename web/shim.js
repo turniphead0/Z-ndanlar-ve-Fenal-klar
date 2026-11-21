@@ -78,6 +78,8 @@
       if (m.ev === "aiText") { const w = waiting.get(m.re); if (w && w.onText) w.onText({ text: m.text }); return; }
       if (m.ev === "snap") { const s = subs.get(m.sid); if (s) s.apply(m); return; }
       if (m.ev === "peers") { peers = m.peers; emitPeers(m.joined || [], m.left || []); return; }
+      // Tek kişinin imleç güncellemesi (sunucu bütün listeyi yeniden göndermez).
+      if (m.ev === "pres") { const p = peers.find(x => x.peer === m.peer); if (p) { p.presence = m.presence; emitPeers([], []); } return; }
       if (m.ev === "msg") { const fs = topicFns.get(m.topic); if (fs) for (const f of fs) try { f({ data: m.data, peer: m.peer, by: m.by, isMe: false, topic: m.topic }); } catch (e) { console.error(e); } }
     };
     ws.onclose = () => {

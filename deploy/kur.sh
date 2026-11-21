@@ -23,6 +23,15 @@ if ! [[ "$ALAN" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ && "$ALAN" == *.* ]]; then e
 echo "$ALAN" > "$AYAR"
 touch "$HOME/zm.env"
 
+# Küçük sunucularda (Lightsail 512 MB - 1 GB) bellek dolunca her şey çok yavaşlar ya da süreç ölür.
+# Takas alanı (swap) yoksa bir kez 1 GB'lık bir takas dosyası açılır; derleme ve yoğun anlar rahatlar.
+if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 2000000 ] && [ "$(awk '/SwapTotal/ {print $2}' /proc/meminfo)" -eq 0 ] && [ ! -e /swapfile ]; then
+  echo "Bellek az ve takas alanı yok: 1 GB takas dosyası açılıyor (bir kerelik)…"
+  sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile >/dev/null && sudo swapon /swapfile \
+    && (grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null) \
+    || echo "Takas dosyası açılamadı, devam ediliyor."
+fi
+
 echo "1/4 Zar Masası derleniyor…"
 sudo docker build -q -t zar-masasi "$KOK" >/dev/null
 echo "2/4 Ağ hazırlanıyor…"
@@ -31,12 +40,13 @@ echo "3/4 Sunucu ve Caddy yeniden başlatılıyor (veriler korunur)…"
 sudo docker rm -f zar-masasi caddy >/dev/null 2>&1 || true
 # Node sunucusu artık dışarıya port açmaz; yalnızca Caddy ona ulaşır. ZM_VEKIL=1: gerçek ziyaretçi adresi
 # Caddy'nin eklediği X-Forwarded-For başlığından okunur (deneme sınırları için).
-sudo docker run -d --name zar-masasi --restart unless-stopped --network zm-ag \
+sudo docker run -d --name zar-masasi --restart unless-stopped --network zm-ag --log-opt max-size=10m --log-opt max-file=3 \
   -v zar-masasi-veri:/data --env-file "$HOME/zm.env" -e ZM_VEKIL=1 zar-masasi >/dev/null
-sudo docker run -d --name caddy --restart unless-stopped --network zm-ag \
+sudo docker run -d --name caddy --restart unless-stopped --network zm-ag --log-opt max-size=10m --log-opt max-file=3 \
   -p 80:80 -p 443:443 -e ZM_ALAN_ADI="$ALAN" \
   -v "$KOK/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -v caddy-veri:/data -v caddy-ayar:/config \
   caddy:2 >/dev/null
+sudo docker image prune -f >/dev/null 2>&1 || true # eski derlemeler diski doldurmasın
 
 echo "4/4 Sertifika alınıyor ve deneniyor (en fazla 2 dakika)…"
 for _ in $(seq 1 24); do
