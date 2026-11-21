@@ -117,6 +117,9 @@ function kurDosyalar({ store, roller, conns, maxDosya, kota }) {
         const { frp, masa } = oyunlari(c.uid);
         for (const g of frp) if (!yerler["games/" + g.id]) yerler["games/" + g.id] = { tur: "frp", id: g.id, ad: g.ad, sistem: g.sistemAd, var: true };
         for (const b of masa) if (!yerler["boards/" + b.id]) yerler["boards/" + b.id] = { tur: "masa", id: b.id, ad: b.ad || b.oyunAd, var: true };
+        for (const p of store.paths("kartoyun")) { const o = store.get(p); if (o && o.sahip === c.uid && !yerler[p]) yerler[p] = { tur: "atolye", id: p.slice(9), ad: (o.tanim || {}).ad || "Atölye oyunu", var: true }; }
+        // Yedek alınabilir mi, sunucudan kaldırılabilir mi (server/yedek.js doldurur).
+        if (api.yerSusle) for (const [k, y] of Object.entries(yerler)) if (y.var) api.yerSusle(c.uid, k, y);
         return { dosyalar, yerler, kullanilan: kullanilan(c.uid), kota: kotaOf(c.uid), maxDosya: MAX };
       }
       case "profilOyunlar": {
@@ -145,7 +148,8 @@ function kurDosyalar({ store, roller, conns, maxDosya, kota }) {
     throw hata("unknown_op", "Bilinmeyen işlem");
   }
 
-  return { OPS, op, MAX, KOTA, sinirAsildi, yuklenebilir, kullanilan, kotaOf, yerDuzelt, oyunlari, masaOzeti };
+  const api = { OPS, op, MAX, KOTA, sinirAsildi, yuklenebilir, kullanilan, kotaOf, yerDuzelt, oyunlari, masaOzeti, yerSusle: null };
+  return api;
 }
 
 module.exports = { kurDosyalar, masaOzeti, masadaMi, frpRolu, yerDuzelt };

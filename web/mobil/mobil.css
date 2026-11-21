@@ -187,6 +187,13 @@ details.ekle summary::-webkit-details-marker{display:none}
 .dsuz select{flex:1 1 120px;width:auto}
 .dgrup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:16px;margin:18px 0 8px}
 .dgrup small{color:var(--muted);font-weight:400;font-size:12.5px}
+.ydug{display:inline-flex;gap:6px;flex-wrap:wrap}
+.satir.yoyun{flex-wrap:wrap}
+.satir.yoyun .ic{flex:1 1 140px}
+.dgrup .ydug .btn{font-size:12.5px}
+.yedekk .dugmeler{display:flex;gap:6px;flex-wrap:wrap}
+.yedekk .ipucu.ok{color:var(--ink)}
+.yedekk .ipucu.hata{color:var(--bad)}
 .satir.dosya{min-height:56px}
 .donizle{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;background:var(--surface-2)}
 .donizle.simge{display:grid;place-items:center;font-size:22px}

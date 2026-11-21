@@ -15,6 +15,7 @@ const { kurRoller } = require("./roller");
 const { kurBotlar } = require("./botlar");
 const { kurDosyalar } = require("./dosyalar");
 const { kurBildirim } = require("./bildirim");
+const { kurYedek } = require("./yedek");
 
 const WEB = path.join(__dirname, "..", "web");
 const ASSET_TYPES = /^(image\/|audio\/|video\/|application\/pdf$)/;
@@ -134,6 +135,9 @@ function createServer(opts = {}) {
     const r = await anthropic.messages.create({ model: aiModel, max_tokens: 600, messages: [{ role: "user", content: istek }] });
     return r.content.filter(b => b.type === "text").map(b => b.text).join("");
   } : null;
+  // Oyun yedekleri: tek .zip olarak indir, sunucudan kaldır, geri yükle (server/yedek.js).
+  const yedek = kurYedek({ store, dosyalar, kartMasa, assetDir, ASSET_TYPES, EXT, guvenlik: GUVENLIK, surum: require("../package.json").version });
+  dosyalar.yerSusle = (uid, yer, y) => Object.assign(y, yedek.izin(uid, yer));
   botlar = kurBotlar({ store, conns, roller, kartMasa, sohbeteYaz: (gid, by, text) => sohbeteYaz(gid, by, text), yapayZeka, gecikme: opts.botGecikme });
 
   /* ---------------- HTTP ---------------- */
@@ -203,6 +207,7 @@ function createServer(opts = {}) {
       if (req.method === "GET" && /^\/i18n\/[a-z]{2}\.js$/.test(p)) {
         return sunKayit(req, res, dilBetigi(path.basename(p, ".js")), "text/javascript; charset=utf-8");
       }
+      if (req.method === "GET" && p === "/zip.js") return sunDosya(req, res, path.join(WEB, "zip.js"), "text/javascript; charset=utf-8");
       if (req.method === "GET" && p === "/shim.js") return sunDosya(req, res, path.join(WEB, "shim.js"), "text/javascript; charset=utf-8");
       if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
         const f = path.join(WEB, p);
@@ -234,6 +239,7 @@ function createServer(opts = {}) {
         return sunDosya(req, res, f, MOBIL_TYPES[path.extname(f)] || EXT_TYPES[path.extname(f)]);
       }
       if (req.method === "GET" && p.startsWith("/assets/")) return serveAsset(req, res, p.slice(8));
+      if (yedek.http(req, res, p, send, authed)) return;
       if (req.method === "POST" && p === "/api/assets") return uploadAsset(req, res);
       if (req.method === "DELETE" && p.startsWith("/api/assets/")) {
         const uid = authed(req); if (!uid) return send(res, 401, { code: "unauthorized" });
@@ -393,6 +399,7 @@ function createServer(opts = {}) {
             if (roller.OPS.has(m.op)) return reply(roller.op(c, m)); // yönetim: roller ve hesap açma (server/roller.js)
             if (dosyalar.OPS.has(m.op)) return reply(dosyalar.op(c, m)); // yüklediklerim, kota, profildeki oyunlar (server/dosyalar.js)
             if (bildirim.OPS.has(m.op)) return reply(bildirim.op(c, m)); // bildirimler (server/bildirim.js)
+            if (yedek.OPS.has(m.op)) return reply(yedek.op(c, m)); // oyun yedekleri (server/yedek.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }

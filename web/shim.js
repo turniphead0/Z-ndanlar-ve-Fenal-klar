@@ -362,6 +362,13 @@
     db: () => db,
     upload: (file, o) => ready.then(() => assets.upload(file, o)),
     sil: id => ready.then(() => assets.delete(id)),
+    // Oyun yedeğini (.zip) geri yükle: sunucu yeni bir oyun açar ve { tur, id, yer, ad, dosya, boyut, uyarilar } döner.
+    yedekYukle: blob => ready.then(async () => {
+      const r = await fetch("/api/oyun-yedek", { method: "POST", headers: { "Content-Type": "application/zip", "x-zm-token": TOKEN }, body: blob });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw err(j.code || "upload_failed", j.message || "Yedek yüklenemedi");
+      return j;
+    }),
     girisEkrani: (o) => fetch("/api/info").then(r => r.json()).catch(() => ({})).then(info => showGiris(info, Object.assign({ istege: HESAP !== "zorunlu" }, o))),
     async cikis() {
       try { await call("cikis", {}); } catch (e) {}
