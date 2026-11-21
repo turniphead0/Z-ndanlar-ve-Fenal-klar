@@ -72,8 +72,10 @@
   /* ---------------- Yönetim paneli (yalnızca admin) ---------------- */
   async function yonetimCiz(not) {
     pano.innerHTML = `<div class="zm-botic"><div class="zm-botbas"><h2>Yönetim</h2><button class="btn sm" data-zb="kapat">Kapat</button></div><p class="hint">Yükleniyor…</p></div>`;
-    let liste = [];
+    let liste = [], kota = { kisiler: {}, varsayilan: 0, maxDosya: 0 };
     try { liste = await Z.call("rolListe", {}); } catch (e) { pano.querySelector(".hint").textContent = e.message; return; }
+    try { kota = await Z.call("kotaListe", {}); } catch (e) {}
+    const mb = b => Math.round(b / 1048576 * 10) / 10;
     const tarih = t => (t ? new Date(t).toLocaleDateString("tr-TR") : "—");
     pano.innerHTML = `<div class="zm-botic zm-yonetim"><div class="zm-botbas"><h2>Yönetim</h2><button class="btn sm" data-zb="kapat">Kapat</button></div>
       <p class="hint"><b>Admin</b> hesap açar, rol verir ve botları kontrol eder. <b>Tester</b> bütün masalarda botları kontrol eder: otomatik oynamayı kapatıp botun yerine hamle yapar, kart masasında botun elini görüp onun adına oynar. Kimse kendini admin yapamaz; ilk admin sunucudaki <code>ZM_ADMIN</code> ayarıyla belirlenir.</p>
@@ -82,7 +84,9 @@
       <form class="zm-botform" data-zb-hesap><input name="k" maxlength="20" placeholder="Kullanıcı adı" required autocomplete="off" aria-label="Kullanıcı adı"><input name="s" type="text" minlength="8" maxlength="200" placeholder="Şifre (en az 8)" required autocomplete="off" aria-label="Şifre">
         <select name="r" aria-label="Rol"><option value="tester">Tester</option><option value="">Rolsüz</option><option value="admin">Admin</option></select><button class="btn pri">Aç</button></form>
       <h3>Hesaplar (${liste.length})</h3>
+      <p class="hint">Yükleme alanı: herkes varsayılan olarak ${mb(kota.varsayilan)} MB yükleyebilir, bir dosya en çok ${mb(kota.maxDosya)} MB olabilir (sunucuda <code>ZM_KOTA</code> ve <code>ZM_MAX_DOSYA</code>). Bir kişiye ayrı kota vermek için MB yaz; boş bırakırsan varsayılana döner.</p>
       <div class="zm-hesaplar">${liste.map(h => `<div class="zm-hesap"><b>${esc(h.kullanici)}</b>${h.rol ? `<span class="zm-rol ${h.rol}">${ROL_AD[h.rol]}</span>` : ""}<span class="hint">son giriş ${tarih(h.seen)}</span><span class="sp"></span>
+        ${kota.kisiler[h.id] ? `<label class="hint zm-kota" title="Kullanılan / kota">${mb(kota.kisiler[h.id].kullanilan)} / <input type="number" min="0" step="10" data-zb-kota="${esc(h.id)}" value="${kota.kisiler[h.id].ozel ? mb(kota.kisiler[h.id].kota) : ""}" placeholder="${mb(kota.varsayilan)}" aria-label="${esc(h.kullanici)} yükleme kotası (MB)" style="width:70px"> MB</label>` : ""}
         ${h.sabit ? `<span class="hint">ZM_ADMIN ile</span>` : `<select data-zb-rol="${esc(h.id)}" aria-label="${esc(h.kullanici)} rolü"><option value=""${!h.rol ? " selected" : ""}>Rol yok</option><option value="tester"${h.rol === "tester" ? " selected" : ""}>Tester</option><option value="admin"${h.rol === "admin" ? " selected" : ""}>Admin</option></select>`}</div>`).join("")}</div></div>`;
   }
 
@@ -119,6 +123,8 @@
     if (acik === "botlar") panoCiz();
   });
   document.addEventListener("change", async e => {
+    const kt = e.target.closest("[data-zb-kota]");
+    if (kt) { try { const r = await Z.call("kotaAyar", { kisi: kt.dataset.zbKota, mb: kt.value ? Number(kt.value) : 0 }); toast(`Kota: ${Math.round(r.kota / 1048576)} MB`); } catch (err) { toast(err.message); } return; }
     const s = e.target.closest("[data-zb-rol]"); if (!s) return;
     try { await Z.call("rolVer", { kisi: s.dataset.zbRol, rol: s.value || null }); toast("Rol güncellendi"); } catch (err) { toast(err.message); yonetimCiz(); }
   });

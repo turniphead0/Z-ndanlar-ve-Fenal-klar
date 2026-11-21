@@ -13,9 +13,10 @@ const { kurHesap } = require("./hesap");
 const { kurKartMasa } = require("./kartmasa");
 const { kurRoller } = require("./roller");
 const { kurBotlar } = require("./botlar");
+const { kurDosyalar } = require("./dosyalar");
+const { kurBildirim } = require("./bildirim");
 
 const WEB = path.join(__dirname, "..", "web");
-const MAX_ASSET = 25 * 1024 * 1024;
 const ASSET_TYPES = /^(image\/|audio\/|video\/|application\/pdf$)/;
 const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/svg+xml": "svg", "audio/mpeg": "mp3", "audio/ogg": "ogg", "audio/wav": "wav", "video/mp4": "mp4", "video/webm": "webm", "application/pdf": "pdf" };
 
@@ -48,7 +49,7 @@ function canAccess(uid, p) {
 // Masa oyunu belgeleri (boards/*), sohbet mesajları (chat/*, data/users/<kişi>/chat/*), forum (forum/*),
 // arkadaşlıklar ve özel mesajlar (data/users/<kişi>/{arkadas,konusma,dm}/*) yalnızca sunucu tarafından yazılır:
 // tahtada kurallara uygun hamleler, sohbette, forumda ve mesajlarda gönderen damgalı iletiler.
-const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup", "kartmasa"]);
+const SUNUCU_YAZAR = new Set(["chat", "arkadas", "konusma", "dm", "grup", "kartmasa", "bildirim"]);
 function canWrite(uid, p) {
   const s = String(p).split("/");
   return canAccess(uid, p) && s[0] !== "boards" && s[0] !== "chat" && s[0] !== "forum" && s[0] !== "kartoyun" && !(s[0] === "data" && s[1] === "users" && SUNUCU_YAZAR.has(s[3]));
@@ -68,6 +69,8 @@ function chatGif(u) {
 }
 const FORUM_KATEGORI = ["Genel sohbet", "Oyuncu arıyorum", "Masa arıyorum", "Kurallar", "Paylaşım"];
 const metin = (v, n) => String(v == null ? "" : v).replace(/\r\n/g, "\n").trim().slice(0, n);
+// Masa oyunu odasının adı: kişinin verdiği ad (tek satır, en çok 60 karakter).
+const odaAdi = v => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
 
 // Statik dosyalar (uygulama, eklentiler, görseller) bellekte tutulur ve sıkıştırılmış hâlleri bir kez
 // hazırlanır. Tarayıcı ETag ile "değişti mi?" diye sorar; değişmediyse 304 ile boş yanıt döner. Sayfadaki
@@ -116,9 +119,14 @@ function createServer(opts = {}) {
 
   const tokens = new Map(); // oturum anahtarı -> kişi kimliği (HTTP dosya yüklemeleri için)
   const conns = new Set();
-  const hesap = kurHesap({ store, conns });
+  let bildirim = null;
+  const hesap = kurHesap({ store, conns, arkadasBildir: (tur, kimden, kime) => bildirim && bildirim.arkadas(tur, kimden, kime) });
   // Roller (admin, tester): ilk admin ZM_ADMIN ile ya da sahip bağlantısıyla belirlenir (server/roller.js).
   const roller = kurRoller({ store, conns, adminler: opts.admin || "" });
+  // Yükleme sınırları (dosya başına ve kişi başına toplam), "Yüklediklerim" ve profildeki oyunlar (server/dosyalar.js).
+  const dosyalar = kurDosyalar({ store, roller, conns, maxDosya: opts.maxDosya || process.env.ZM_MAX_DOSYA, kota: opts.kota || process.env.ZM_KOTA });
+  // Bildirimler: sıra sende, oyun bitti, katılma istekleri, arkadaşlık ve kişiden kişiye (server/bildirim.js).
+  bildirim = kurBildirim({ store, conns, dosyalar });
   let botlar = null;
   const kartMasa = kurKartMasa({ store, botKisi: (c, d, id) => botlar.kartBotKisi(c, d, id) });
   // Sohbette anılan bot için kısa yanıt (yalnızca yapay zekâ açıksa).
@@ -176,7 +184,7 @@ function createServer(opts = {}) {
   }
   const sunDosya = (req, res, f, type, cache) => sunKayit(req, res, dosyaKaydi(f), type, cache);
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
+  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "bildirim", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
@@ -216,7 +224,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu });
+      if (req.method === "GET" && p === "/api/info") return send(res, 200, { name, needsPassword: !!password, ai: !!anthropic, version: 1, forum: FORUM_KATEGORI, hesap: hesapModu, maxDosya: dosyalar.MAX });
       if (hesap.http(req, res, p, send, ipOf)) return;
       // Mobil uygulama (telefon tarayıcısı ya da Android uygulaması): /mobil
       if (req.method === "GET" && (p === "/mobil" || p === "/mobil/")) return sunDosya(req, res, path.join(WEB, "mobil", "index.html"), "text/html; charset=utf-8");
@@ -243,13 +251,20 @@ function createServer(opts = {}) {
     const uid = authed(req); if (!uid) return send(res, 401, { code: "unauthorized" });
     const type = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
     if (!ASSET_TYPES.test(type)) return send(res, 415, { code: "unsupported_type", message: "Bu dosya türü yüklenemiyor" });
+    // Boyut sınırı: dosya başına en çok dosyalar.MAX, kişinin toplam kotasında kalan alan kadar.
+    const bildirilen = Number(req.headers["content-length"]);
+    const ilk = bildirilen > 0 ? dosyalar.sinirAsildi(uid, bildirilen) : null;
+    if (ilk) { res.setHeader("Connection", "close"); send(res, 413, { code: "too_large", message: ilk }); req.resume(); return; }
+    const sinir = dosyalar.yuklenebilir(uid);
     const chunks = []; let size = 0, aborted = false;
-    req.on("data", c => { size += c.length; if (size > MAX_ASSET) { aborted = true; send(res, 413, { code: "too_large", message: "Dosya 25 MB'tan büyük" }); req.destroy(); } else chunks.push(c); });
+    req.on("data", c => { if (aborted) return; size += c.length; if (size > sinir) { aborted = true; res.setHeader("Connection", "close"); send(res, 413, { code: "too_large", message: dosyalar.sinirAsildi(uid, size) || "Dosya çok büyük" }); req.destroy(); } else chunks.push(c); });
     req.on("end", () => {
       if (aborted) return;
       const id = rid(10) + "." + (EXT[type] || "bin");
       fs.writeFileSync(path.join(assetDir, id), Buffer.concat(chunks));
-      store.set("_sys/assets/" + id, { owner: uid, type, size, name: decodeURIComponent(String(req.headers["x-filename"] || "")).slice(0, 200), created: Date.now() });
+      let ad = ""; try { ad = decodeURIComponent(String(req.headers["x-filename"] || "")); } catch (e) {}
+      const yer = dosyalar.yerDuzelt(req.headers["x-zm-yer"]);
+      store.set("_sys/assets/" + id, { owner: uid, type, size, name: ad.slice(0, 200), created: Date.now(), ...(yer ? { yer } : {}) });
       send(res, 200, { id, url: "/assets/" + id, type, size });
     });
   }
@@ -367,6 +382,7 @@ function createServer(opts = {}) {
           }
           case "chatSend": case "chatClear": return chatOp(c, m, reply, fail);
           case "bgNew": case "bgSit": case "bgMove": case "bgReset": case "bgDelete": return boardOp(c, m, reply, fail);
+          case "bgAd": return odaAdiDegistir(c, m, reply, fail);
           case "forumTopic": case "forumReply": case "forumDelete": case "forumPin": return forumOp(c, m, reply, fail);
           case "ai": return runAi(c, m, reply, fail);
           case "aiAbort": { const ctl = c.ai.get(m.target); if (ctl) ctl.abort(); return reply(true); }
@@ -375,6 +391,8 @@ function createServer(opts = {}) {
             if (hesap.OPS.has(m.op)) return reply(hesap.op(c, m)); // hesap, arkadaşlar, mesajlar, gruplar (server/hesap.js)
             if (botlar.OPS.has(m.op)) return reply(botlar.op(c, m)); // botlar (server/botlar.js)
             if (roller.OPS.has(m.op)) return reply(roller.op(c, m)); // yönetim: roller ve hesap açma (server/roller.js)
+            if (dosyalar.OPS.has(m.op)) return reply(dosyalar.op(c, m)); // yüklediklerim, kota, profildeki oyunlar (server/dosyalar.js)
+            if (bildirim.OPS.has(m.op)) return reply(bildirim.op(c, m)); // bildirimler (server/bildirim.js)
             return fail("unknown_op", "Bilinmeyen işlem: " + m.op);
         }
       } catch (e) { fail(e.code || "internal", String(e.message || e)); }
@@ -447,7 +465,8 @@ function createServer(opts = {}) {
     if (m.op === "bgNew") {
       const g = OYUNLAR[m.oyun]; if (!g) return fail("invalid_argument", "Bilinmeyen oyun");
       const id = "b" + Date.now().toString(36) + rid(3);
-      store.set("boards/" + id, { oyun: m.oyun, durum: g.yeni(Math.random), koltuk: [null, null], olusturan: me.id, created: Date.now(), updated: Date.now() });
+      const ad = odaAdi(m.ad);
+      store.set("boards/" + id, { oyun: m.oyun, ...(ad ? { ad } : {}), durum: g.yeni(Math.random), koltuk: [null, null], olusturan: me.id, created: Date.now(), updated: Date.now() });
       return reply({ id });
     }
     const p = "boards/" + String(m.board || ""), b = canAccess(c.uid, p) && store.get(p);
@@ -471,6 +490,18 @@ function createServer(opts = {}) {
     if (!yetkili) return fail("permission_denied", "Yalnızca oyuncular ya da tahtayı açan yapabilir");
     if (m.op === "bgReset") { store.set(p, { ...b, durum: g.yeni(Math.random), updated: Date.now() }); return reply(true); }
     if (m.op === "bgDelete") { store.delete(p); return reply(true); }
+  }
+
+  // Oda adı: tahtayı/masayı açan, oturan biri ya da sunucu sahibi değiştirebilir (kart masaları da boards/* altında).
+  function odaAdiDegistir(c, m, reply, fail) {
+    const bid = String(m.board || ""), p = "boards/" + bid, b = /^b[a-z0-9]{6,24}$/.test(bid) && store.get(p);
+    if (!b) return fail("not_found", "Böyle bir masa yok");
+    const koltuk = (b.oyun === "kart" ? (b.durum || {}).koltuk : b.koltuk) || [];
+    if (b.olusturan !== c.uid && !c.isOwner && !koltuk.some(k => k && k.id === c.uid)) return fail("permission_denied", "Adı yalnızca masayı açan ya da oturanlar değiştirebilir");
+    const ad = odaAdi(m.ad), yeni = { ...b };
+    if (ad) yeni.ad = ad; else delete yeni.ad;
+    store.set(p, yeni);
+    return reply({ ad: ad || null });
   }
 
   // Forum: başlıklar forum/<id>, yanıtlar forum/<id>/yanitlar/<id>. Herkes okur; yazmayı yalnızca sunucu yapar.
@@ -546,7 +577,7 @@ function createServer(opts = {}) {
   return {
     server, store, ownerKey,
     listen(port = 7373, host = "0.0.0.0") { return new Promise((res, rej) => { server.once("error", rej); server.listen(port, host, () => res(server.address().port)); }); },
-    async close() { hesap.kapat(); botlar.kapat(); for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
+    async close() { hesap.kapat(); botlar.kapat(); bildirim.kapat(); for (const c of conns) c.ws.terminate(); wss.close(); await new Promise(r => server.close(r)); store.flush(); },
   };
 }
 
