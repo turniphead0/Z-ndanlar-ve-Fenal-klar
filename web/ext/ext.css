@@ -436,3 +436,10 @@
 .zm-rol{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink,#fff)}.zm-rol.tester{background:#8a5cf6;color:#fff}
 .zm-botnot{margin:0;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .zm-botnav svg{width:22px;height:22px}
+/* Yönetim: şikâyetler (web/ext/botlar.js, server/gizlilik.js) */
+.zm-sikayet{padding:8px 10px;border:1px solid var(--line);border-radius:8px;display:grid;gap:4px}
+.zm-sikayet.acik{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
+.zm-sikayet p{margin:0}
+.zm-sikayet-metin{white-space:pre-wrap}
+.zm-sikayet-kanit{margin:0;padding:6px 10px;border-left:3px solid var(--line);white-space:pre-wrap;font-size:13px}
+.zm-sikayet .zm-hesap{border:0;padding:0}

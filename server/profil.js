@@ -9,7 +9,7 @@ const hata = (code, message) => Object.assign(new Error(message), { code });
 const KISI_ID = /^u-[0-9a-f]{8,}$/;
 const EN_COK = 200; // listelerin en çok kaç öğe döneceği (en yeniler)
 
-function kurProfil({ store }) {
+function kurProfil({ store, kurallar = null }) {
   const OPS = new Set(["profilForum"]);
   const ozet = s => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > 160 ? s.slice(0, 157) + "…" : s; };
 
@@ -38,6 +38,7 @@ function kurProfil({ store }) {
         const uid = m.kisi ? String(m.kisi) : c.uid;
         if (!KISI_ID.test(uid) && uid !== c.uid) throw hata("invalid_argument", "Geçersiz kişi");
         if (!store.get("_sys/users/" + uid)) throw hata("not_found", "Böyle biri yok");
+        if (kurallar && !kurallar.gorebilir(c, uid)) throw hata("permission_denied", "Bu profil gizli");
         return forumu(uid);
       }
     }
