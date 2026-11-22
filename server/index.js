@@ -221,7 +221,7 @@ function createServer(opts = {}) {
   }
   const sunDosya = (req, res, f, type, cache) => sunKayit(req, res, dosyaKaydi(f), type, cache);
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "bildirim", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
+  const EXT_SCRIPTS = ["doku", "veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "bildirim", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
@@ -258,10 +258,14 @@ function createServer(opts = {}) {
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
       // Hazır masa arka planları ve jetonlar (web/gorsel): RPG haritaları, kart ve tahta oyunları kullanır.
-      if (req.method === "GET" && /^\/gorsel\/[a-z0-9-]+\.svg$/.test(p)) {
+      // Hazır haritalar eskiden SVG idi, artık gerçekçi WebP resimler: eski adresler yenisine yönlenir (kayıtlı haritalar bozulmasın).
+      if (req.method === "GET" && /^\/gorsel\/harita-[a-z0-9-]+\.svg$/.test(p) && !fs.existsSync(path.join(WEB, "gorsel", path.basename(p))) && fs.existsSync(path.join(WEB, "gorsel", path.basename(p, ".svg") + ".webp"))) {
+        res.writeHead(301, { Location: p.replace(/\.svg$/, ".webp"), "Cache-Control": "public, max-age=86400" }); return res.end();
+      }
+      if (req.method === "GET" && /^\/gorsel\/[a-z0-9-]+\.(svg|webp)$/.test(p)) {
         const f = path.join(WEB, "gorsel", path.basename(p));
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
-        return sunDosya(req, res, f, "image/svg+xml", /[?&]v=/.test(req.url) ? null : "public, max-age=86400");
+        return sunDosya(req, res, f, p.endsWith(".webp") ? "image/webp" : "image/svg+xml", /[?&]v=/.test(req.url) ? null : "public, max-age=86400");
       }
       if (req.method === "GET" && (p === "/gorsel/katalog.js" || p === "/gorsel/secici.js")) return sunDosya(req, res, path.join(WEB, "gorsel", path.basename(p)), "text/javascript; charset=utf-8");
       // Masa oyunları sayfası
