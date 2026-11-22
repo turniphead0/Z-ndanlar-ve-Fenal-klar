@@ -195,4 +195,4 @@ Macera dosyaları `web/ext/maceralar/` içindedir ve `node tools/maceralar/ada.j
 
 Harita ve birinci şahıs dokuları (taş, ahşap, çimen, su, lav, kar, metal, ağaçlar…) ile 11 hazır harita resmi `web/ext/doku.js` ve `tools/gorsel/haritalar.js` ile kodla üretilir, dışarıdan resim kullanılmaz; proje gibi MIT lisanslıdır. Haritaları yeniden üretmek için: `node tools/gorsel/haritalar.js` (Playwright ister).
 
-Mobilya simgeleri [Twemoji](https://github.com/jdecked/twemoji)'den alınmıştır (grafikler © Twitter, Inc ve katkıda bulunanlar, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); `web/ext/mobilya/` içindedir.
+Mobilya ve eşya resimleri (`web/ext/mobilya/*.webp`) bu projede kodla çizilmiştir (`node tools/gorsel/esyalar.js`, Playwright ister); dışarıdan resim kullanılmaz ve proje lisansıyla (MIT) dağıtılır.

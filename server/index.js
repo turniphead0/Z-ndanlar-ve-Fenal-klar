@@ -252,7 +252,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.svg$/.test(p))) {
+      if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.webp$/.test(p))) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
