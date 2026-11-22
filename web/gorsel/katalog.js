@@ -5,7 +5,7 @@
   {
    "id": "orman-acikligi",
    "ad": "Orman açıklığı",
-   "url": "/gorsel/harita-orman-acikligi.svg",
+   "url": "/gorsel/harita-orman-acikligi.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -19,7 +19,7 @@
   {
    "id": "zindan",
    "ad": "Zindan koridorları",
-   "url": "/gorsel/harita-zindan.svg",
+   "url": "/gorsel/harita-zindan.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -33,7 +33,7 @@
   {
    "id": "meyhane",
    "ad": "Meyhane",
-   "url": "/gorsel/harita-meyhane.svg",
+   "url": "/gorsel/harita-meyhane.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -47,7 +47,7 @@
   {
    "id": "magara",
    "ad": "Mağara",
-   "url": "/gorsel/harita-magara.svg",
+   "url": "/gorsel/harita-magara.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -62,7 +62,7 @@
   {
    "id": "kasaba-meydani",
    "ad": "Kasaba meydanı",
-   "url": "/gorsel/harita-kasaba-meydani.svg",
+   "url": "/gorsel/harita-kasaba-meydani.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -76,7 +76,7 @@
   {
    "id": "mezarlik",
    "ad": "Sisli mezarlık",
-   "url": "/gorsel/harita-mezarlik.svg",
+   "url": "/gorsel/harita-mezarlik.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -90,7 +90,7 @@
   {
    "id": "konak",
    "ad": "Eski konak",
-   "url": "/gorsel/harita-konak.svg",
+   "url": "/gorsel/harita-konak.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -104,7 +104,7 @@
   {
    "id": "uzay-gemisi",
    "ad": "Uzay gemisi güvertesi",
-   "url": "/gorsel/harita-uzay-gemisi.svg",
+   "url": "/gorsel/harita-uzay-gemisi.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -116,7 +116,7 @@
   {
    "id": "karli-orman",
    "ad": "Karlı orman ve donmuş göl",
-   "url": "/gorsel/harita-karli-orman.svg",
+   "url": "/gorsel/harita-karli-orman.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -129,7 +129,7 @@
   {
    "id": "sehir-sokagi",
    "ad": "Şehir sokağı (gece)",
-   "url": "/gorsel/harita-sehir-sokagi.svg",
+   "url": "/gorsel/harita-sehir-sokagi.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,
@@ -142,7 +142,7 @@
   {
    "id": "col-harabeleri",
    "ad": "Çöl harabeleri",
-   "url": "/gorsel/harita-col-harabeleri.svg",
+   "url": "/gorsel/harita-col-harabeleri.webp",
    "w": 1400,
    "h": 1000,
    "sutun": 28,

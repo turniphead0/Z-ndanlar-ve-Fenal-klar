@@ -1204,7 +1204,8 @@ function viewMap(){
 }
 
 const imgCache={};
-function getImg(url){ if(!url) return null; if(!imgCache[url]){ const im=new Image(); im.onload=()=>drawMap(); im.src=url; imgCache[url]=im } return imgCache[url].complete&&imgCache[url].naturalWidth?imgCache[url]:null }
+function getImg(url){ if(!url) return null; url=String(url).replace(/^\/gorsel\/(harita-[a-z0-9-]+)\.svg$/,"/gorsel/$1.webp"); // hazır haritalar artık gerçekçi resimler
+  if(!imgCache[url]){ const im=new Image(); im.onload=()=>drawMap(); im.src=url; imgCache[url]=im } return imgCache[url].complete&&imgCache[url].naturalWidth?imgCache[url]:null }
 let MV={};
 function cs(){ return Math.round(36*S.zoom) }
 function setupMap(){
@@ -1219,6 +1220,24 @@ function setupMap(){
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim() }
 function drawTerrain(ctx,v,X,Y,s,col,im){
   const sk=window.PROPS&&getImg(PROPS.skin(v)); if(sk){ ctx.globalAlpha=1; ctx.drawImage(sk,X,Y,s,s); return } // kullanıcının kendi arazi resmi
+  // Gerçekçi dokular (web/ext/doku.js): taş duvar, ahşap kapı, su, kayalık, üstten ağaç, çukur, lav, taş merdiven
+  const D=window.ZMDoku;
+  if(D&&v!=="trap"){
+    ctx.globalAlpha=im?(v==="wall"||v==="pit"||v==="tree"||v==="door"||v==="stairs"?.95:.8):1;
+    const tile=(ad,c,k)=>{ ctx.fillStyle=D.desen(ctx,ad,c,s,k); ctx.fillRect(X,Y,s,s) }, h=((Math.round(X/s)*73856093)^(Math.round(Y/s)*19349663))>>>0;
+    switch(v){
+      case "wall": tile("tas",D.karis(col.wall,D.VARS.tas,.55),1); break;
+      case "door": ctx.drawImage(D.sprite("kapiUst",col.door),X,Y,s,s); break;
+      case "water": tile("su",col.water,3); break;
+      case "rough": tile("kayalik",D.karis(col.rough,D.VARS.kayalik,.4),2); break;
+      case "tree": { const k=s*1.3; ctx.save(); ctx.globalAlpha*=.4; ctx.fillStyle="#000"; ctx.beginPath(); ctx.ellipse(X+s*.62,Y+s*.64,s*.52,s*.48,0,0,7); ctx.fill(); ctx.restore();
+        ctx.drawImage(D.sprite("agac",col.tree,h%3),X+s/2-k/2,Y+s/2-k/2,k,k); break }
+      case "pit": ctx.drawImage(D.sprite("cukur",col.pit),X,Y,s,s); break;
+      case "lava": tile("lav",col.lava,2); break;
+      case "stairs": ctx.drawImage(D.sprite("merdiven",D.karis(col.stairs,D.VARS.kaldirim,.4)),X,Y,s,s); break;
+    }
+    ctx.globalAlpha=1; return;
+  }
   ctx.globalAlpha=im?(v==="wall"||v==="pit"?.9:.65):1;
   switch(v){
     case "wall": ctx.fillStyle=col.wall; ctx.fillRect(X,Y,s,s); break;

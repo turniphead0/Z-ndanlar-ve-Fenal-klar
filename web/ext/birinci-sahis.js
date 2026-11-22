@@ -6,10 +6,11 @@
 (function () {
   "use strict";
 
-  const FOV = 66 * Math.PI / 180, PLANE = Math.tan(FOV / 2), P = 16, TEX = 64, STEP_MS = 170, TURN_MS = 150;
+  const FOV = 66 * Math.PI / 180, PLANE = Math.tan(FOV / 2), TEX = 64, STEP_MS = 170, TURN_MS = 150;
   const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // 0 kuzey, 1 doğu, 2 güney, 3 batı
   const BLOCK = ["wall", "tree", "pit", "lava"];
   const FP = { open: false };
+  let P = 16;                                      // zemin dokusunda bir karenin piksel boyu (haritanın büyüklüğüne göre 16–64)
   const dismissed = {};                            // harita kimliği -> kapatılan zorunlu açılışın zamanı
 
   const rgb = c => { const x = document.createElement("canvas").getContext("2d"); x.fillStyle = c || "#000"; const h = x.fillStyle;
@@ -57,7 +58,8 @@
     standCache[t.id] = { key, c }; return c;
   }
   let treeC = null;
-  function treeStandee(col) {
+  function treeStandee(col, cx, cy) {
+    if (window.ZMDoku) return ZMDoku.sprite("agacYan", col, ((cx * 7 + cy * 13) >>> 0) % 3);   // gerçekçi ağaç (web/ext/doku.js)
     if (treeC?.col === col) return treeC.c;
     const W = 128, H = 200, c = canvas(W, H), x = c.getContext("2d");
     const shape = () => { x.beginPath(); x.rect(54, 120, 20, 62); for (const [a, b, r] of [[64, 62, 44], [36, 92, 32], [92, 92, 32], [64, 38, 30]]) { x.moveTo(a + r, b); x.arc(a, b, r, 0, 7); } };
@@ -72,14 +74,21 @@
   /* ---------- zemin dokusu (harita resmi, araziler, ızgara, sis) ---------- */
   function sig(m) { return [m.id, JSON.stringify((S.games[G.id] || {}).skins || {}), JSON.stringify(m.props || {}), window.PROPS ? Object.values(m.props || {}).filter(v => v && getImg(PROPS.get(v)?.img)).length : 0, m.bg, m.fogOn, m.cols, m.rows, JSON.stringify(m.cells), m.fogOn ? JSON.stringify(m.fog) : "", isDM(), document.documentElement.dataset.sys || "", !!getImg(m.bg), JSON.stringify(m.roof || {}), m.roofMode, m.sky, m.light?.on, m.light?.amb].join("§"); }
   function buildFloor(m) {
+    const D = window.ZMDoku;
+    P = D ? Math.max(16, Math.min(64, Math.floor(Math.sqrt(5e6 / Math.max(1, m.cols * m.rows))))) : 16;
     const dm = isDM(), w = m.cols * P, h = m.rows * P, col = { floor: cssVar("--map-floor"), ink: cssVar("--ink") };
     TERRAIN.forEach(t => col[t[0]] = cssVar(t[2]));
     const fc = canvas(w, h), x = fc.getContext("2d"); x.fillStyle = col.floor; x.fillRect(0, 0, w, h);
     const im = getImg(m.bg); if (im) x.drawImage(im, 0, 0, w, h);
-    for (const [k, v] of Object.entries(m.cells || {})) { if (!v || v === "wall" || v === "tree" || (v === "trap" && !dm)) continue;
+    else if (D) {
+      // Arka plan resmi yoksa gerçekçi zemin: üstü kapalı yerlerde döşeme taşı, açık yerlerde çimen.
+      const rf = window.ROOF ? ROOF.grid(m) : null, stone = D.desen(x, "kaldirim", null, P, 2), grass = D.desen(x, "cimen", null, P, 3);
+      for (let j = 0; j < m.rows; j++) for (let i = 0; i < m.cols; i++) { x.fillStyle = !rf || rf[j * m.cols + i] ? stone : grass; x.fillRect(i * P, j * P, P, P); }
+    }
+    for (const [k, v] of Object.entries(m.cells || {})) { if (!v || v === "wall" || v === "tree" || (v === "door" && D) || (v === "trap" && !dm)) continue;
       const [cx, cy] = k.split(",").map(Number); if (cx < m.cols && cy < m.rows) drawTerrain(x, v === "door" ? "rough" : v, cx * P, cy * P, P, col, im); }
-    x.globalAlpha = 1; x.strokeStyle = cssVar("--grid"); x.lineWidth = 1; x.beginPath();
-    for (let i = 0; i <= m.cols; i++) { x.moveTo(i * P + .5, 0); x.lineTo(i * P + .5, h); } for (let j = 0; j <= m.rows; j++) { x.moveTo(0, j * P + .5); x.lineTo(w, j * P + .5); } x.stroke();
+    x.globalAlpha = D ? .45 : 1; x.strokeStyle = cssVar("--grid"); x.lineWidth = 1; x.beginPath();
+    for (let i = 0; i <= m.cols; i++) { x.moveTo(i * P + .5, 0); x.lineTo(i * P + .5, h); } for (let j = 0; j <= m.rows; j++) { x.moveTo(0, j * P + .5); x.lineTo(w, j * P + .5); } x.stroke(); x.globalAlpha = 1;
     if (m.fogOn) { x.fillStyle = cssVar("--fog"); x.globalAlpha = dm ? .45 : 1; for (let j = 0; j < m.rows; j++) for (let i = 0; i < m.cols; i++) if (fogged(m, i, j)) x.fillRect(i * P, j * P, P, P); x.globalAlpha = 1; }
     // Kuşbakışı küçük harita: zemin + duvarlar + ağaçlar
     const mc = canvas(w, h), y = mc.getContext("2d"); y.drawImage(fc, 0, 0);
@@ -90,7 +99,8 @@
     let data = null; try { data = new Uint32Array(x.getImageData(0, 0, w, h).data.buffer); } catch (e) { data = null; }
     FP.floor = { w, h, data, mini: mc };
     const own = k => { const im = window.PROPS && getImg(PROPS.skin(k)); if (!im) return null; const c = canvas(TEX, TEX); c.getContext("2d").drawImage(im, 0, 0, TEX, TEX); return c; };
-    FP.tex = { wall: own("wall") || wallTex(col.wall), door: own("door") || doorTex(col.door, col.wall) };
+    const wallCol = D ? D.karis(col.wall, D.VARS.tas, .55) : col.wall;
+    FP.tex = { wall: own("wall") || (D ? D.doku("tas", wallCol, 256) : wallTex(col.wall)), door: own("door") || (D ? D.kapi(col.door, wallCol) : doorTex(col.door, col.wall)) };
     FP.treeCol = col.tree; FP.fogRGB = rgb(cssVar("--fog")); FP.ceilRGB = rgb(cssVar("--t-wall")).map(v => v * .45);
     // tavan ve gökyüzü: hangi karenin üstü kapalı, sisli kareler, dokular
     const n = m.cols * m.rows, dk = new Uint8Array(n); for (let j = 0; j < m.rows; j++) for (let i = 0; i < m.cols; i++) if (darkAt(m, i, j)) dk[j * m.cols + i] = 1;
@@ -292,8 +302,9 @@
       const lh = proj / Math.max(perp, .01), top = hor - lh * (1 - camZ);
       if (hit === "dark" || hit === "edge") continue;   // karanlık: ötesi çizilmez, zemin sisle kararır
       let wx = side === 0 ? py + perp * ry : px + perp * rx; wx -= Math.floor(wx);
-      let tx = (wx * TEX) | 0; if ((side === 0 && rx > 0) || (side === 1 && ry < 0)) tx = TEX - tx - 1;
-      ctx.drawImage(FP.tex[hit], tx, 0, 1, TEX, x, top, 1, lh);
+      const T = FP.tex[hit], TW = T.width;
+      let tx = (wx * TW) | 0; if ((side === 0 && rx > 0) || (side === 1 && ry < 0)) tx = TW - tx - 1;
+      ctx.drawImage(T, tx, 0, 1, T.height, x, top, 1, lh);
       const a0 = Math.min(.92, (1 - Math.pow(Math.max(0, 1 - perp / maxD), 2)) + (side ? .18 : 0)), a = LV ? 1 - (1 - a0) * lightAt(pmx, pmy) : a0;
       if (a > .01) { ctx.globalAlpha = a; ctx.fillStyle = fogCss; ctx.fillRect(x, top, 1, lh); ctx.globalAlpha = 1; }
     }
@@ -306,7 +317,7 @@
       list.push({ x: p.x, y: p.y, c: standee(t), h: .82 * Math.min(sz, 2.4), ring: act.has(t.id) }); }
     for (const [k, v] of Object.entries(m.cells || {})) { if (v !== "tree") continue; const [cx, cy] = k.split(",").map(Number);
       if (!dm && fogged(m, cx, cy)) continue; if (Math.abs(cx + .5 - px) > maxD || Math.abs(cy + .5 - py) > maxD) continue;
-      list.push({ x: cx + .5, y: cy + .5, c: (window.PROPS && dieCut(PROPS.skin("tree"))) || treeStandee(FP.treeCol), h: 1.35 }); }
+      list.push({ x: cx + .5, y: cy + .5, c: (window.PROPS && dieCut(PROPS.skin("tree"))) || treeStandee(FP.treeCol, cx, cy), h: 1.5 }); }
     for (const [k, v] of Object.entries(m.cells || {})) { if (v !== "stairs") continue; const [cx, cy] = k.split(",").map(Number);
       if ((cx === Math.floor(px) && cy === Math.floor(py)) || (!dm && fogged(m, cx, cy))) continue; list.push({ x: cx + .5, y: cy + .5, c: stairStandee(), h: .55 }); }
     if (window.PROPS) for (const [k, v] of Object.entries(m.props || {})) { const it = v && PROPS.get(v); if (!it) continue; const [cx, cy] = k.split(",").map(Number);

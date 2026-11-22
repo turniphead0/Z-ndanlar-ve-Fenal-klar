@@ -70,6 +70,7 @@
       if (kind === "day") { const sx = SKY_W * .72, sy = SKY_H * .22; wrap(() => { const h = x.createRadialGradient(sx, sy, 4, sx, sy, 60); h.addColorStop(0, "rgba(255,250,220,.95)"); h.addColorStop(.25, "rgba(255,245,200,.45)"); h.addColorStop(1, "rgba(255,245,200,0)"); x.fillStyle = h; x.fillRect(sx - 60, sy - 60, 120, 120); }); }
       if (kind === "dusk") { const sx = SKY_W * .55, sy = SKY_H * .93; wrap(() => { const h = x.createRadialGradient(sx, sy, 4, sx, sy, 90); h.addColorStop(0, "rgba(255,220,150,.95)"); h.addColorStop(.3, "rgba(255,170,90,.4)"); h.addColorStop(1, "rgba(255,160,90,0)"); x.fillStyle = h; x.fillRect(sx - 90, sy - 90, 180, 180); }); }
       const cloud = kind === "dusk" ? [70, 50, 90] : [255, 255, 255];
+      if (window.ZMDoku) return skyCache[kind] = cloudsOver(x, kind);
       for (let i = 0; i < 48; i++) { const cx = r() * SKY_W, cy = SKY_H * (.15 + r() * .65), w = 40 + r() * 90, a = (kind === "dusk" ? .35 : .55) * (.5 + r() * .5);
         wrap(() => { for (let k = 0; k < 7; k++) { const px = cx + (r() - .5) * w, py = cy + (r() - .5) * w * .18, rr = w * (.15 + r() * .2);
           const h = x.createRadialGradient(px, py, 1, px, py, rr); h.addColorStop(0, `rgba(${cloud},${a.toFixed(2)})`); h.addColorStop(1, `rgba(${cloud},0)`);
@@ -78,10 +79,22 @@
     return skyCache[kind] = { w: SKY_W, h: SKY_H, data: new Uint32Array(x.getImageData(0, 0, SKY_W, SKY_H).data.buffer.slice(0)) };
   }
 
+  // Gürültüyle üretilmiş gerçekçi bulutlar: altları gölgeli, ufka doğru incelir.
+  function cloudsOver(x, kind) {
+    const img = x.getImageData(0, 0, SKY_W, SKY_H), d = img.data, dens = ZMDoku.bulut(SKY_W, SKY_H, kind);
+    const top = kind === "dusk" ? [255, 196, 170] : [255, 255, 255], low = kind === "dusk" ? [92, 60, 98] : [168, 178, 196];
+    for (let y = 0; y < SKY_H; y++) for (let i = y * SKY_W; i < y * SKY_W + SKY_W; i++) {
+      const a = dens[i] * .92; if (a <= 0) continue; const up = i >= SKY_W * 3 ? dens[i - SKY_W * 3] : 0, sh = Math.min(1, Math.max(0, dens[i] - up * .6 + .25));
+      for (let c = 0; c < 3; c++) { const cc = top[c] + (low[c] - top[c]) * sh * .8; d[i * 4 + c] = d[i * 4 + c] + (cc - d[i * 4 + c]) * a; }
+    }
+    x.putImageData(img, 0, 0);
+    return { w: SKY_W, h: SKY_H, data: new Uint32Array(img.data.buffer.slice(0)) };
+  }
   const ceilCache = {};
   // Ahşap tavan: tahtalar ve her karenin kenarında bir kiriş. 64×64, karo karo tekrar eder.
   function ceilTex(base) {
     if (ceilCache[base]) return ceilCache[base];
+    if (window.ZMDoku) return ceilCache[base] = ZMDoku.veri("tavan", base, 128);   // gerçekçi ahşap tavan (web/ext/doku.js)
     const T = 64, c = document.createElement("canvas"); c.width = c.height = T; const x = c.getContext("2d"), r = rnd(4242);
     x.fillStyle = base; x.fillRect(0, 0, T, T);
     for (let i = 0; i < 4; i++) { x.fillStyle = `rgba(${r() < .5 ? "255,240,220" : "0,0,0"},${(.04 + r() * .08).toFixed(3)})`; x.fillRect(0, i * 16, T, 16);
