@@ -17,7 +17,7 @@
   };
   const ITEMS = {};
   for (const [cat, s] of Object.entries(RAW)) for (const row of s.split("|")) { const [key, name, code, solid, h] = row.split(":");
-    ITEMS[key] = { key, name, cat, img: `/ext/mobilya/${code}.svg`, solid: solid === "1", h: +h }; }
+    ITEMS[key] = { key, name, cat, img: `/ext/mobilya/${key}.webp`, solid: solid === "1", h: +h }; }
   const TERR_NAMES = Object.fromEntries(TERRAIN.map(t => [t[0], t[1]]));
 
   const game = () => (G.id && S.games[G.id]) || {};

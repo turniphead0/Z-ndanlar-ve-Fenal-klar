@@ -205,6 +205,8 @@
     if (!url) return null; if (cutCache[url]) return cutCache[url]; const im = getImg(url); if (!im) return null;
     const W = 128, B = 16, pad = 8, w = im.naturalWidth || W, h = im.naturalHeight || W, k = (W - pad * 2) / Math.max(w, h), dw = w * k, dh = h * k, ox = (W - dw) / 2, oy = W - pad / 2 - dh;
     const sil = canvas(W, W), sx = sil.getContext("2d"); sx.drawImage(im, ox, oy, dw, dh); sx.globalCompositeOperation = "source-in"; sx.fillStyle = "#fbf8f1"; sx.fillRect(0, 0, W, W);
+    // Işık halesi gibi yarı saydam kısımlar kesim kenarına dahil olmasın: yalnızca belirgin dolu yerler beyaz kenar alır.
+    try { const d = sx.getImageData(0, 0, W, W), v = d.data; for (let i = 3; i < v.length; i += 4) v[i] = v[i] > 110 ? 255 : 0; sx.putImageData(d, 0, 0); } catch (e) {}
     const c = canvas(W, W + B), x = c.getContext("2d");
     for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; x.drawImage(sil, Math.cos(a) * 4, Math.sin(a) * 4); }
     x.drawImage(im, ox, oy, dw, dh);
