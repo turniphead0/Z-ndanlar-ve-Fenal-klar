@@ -221,7 +221,7 @@ function createServer(opts = {}) {
   }
   const sunDosya = (req, res, f, type, cache) => sunKayit(req, res, dosyaKaydi(f), type, cache);
   // Sıra önemli: veri dosyaları önce, onları kullanan eklentiler sonra.
-  const EXT_SCRIPTS = ["doku", "veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "tema", "oyunlar", "bildirim", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
+  const EXT_SCRIPTS = ["doku", "veri-5e", "pencereler", "sihirbaz", "buyu", "gelisim", "gelisim-diger", "veri-pf2e", "pf2e", "pf2-sihirbaz", "motw", "maceralar", "cozumleyici", "mobilya", "katlar", "isik", "saldiri", "tavan", "birinci-sahis", "uc-boyut", "tema", "oyunlar", "bildirim", "sohbet", "forum", "sosyal", "galeri", "botlar", "mobil-mod"];
   const EXT_TYPES = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml" };
   const MOBIL_TYPES = { ".webmanifest": "application/manifest+json; charset=utf-8", ".json": "application/manifest+json; charset=utf-8" };
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
@@ -252,7 +252,7 @@ function createServer(opts = {}) {
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
       }
-      if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.webp$/.test(p))) {
+      if (req.method === "GET" && (/^\/ext\/[a-z0-9-]+\.(js|css)$/.test(p) || /^\/ext\/maceralar\/[a-z0-9-]+\.(json|png|jpg|webp)$/.test(p) || /^\/ext\/mobilya\/[a-z0-9-]+\.webp$/.test(p) || /^\/ext\/kutuphane\/[a-z0-9-]+\.js$/.test(p))) {
         const f = path.join(WEB, p);
         if (!fs.existsSync(f)) return send(res, 404, { code: "not_found" });
         return sunDosya(req, res, f, EXT_TYPES[path.extname(f)]);
