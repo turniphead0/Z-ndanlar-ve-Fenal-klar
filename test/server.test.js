@@ -70,6 +70,22 @@ test("eklentiler sayfaya eklenir ve sunulur", async () => {
   await srv.close();
 });
 
+test("3B harita: eklenti ve three.js kütüphanesi sunucudan gelir (internet gerekmez)", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zm-"));
+  const srv = createServer({ dataDir: dir });
+  const port = await srv.listen(0, "127.0.0.1");
+  const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
+  assert.ok(html.indexOf("/ext/birinci-sahis.js") < html.indexOf("/ext/uc-boyut.js"), "3B eklentisi sayfada");
+  const src = fs.readFileSync(path.join(__dirname, "../web/ext/uc-boyut.js"), "utf8");
+  const yol = src.match(/import\("(\/ext\/kutuphane\/[a-z0-9-]+\.js)"\)/)[1];
+  const r = await fetch(`http://127.0.0.1:${port}${yol}`, { headers: { "accept-encoding": "gzip" } });
+  assert.equal(r.status, 200); assert.match(r.headers.get("content-type"), /javascript/); assert.equal(r.headers.get("content-encoding"), "gzip");
+  assert.match(await r.text(), /SPDX-License-Identifier: MIT/);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/ext/kutuphane/..%2Fapp.js`)).status, 404);
+  await srv.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test("5e verisi: büyü yuvaları ve büyüler", () => {
   global.window = {};
   require("../web/ext/veri-5e.js");
