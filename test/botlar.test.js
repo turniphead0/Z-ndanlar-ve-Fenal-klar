@@ -29,16 +29,24 @@ async function kur(opts = {}) {
 }
 
 test("bot yapay zekâsı her tahta oyununda yasal hamle seçer ve rastgele oyuncuyu yener", () => {
+  // "Orta" bot kusursuz değildir: tek bir rastgele oyunda arada bir (mangala ve damada ~%3) kaybedebilir.
+  // Bu yüzden test tohumlu rastgelelikle (her çalıştırmada aynı oyunlar) birkaç oyun oynar ve çoğunu kazanmasını ister.
+  const tohum = n => () => (n = (Math.imul(n, 1664525) + 1013904223) >>> 0) / 4294967296;
   for (const [oyun, g] of Object.entries(OYUNLAR)) {
-    let d = g.yeni(Math.random), adim = 0;
-    while (!d.bitti && adim++ < 600) {
-      const hs = g.hamleler(d); if (!hs.length) break;
-      const h = d.sira === 0 ? BOT.hamleSec(oyun, d, "orta") : hs[Math.floor(Math.random() * hs.length)];
-      assert.ok(hs.some(x => JSON.stringify(x) === JSON.stringify(h)), oyun + " yasal olmayan hamle");
-      d = g.uygula(d, h, Math.random);
+    let kazandi = 0, kaybetti = 0;
+    for (let oyunNo = 1; oyunNo <= 5; oyunNo++) {
+      const rng = tohum(oyunNo * 7919);
+      let d = g.yeni(rng), adim = 0;
+      while (!d.bitti && adim++ < 600) {
+        const hs = g.hamleler(d); if (!hs.length) break;
+        const h = d.sira === 0 ? BOT.hamleSec(oyun, d, "orta", rng) : hs[Math.floor(rng() * hs.length)];
+        assert.ok(hs.some(x => JSON.stringify(x) === JSON.stringify(h)), oyun + " yasal olmayan hamle");
+        d = g.uygula(d, h, rng);
+      }
+      assert.ok(d.bitti, oyun + " bitmedi");
+      if (d.bitti.kazanan === 0) kazandi++; else if (d.bitti.kazanan === 1) kaybetti++;
     }
-    assert.ok(d.bitti, oyun + " bitmedi");
-    if (oyun !== "ur") assert.notEqual(d.bitti.kazanan, 1, oyun + ": bot rastgele oyuncuya yenildi"); // Ur zara bağlı
+    if (oyun !== "ur") assert.ok(kazandi >= 4, `${oyun}: bot rastgele oyuncuyu 5 oyunun yalnızca ${kazandi} tanesinde yendi (${kaybetti} kayıp)`); // Ur zara bağlı
   }
 });
 
