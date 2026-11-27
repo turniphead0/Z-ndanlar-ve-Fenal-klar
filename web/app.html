@@ -163,7 +163,8 @@ input.f:focus,select.f:focus,textarea.f:focus{border-color:var(--accent);outline
 .tool i{width:12px;height:12px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
 .mapwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);max-height:calc(100vh - 230px)}
 #mapc{display:block;touch-action:none}
-#mapc.pan{touch-action:auto}
+#mapc.pan{touch-action:auto;cursor:grab}
+#mapc.grab{cursor:grabbing}
 .measure{font-family:var(--f-num);font-size:13px;color:var(--muted);min-height:20px;margin-top:6px}
 .side{display:grid;gap:12px}
 .tok{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-size:14px}
@@ -1009,7 +1010,10 @@ function render(){
   else if(S.view==="oyun") m.innerHTML=ban+hb+viewGame();
   else if(S.view==="ses") { m.innerHTML=ban+hb+viewAudio(); updateProgress() }
   else if(S.view==="senaryo") { m.innerHTML=ban+hb+viewScenario(); if(S.scTab==="pages"&&scMeta()) setTimeout(drawPageImg,0) }
-  else if(S.view==="harita") { m.innerHTML=ban+hb+viewMap(); setupMap() }
+  else if(S.view==="harita") { // aynı harita yeniden çizilirken kaydırma yeri korunur (jetona tıklayınca harita başa kaymasın)
+    const w=$("#mapwrap"), same=!!w&&w.dataset.m===String(S.mapId), sc=same?[w.scrollLeft,w.scrollTop,m.scrollTop]:null;
+    m.innerHTML=ban+hb+viewMap(); setupMap(); const w2=$("#mapwrap"); if(sc&&w2&&w2.dataset.m===String(S.mapId)){ w2.scrollLeft=sc[0]; w2.scrollTop=sc[1]; m.scrollTop=sc[2];
+      queueMicrotask(()=>{ if(S.view==="harita"&&m.scrollTop!==sc[2]) m.scrollTop=sc[2] }) } } // eklentiler paneli büyütse de sayfa yerinde kalsın
   updatePresence(); renderPeers(); renderTurnbar(); renderNowbar();
   if(S.view==="karakterler") updateDerived();
 }
@@ -1142,7 +1146,7 @@ function tokHp(t){
   return isDM()?esc(t.hp||""):"";
 }
 const tb=(k,n,title="")=>`<button class="tool" data-tool="${k}" aria-pressed="${S.tool===k}"${title?` title="${title}"`:""}>${n}</button>`;
-const HINTS={move:"Jetonları sürükleyerek taşı. Etiketleri de sürükleyebilirsin.",pan:"Haritayı parmağınla ya da tekerlekle kaydır.",measure:"Mesafe ölçmek için sürükle. Her kare 5 ft (1,5 m).",ping:"Bir kareye tıkla, herkesin ekranında işaret belirsin.",
+const HINTS={move:"Jetonları sürükleyerek taşı. Etiketleri de sürükleyebilirsin. Sağ tıkla tutup sürükleyerek haritada gezebilirsin.",pan:"Haritayı fareyle, parmağınla ya da tekerlekle kaydır. Her araçta sağ tıkla tutup sürüklemek de haritayı gezdirir.",measure:"Mesafe ölçmek için sürükle. Her kare 5 ft (1,5 m).",ping:"Bir kareye tıkla, herkesin ekranında işaret belirsin.",
   paint:"Seçili araziyi boya. Dikdörtgen ve oda çerçevesi için sürükle.",erase:"Araziyi sil.",props:"Seçili mobilyayı karelere yerleştir. Kaldırmak için Kaldır'ı seç.",roof:"Birinci şahısta tavan ya da gökyüzü olacak alanları boya. Kahverengi kareler tavanlı, mavi kareler açık.",label:"Etiket koymak için bir kareye tıkla.",fogshow:"Oyunculara açmak istediğin alanı boya.",foghide:"Tekrar sisle örtmek istediğin alanı boya."};
 function viewMap(){
   const l=loadingOr("maps"); if(l) return l;
@@ -1164,7 +1168,7 @@ function viewMap(){
       ${ro||!dm?"":`<button class="tool" data-act="undo" title="Geri al (Ctrl+Z)">Geri al</button><button class="tool" data-act="redo" title="Yinele (Ctrl+Y)">Yinele</button>`}
       <button class="tool" data-act="zoom" data-z="-1" aria-label="Uzaklaş">−</button><button class="tool" data-act="zoom" data-z="1" aria-label="Yakınlaş">+</button></div>
     ${shaping?`<div class="tools sub">${S.tool==="paint"?`<span class="lbl">Arazi</span>${terr.map(x=>`<button class="tool" data-terr="${x[0]}" aria-pressed="${S.terrain===x[0]}"><i style="background:var(${x[2]})"></i>${x[1]}</button>`).join("")}${window.PROPS?PROPS.skinBtn(S.terrain):""}<span class="tsep"></span>`:""}${S.tool==="props"&&window.PROPS?PROPS.bar():""}${S.tool==="roof"&&window.ROOF?ROOF.bar(m):""}<span class="lbl">Şekil</span>${[["brush","Fırça"],["rect","Dikdörtgen"],["room","Oda çerçevesi"]].map(([k,n])=>`<button class="tool" data-shape="${k}" aria-pressed="${S.shape===k}">${n}</button>`).join("")}</div>`:""}
-    <div class="mapwrap" id="mapwrap"><canvas id="mapc" class="${S.tool==="pan"?"pan":""}"></canvas></div>
+    <div class="mapwrap" id="mapwrap" data-m="${esc(m.id)}"><canvas id="mapc" class="${S.tool==="pan"?"pan":""}"></canvas></div>
     <div class="measure" id="measure">${HINTS[S.tool]||""}${m.fogOn&&dm?" · Sis açık: koyu kareleri oyuncular göremez.":""}</div>
   </div>
   <div class="side">
@@ -1213,7 +1217,7 @@ function setupMap(){
   const s=cs(), dpr=window.devicePixelRatio||1;
   cv.width=m.cols*s*dpr; cv.height=m.rows*s*dpr; cv.style.width=m.cols*s+"px"; cv.style.height=m.rows*s+"px";
   MV={cv,ctx:cv.getContext("2d"),dpr,drag:null,meas:null,rect:null,op:null,ldrag:null};
-  cv.addEventListener("pointerleave",()=>presenceCursor(null));
+  cv.addEventListener("pointerleave",()=>presenceCursor(null)); cv.addEventListener("contextmenu",e=>e.preventDefault());
   drawMap();
   cv.addEventListener("pointerdown",mapDown); cv.addEventListener("pointermove",mapMove); cv.addEventListener("pointerup",mapUp); cv.addEventListener("pointercancel",mapUp);
 }
@@ -1341,7 +1345,11 @@ function applyCell(m,x,y){ if(x<0||y<0||x>=m.cols||y>=m.rows) return; const k=x+
 function bulkOp(m,f,fn){ MV.op={}; MV.op[f]={}; m[f]=m[f]||{}; for(let y=0;y<m.rows;y++)for(let x=0;x<m.cols;x++){ const k=x+","+y; const old=m[f][k]??(f==="fog"?0:""), v=fn(old); if(v!==old){ MV.op[f][k]=[old,v]; m[f][k]=v } } commitOp(m) }
 
 function mapDown(e){
-  const m=curMap(); if(!m||S.tool==="pan") return; const c=cellAt(e); MV.cv.setPointerCapture(e.pointerId);
+  const m=curMap(); if(!m) return;
+  // Sağ (ya da orta) tuşla tutup sürükle: haritada gez. Kaydır aracında fareyle sol tuş da gezdirir; dokunmada tarayıcı kaydırır.
+  if(e.button===2||e.button===1||(S.tool==="pan"&&e.pointerType==="mouse")){ const w=$("#mapwrap"); if(!w) return; e.preventDefault(); MV.cv.setPointerCapture(e.pointerId);
+    MV.pan={x:e.clientX,y:e.clientY,l:w.scrollLeft,t:w.scrollTop}; MV.cv.classList.add("grab"); return }
+  if(S.tool==="pan") return; const c=cellAt(e); MV.cv.setPointerCapture(e.pointerId);
   if(S.tool==="move"){
     const t=tokAt(m,c);
     if(t){ S.selTok=t.id; S.selLab=null; if(S.ro||!ownsTok(t)){ render(); return } MV.drag={id:t.id,px:c.px,py:c.py,moved:false}; S.dragging=true; drawMap(); return }
@@ -1360,6 +1368,7 @@ function mapDown(e){
   else { MV.rect={a:c,b:c}; drawMap() }
 }
 function mapMove(e){
+  if(MV.pan){ const w=$("#mapwrap"); if(w){ w.scrollLeft=MV.pan.l-(e.clientX-MV.pan.x); w.scrollTop=MV.pan.t-(e.clientY-MV.pan.y) } return }
   const m=curMap(); if(!m) return; const c=cellAt(e);
   presenceCursor([+(c.px/cs()).toFixed(2),+(c.py/cs()).toFixed(2)]);
   if(MV.drag){ MV.drag.px=c.px; MV.drag.py=c.py; MV.drag.moved=true; const t=m.tokens[MV.drag.id], sz=+t.size||1; emitDrag({m:m.id,id:t.id,x:+(c.px/cs()-sz/2).toFixed(2),y:+(c.py/cs()-sz/2).toFixed(2)}); drawMap(); return }
@@ -1369,6 +1378,7 @@ function mapMove(e){
   if(MV.painting){ applyCell(m,c.x,c.y); drawMap() }
 }
 function mapUp(e){
+  if(MV.pan){ MV.pan=null; MV.cv.classList.remove("grab"); return }
   const m=curMap(); if(!m) return;
   if(MV.drag){ const t=m.tokens[MV.drag.id]; const sz=+t.size||1, s=cs();
     if(MV.drag.moved){ t.x=Math.max(0,Math.min(m.cols-sz,Math.round(MV.drag.px/s-sz/2))); t.y=Math.max(0,Math.min(m.rows-sz,Math.round(MV.drag.py/s-sz/2))); save("maps",m,["tokens."+t.id+".x","tokens."+t.id+".y"]) }
