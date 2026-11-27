@@ -4148,5 +4148,7 @@
  "Düz, kuşbakışı harita": "Flat, top-down map",
  "2B": "2D",
  "Üç boyutlu harita: duvarlar, mobilyalar ve jetonlar 3B": "Three-dimensional map: walls, furniture and tokens in 3D",
- "3B": "3D"
+ "3B": "3D",
+ "Jetonları sürükleyerek taşı. Etiketleri de sürükleyebilirsin. Sağ tıkla tutup sürükleyerek haritada gezebilirsin.": "Drag tokens to move them. You can drag labels too. Hold the right mouse button and drag to move around the map.",
+ "Haritayı fareyle, parmağınla ya da tekerlekle kaydır. Her araçta sağ tıkla tutup sürüklemek de haritayı gezdirir.": "Pan the map with the mouse, your finger or the wheel. Holding the right mouse button and dragging pans the map with any tool."
 }
